@@ -29,7 +29,7 @@ app.use("/api/v2/otp", otpRoutes);
 
 // Sequelize Connection with DB
 sequelize
-  .sync({force: true})
+  .sync({force: false})
   .then(() => {
     console.log("Database synchronized successfully");
   })
