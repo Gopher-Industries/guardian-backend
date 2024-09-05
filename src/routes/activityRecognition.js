@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const ActivityRecognition = require('../models/ActivityRecognition');
-const verifyToken = require('../middleware/verifyToken'); // Import the JWT middleware
+const verifyToken = require('../middleware/verifyToken'); 
 
 router.post('/', verifyToken, async (req, res) => {
   try {
