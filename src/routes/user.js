@@ -17,12 +17,11 @@ router.post('/register', async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-   
     const newUser = new User({
       username: username,
       email: email,
       password_hash: hashedPassword,
-      lastPasswordChange: Date.now() 
+      lastPasswordChange: Date.now()
     });
 
     await newUser.save();
@@ -46,7 +45,18 @@ router.post('/login', async (req, res) => {
     if (!user) return res.status(400).json({ error: 'User not found' });
 
     const isValidPassword = await bcrypt.compare(req.body.password, user.password_hash);
-    if (!isValidPassword) return res.status(400).json({ error: 'Invalid password' });
+    if (!isValidPassword) {
+      user.failedLoginAttempts = (user.failedLoginAttempts !== null && user.failedLoginAttempts !== undefined) ? user.failedLoginAttempts + 1 : 1;
+      await user.save();
+      return res.status(400).json({ error: 'Incorrect email and password combination'});
+    }
+
+    if (user.failedLoginAttempts !== null && user.failedLoginAttempts !== undefined && user.failedLoginAttempts > 4) {
+      return res.status(400).json({ error: 'Your account has been flagged and locked. Please reset your password' });
+    }
+
+    user.failedLoginAttempts = 0;
+    await user.save();
 
     const token = jwt.sign(
       { _id: user._id, username: user.username },
@@ -55,9 +65,9 @@ router.post('/login', async (req, res) => {
     );
 
     const currentDate = new Date();
-    const lastChangeDate = new Date(user.lastPasswordChange); 
+    const lastChangeDate = new Date(user.lastPasswordChange);
 
-    const timeDifference = currentDate.getTime() - lastChangeDate.getTime(); 
+    const timeDifference = currentDate.getTime() - lastChangeDate.getTime();
     const daysSinceLastChange = Math.floor(timeDifference / (1000 * 60 * 60 * 24));
     const daysRemaining = 90 - daysSinceLastChange;
 
@@ -96,6 +106,11 @@ router.post('/change-password', verifyToken, async (req, res) => {
     }
 
     const user = await User.findById(req.user._id);
+    
+    if (!user) {
+      return res.status(404).send({ error: 'User not found' });
+    }
+
     const isValidPassword = await bcrypt.compare(oldPassword, user.password_hash);
 
     if (!isValidPassword) {
@@ -106,7 +121,8 @@ router.post('/change-password', verifyToken, async (req, res) => {
     const hashedNewPassword = await bcrypt.hash(newPassword, salt);
 
     user.password_hash = hashedNewPassword;
-    user.lastPasswordChange = Date.now(); 
+    user.lastPasswordChange = Date.now();
+    user.failedLoginAttempts = 0;
     await user.save();
 
     res.status(200).json({ message: 'Password changed successfully' });
@@ -115,9 +131,43 @@ router.post('/change-password', verifyToken, async (req, res) => {
   }
 });
 
+// TODO: This endpoint will have to bo improved to send an email to the user with the token
+router.post('/reset-password', verifyToken, async (req, res) => {
+  try {
+    const { email, newPassword, confirmPassword } = req.body;
+
+    if (!email || !newPassword || !confirmPassword) {
+      return res.status(400).json({ error: 'All fields are required' });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ error: 'New password and confirmation do not match' });
+    }
+
+    const user = await User.findOne({ email: req.body.email });
+    
+    if (!user) {
+      return res.status(404).send({ error: 'User not found' });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedNewPassword = await bcrypt.hash(newPassword, salt);
+
+    user.password_hash = hashedNewPassword;
+    user.lastPasswordChange = Date.now();
+    user.failedLoginAttempts = 0;
+    await user.save();
+
+    res.status(200).json({ message: 'Password reset successful' });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+
 router.get('/', verifyToken, checkPasswordExpiry, async (req, res) => {
   try {
-    const users = await User.find().select('-password_hash'); 
+    const users = await User.find().select('-password_hash');
     res.status(200).json(users);
   } catch (error) {
     res.status(400).json({ error: error.message });

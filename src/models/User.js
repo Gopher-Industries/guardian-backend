@@ -4,7 +4,8 @@ const UserSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   email: { type: String, required: true, unique: true },
   password_hash: { type: String, required: true },
-  lastPasswordChange: { type: Date, default: Date.now }, 
+  lastPasswordChange: { type: Date, default: Date.now },
+  failedLoginAttempts: { type: Number, default: 0 },
   created_at: { type: Date, default: Date.now },
   updated_at: { type: Date, default: Date.now }
 });
