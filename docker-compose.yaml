@@ -7,6 +7,9 @@ services:
       - "3000:3000"
     volumes:
       - .:/usr/src/app
+    environment:
+      - MONGODB_URL=mongodb://admin:password@mongo:27017/guardian?authSource=admin
+      - JWT_SECRET=123
     depends_on:
       - mongo
 

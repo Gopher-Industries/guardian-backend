@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const verifyToken = require('../middleware/verifyToken');
 const checkPasswordExpiry = require('../middleware/checkPasswordExpiry');
+const nodemailer = require('nodemailer');
 
 router.post('/register', async (req, res) => {
   try {
@@ -123,5 +124,72 @@ router.get('/', verifyToken, checkPasswordExpiry, async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 });
+
+
+router.post('/request-reset-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ error: 'User not found' });
+
+    const resetToken = jwt.sign(
+      { _id: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' } // Token expires in 1 hour
+    );
+
+    // Generate a new Ethereal test account
+    nodemailer.createTestAccount((err, account) => {
+      if (err) {
+        console.error('Failed to create a testing account. ' + err.message);
+        return res.status(500).json({ error: 'Failed to create email test account' });
+      }
+
+      // Create a transporter object using the test account
+      const transporter = nodemailer.createTransport({
+        host: 'smtp.ethereal.email',
+        port: 587,
+        secure: false, // true for 465, false for other ports
+        auth: {
+          user: "callie.hickle@ethereal.email", // generated ethereal user
+          pass: "W23jypB4ZCnwUTJ9dt"  // generated ethereal password
+        }
+      });
+
+      // Define the email options
+      const mailOptions = {
+        from: '"Your App" <no-reply@yourapp.com>',
+        to: user.email,
+        subject: 'Password Reset Request',
+        text: `Please use the following link to reset your password: http://localhost:3000/reset-password/${resetToken}`,
+        html: `<p>Please use the following link to reset your password:</p><a href="http://localhost:3000/reset-password/${resetToken}">Reset Password</a>`
+      };
+
+      // Send the email
+      transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+          console.log('Error sending email: ', error);
+          return res.status(500).json({ error: 'Error sending email' });
+        }
+
+        console.log('Message sent: %s', info.messageId);
+        console.log('Preview URL: %s', nodemailer.getTestMessageUrl(info));
+
+        res.status(200).json({
+          message: 'Password reset email sent',
+          previewURL: nodemailer.getTestMessageUrl(info)
+        });
+      });
+    });
+
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
 
 module.exports = router;

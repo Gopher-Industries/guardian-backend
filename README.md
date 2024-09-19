@@ -1,9 +1,8 @@
-### Updated `README.md`:
 
-```markdown
 # Guardian System Management API
 
-The Guardian System Management API provides functionalities for managing user data
+The Guardian System Management API provides functionalities for managing user data, including user registration, login, password reset, and more.
+
 ## Getting Started
 
 These instructions will help you get a copy of the project up and running on your local machine for development and testing purposes.
@@ -38,6 +37,11 @@ These instructions will help you get a copy of the project up and running on you
    NODE_ENV=development
    JWT_SECRET=your_jwt_secret_key
    ```
+   If using Ethereal for testing email functionality, add:
+   ```plaintext
+   EMAIL_USER=your_ethereal_user
+   EMAIL_PASS=your_ethereal_password
+   ```
 
 4. You might need to install the `dotenv` package:
    ```bash
@@ -66,7 +70,6 @@ guardian-backend/
 │   ├── Alert.js
 │   └── Notification.js
 ├── routes/               # API route handlers
-│   ├── auth.js           # Authentication routes (register, login, protected routes)
 │   ├── user.js           # User routes (protected by JWT)
 │   ├── wifiCSI.js        # Wi-Fi CSI routes (protected by JWT)
 │   ├── activityRecognition.js # Activity recognition routes (protected by JWT)
@@ -80,9 +83,11 @@ guardian-backend/
 
 #### Authentication
 
-- **POST** `/api/auth/register` - Register a new user
-- **POST** `/api/auth/login` - Login a user and receive a JWT token
-- **GET** `/api/auth/me` - Get the authenticated user's information (requires JWT token)
+- **POST** `/api/users/register` - Register a new user
+- **POST** `/api/users/login` - Login a user and receive a JWT token
+- **POST** `/api/users/request-reset-password` - Request a password reset email
+- **POST** `/api/users/reset-password` - Reset the user's password using a token
+- **POST** `/api/users/change-password` - Change the user's password (requires JWT token)
 
 #### User Management
 
@@ -103,6 +108,15 @@ guardian-backend/
 - **POST** `/api/alerts` - Create a new alert (requires JWT token)
 - **GET** `/api/alerts` - Get all alerts (requires JWT token)
 
+### Password Reset and Expiry Check
+
+The API includes functionality for handling user password resets and reminders for password expiration:
+
+1. **Request Password Reset**: Allows users to request a password reset email. An email is sent to the user’s registered email address with a link to reset the password.
+2. **Reset Password**: Users can reset their password using a token sent to their email. This process verifies the token and allows the user to set a new password.
+3. **Change Password**: Logged-in users can change their password by providing their current password and a new password.
+4. **Password Expiry Check**: During login, if the user's password is about to expire (within 5 days of the 90-day expiry period), a reminder is included in the response.
+
 ### Authentication
 
 This API uses JWT (JSON Web Tokens) for securing routes. The token is issued upon successful login and must be included in the `x-auth-token` header of requests to protected routes.
@@ -113,10 +127,10 @@ To test the API, use Postman or similar API testing tools.
 
 1. **Start the server** using the Docker Compose command mentioned above.
 2. **Use Postman** to send HTTP requests to the API endpoints. Examples:
-   - **POST** `/api/auth/register` - Register a new user.
-   - **POST** `/api/auth/login` - Log in to get a JWT token.
-   - **GET** `/api/auth/me` - Access a protected route using the JWT token.
-   - **GET** `/api/users` - Access the users' list using the JWT token.
+   - **POST** `/api/users/register` - Register a new user.
+   - **POST** `/api/users/login` - Log in to get a JWT token.
+   - **POST** `/api/users/request-reset-password` - Request a password reset email.
+   - **POST** `/api/users/reset-password` - Reset the user's password.
 
 ### Environment Variables
 
@@ -124,6 +138,8 @@ To test the API, use Postman or similar API testing tools.
 - `PORT`: The port on which the application runs (default: 3000).
 - `NODE_ENV`: The environment in which the app is running (e.g., `development`).
 - `JWT_SECRET`: The secret key used to sign JWT tokens.
+- `EMAIL_USER`: Ethereal email username (for testing email functionality).
+- `EMAIL_PASS`: Ethereal email password (for testing email functionality).
 
 ### Built With
 
@@ -131,14 +147,16 @@ To test the API, use Postman or similar API testing tools.
 - **Express** - The web framework used
 - **Mongoose** - MongoDB object modeling for Node.js
 - **JWT** - JSON Web Token for secure authentication
+- **Nodemailer** - For sending emails (using Ethereal for testing)
 - **Docker** - Containerization for the application
 
+### Notes
 
+- Ensure to replace placeholder values in the `.env` file with actual values for local testing.
+- The password reset functionality uses Ethereal for email testing. You can use the preview URL from the console logs to view the sent emails.
 ```
 
 ### Summary of Updates:
-
-- **Added JWT Authentication**: Explained the JWT implementation and how to use it with the API.
-- **Updated Project Structure**: Included the new `auth.js` route and the integration of JWT in the `user.js`, `wifiCSI.js`, `activityRecognition.js`, and `alerts.js` routes.
-- **Detailed API Endpoints**: Provided information on how to use the authentication endpoints and access protected routes.
-- **Environment Variables**: Added the `JWT_SECRET` key to the list of environment variables.
+- **Password Reset**: Added endpoints for requesting a password reset and resetting the password using a token.
+- **Password Expiry Check**: Explained the password expiry reminder included in the login response.
+- **Environment Variables**: Included `EMAIL_USER` and `EMAIL_PASS` for email functionality testing using Ethereal.
