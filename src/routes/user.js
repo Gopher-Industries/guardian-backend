@@ -131,12 +131,59 @@ router.post('/change-password', verifyToken, async (req, res) => {
   }
 });
 
-// TODO: This endpoint will have to bo improved to send an email to the user with the token
-router.post('/reset-password', verifyToken, async (req, res) => {
-  try {
-    const { email, newPassword, confirmPassword } = req.body;
 
-    if (!email || !newPassword || !confirmPassword) {
+router.post('/reset-password-request', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Please provide an email' });
+    }
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      // TODO? Maybe we should consider returning a success message so attackers can't brute force to find valid email addresses
+      return res.status(404).send({ message: 'User not found' });
+    }
+
+    const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, { expiresIn: '15m' });
+
+    // Send the token to the user's email
+    // TODO: Replace with real email service
+    const resetLink = `https://guardian-backend.railway.app/reset-password?token=${token}`;
+    console.log(`Send reset link to: ${email}, Link: ${resetLink}`);
+
+    res.status(200).json({ message: 'Password reset link sent' });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+
+router.get('/reset-password', (req, res) => {
+  const { token } = req.query;
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    if (!decoded) {
+      return res.status(400).send('Invalid or expired token');
+    }
+
+    // If everything is valid, render the reset password form
+    res.render('reset-password', { token });
+  } catch (error) {
+    res.status(400).send({ message: 'Invalid or expired token' });
+  }
+});
+
+
+router.post('/reset-password', async (req, res) => {
+  const { token, newPassword, confirmPassword } = req.body;
+
+  try {
+    if (!newPassword || !confirmPassword) {
       return res.status(400).json({ error: 'All fields are required' });
     }
 
@@ -144,23 +191,23 @@ router.post('/reset-password', verifyToken, async (req, res) => {
       return res.status(400).json({ error: 'New password and confirmation do not match' });
     }
 
-    const user = await User.findOne({ email: req.body.email });
-    
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded._id);
+
     if (!user) {
-      return res.status(404).send({ error: 'User not found' });
+      return res.status(400).send({ message: 'Invalid token or user not found.' });
     }
 
     const salt = await bcrypt.genSalt(10);
     const hashedNewPassword = await bcrypt.hash(newPassword, salt);
 
     user.password_hash = hashedNewPassword;
-    user.lastPasswordChange = Date.now();
-    user.failedLoginAttempts = 0;
+    user.lastPasswordChange = Date.now(); 
     await user.save();
 
-    res.status(200).json({ message: 'Password reset successful' });
+    res.status(200).json({ message: 'Password has been updated successfully' });
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    res.status(400).send({ message: 'Invalid or expired token' });
   }
 });
 
