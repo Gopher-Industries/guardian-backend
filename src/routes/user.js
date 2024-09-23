@@ -5,20 +5,22 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const verifyToken = require('../middleware/verifyToken');
 const checkPasswordExpiry = require('../middleware/checkPasswordExpiry');
+const { OTP, generateOTP } = require('../models/otp');
+const { sendEmail, sendPinCodeVerification } = require('../utils/mailer');
 
 router.post('/register', async (req, res) => {
   try {
-    const { username, email, password } = req.body;
+    const { fullname, email, password, role } = req.body;
 
-    if (!username || !email || !password) {
-      return res.status(400).json({ error: 'All fields (username, email, password) are required' });
+    if (!fullname || !email || !password || !role) {
+      return res.status(400).json({ error: 'All fields (fullname, email, password, role) are required' });
     }
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
     const newUser = new User({
-      username: username,
+      fullname: fullname,
       email: email,
       password_hash: hashedPassword,
       lastPasswordChange: Date.now()
@@ -27,12 +29,21 @@ router.post('/register', async (req, res) => {
     await newUser.save();
 
     const token = jwt.sign(
-      { _id: newUser._id, username: newUser.username },
+      { _id: newUser._id, email: newUser.email },
       process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
 
-    res.status(201).json({ user: newUser, token });
+    const userResponse = {
+      id: newUser._id,
+      fullname: newUser.fullname,
+      email: newUser.email,
+      role: role//roles.map(role => role.role_name)  // Extract role names
+    };
+
+
+
+    res.status(201).json({ user: userResponse, token });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -59,7 +70,7 @@ router.post('/login', async (req, res) => {
     await user.save();
 
     const token = jwt.sign(
-      { _id: user._id, username: user.username },
+      { _id: user._id, email: user.email },
       process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
@@ -72,8 +83,8 @@ router.post('/login', async (req, res) => {
     const daysRemaining = 90 - daysSinceLastChange;
 
     const userResponse = {
-      _id: user._id,
-      username: user.username,
+      id: user._id,
+      fullname: user.fullname,
       email: user.email,
       lastPasswordChange: user.lastPasswordChange,
       created_at: user.created_at,
@@ -149,10 +160,16 @@ router.post('/reset-password-request', async (req, res) => {
 
     const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, { expiresIn: '15m' });
 
-    // Send the token to the user's email
-    // TODO: Replace with real email service
+    // Construct reset URL
     const resetLink = `https://guardian-backend.railway.app/reset-password?token=${token}`;
-    console.log(`Send reset link to: ${email}, Link: ${resetLink}`);
+
+    // Send the token to the user's email
+    await sendEmail(
+      email,
+      'Password Reset Request',
+      `Click the following link to reset your password: ${resetLink}`,
+      `<p>Click the following link to reset your password: <a href="${resetLink}">Reset Password</a></p>`
+    );
 
     res.status(200).json({ message: 'Password reset link sent' });
   } catch (error) {
@@ -213,7 +230,61 @@ router.post('/reset-password', async (req, res) => {
 });
 
 
-router.get('/', verifyToken, checkPasswordExpiry, async (req, res) => {
+router.post('/send-pin', async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ message: 'Email is required' });
+  }
+
+  // Generate OTP
+  const otp = generateOTP();
+
+  try {
+    // Remove any existing OTPs for this email (useful to avoid duplicates)
+    await OTP.deleteMany({ email });
+
+    // Create new OTP entry
+    const otpEntry = new OTP({ email, otp });
+    await otpEntry.save();
+
+    // Send OTP email
+    await sendPinCodeVerification(email, otp);
+    res.status(200).json({ message: 'OTP sent to your email address' });
+  } catch (error) {
+    console.error('Error saving OTP or sending email:', err);
+    res.status(500).json({ message: 'Error processing your request' });
+  }
+});
+
+
+router.post('/verify-pin', async (req, res) => {
+  const { email, otp } = req.body;
+
+  if (!email || !otp) {
+    return res.status(400).json({ message: 'Email and OTP are required' });
+  }
+
+  try {
+    // Find the OTP record in the database
+    const otpRecord = await OTP.findOne({ email, otp });
+
+    // If no record is found, OTP is invalid or expired
+    if (!otpRecord) {
+      return res.status(400).json({ message: 'Invalid or expired OTP' });
+    }
+
+    // Remove the OTP entry after successful verification
+    await OTP.deleteOne({ _id: otpRecord._id });
+
+    res.status(200).json({ message: 'OTP verified successfully' });
+  } catch (err) {
+    console.error('Error verifying OTP:', err);
+    res.status(500).json({ message: 'Error processing your request' });
+  }
+});
+
+router.get('/', verifyToken, async (req, res) => {
   try {
     const users = await User.find().select('-password_hash');
     res.status(200).json(users);
