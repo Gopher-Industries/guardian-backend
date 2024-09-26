@@ -3,21 +3,32 @@
   "version": "1.0.0",
   "main": "src/server.js",
   "dependencies": {
+    "@fastify/static": "^8.0.1",
+    "@fastify/swagger": "^6.0.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^8.6.0",
     "ejs": "^3.1.10",
     "express": "^4.19.2",
+    "express-oas-generator": "^1.0.46",
+    "fastify": "^4.28.1",
+    "joi": "^17.13.3",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^5.13.22",
+    "nodemon": "^3.1.7",
     "pg": "^8.11.5",
     "pg-hstore": "^2.3.4",
+    "redoc": "^2.1.5",
     "sequelize": "^6.37.2",
     "socket.io": "^4.7.5",
+    "swagger-autogen": "^2.23.7",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
     "ws": "^8.17.0"
   },
   "scripts": {
-    "start": "node src/server.js",
+    "start": "nodemon src/server.js",
+    "dev": "nodemon src/app.js",
     "test": "NODE_ENV=test mocha 'src/test/**/*.cjs' --recursive --exit"
   },
   "devDependencies": {
