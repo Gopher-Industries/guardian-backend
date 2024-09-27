@@ -9,6 +9,7 @@ const NurseSchema = new mongoose.Schema({
   assignedPatients: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Patient' }], // Assigned patients
   role: { type: String, default: 'nurse', immutable: true },  // Make role immutable means it can not be changed
   lastPasswordChange: { type: Date, default: Date.now },
+  failedLoginAttempts: { type: Number, default: 0 }
 }, {
   timestamps: true, // Automatically handles createdAt and updatedAt
 });

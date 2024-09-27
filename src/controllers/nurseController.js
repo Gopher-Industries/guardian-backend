@@ -9,7 +9,7 @@ const jwt = require('jsonwebtoken');
 
 /**
  * @swagger
- * /api/v2/nurse/register:
+ * /api/v1/nurse/register:
  *   post:
  *     summary: Register a new nurse
  *     tags: [Nurse]
@@ -49,11 +49,11 @@ exports.registerNurse = async (req, res) => {
       return res.status(400).json({ error: 'Invalid email format.' });
     }
 
-      // Check if the password is at least 6 characters long
-      if (password.length < 6) {
-        return res.status(400).json({ error: 'Password must be at least 6 characters long.' });
-      }
-  
+    // Check if the password is at least 6 characters long
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters long.' });
+    }
+
     const existingNurse = await Nurse.findOne({ email });
     if (existingNurse) {
       return res.status(400).json({ error: 'Nurse already exists with this email' });
@@ -61,7 +61,21 @@ exports.registerNurse = async (req, res) => {
 
     const newNurse = new Nurse({ name, email, password });
     await newNurse.save();
-    res.status(201).json({ message: 'Nurse registered successfully', nurse: newNurse });
+
+    const token = jwt.sign(
+      { _id: newNurse._id, email: newNurse.email },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+
+    const nurseResponse = {
+      _id: newNurse._id,
+      name: newNurse.name,
+      email: newNurse.email,
+      role: newNurse.role
+    };
+
+    res.status(201).json({ message: 'Nurse registered successfully', nurse: nurseResponse, token });
   } catch (error) {
     res.status(500).json({ error: 'Error registering nurse', details: error.message });
   }
@@ -69,7 +83,7 @@ exports.registerNurse = async (req, res) => {
 
 /**
  * @swagger
- * /api/v2/nurse/login:
+ * /api/v1/nurse/login:
  *   post:
  *     summary: Login nurse
  *     tags: [Nurse]
@@ -102,16 +116,25 @@ exports.loginNurse = async (req, res) => {
       return res.status(400).json({ error: 'Nurse not found' });
     }
 
+    if (nurse.failedLoginAttempts !== null && nurse.failedLoginAttempts !== undefined && nurse.failedLoginAttempts > 4) {
+      return res.status(400).json({ error: 'Your account has been flagged and locked. Please reset your password' });
+    }
+
     const isValidPassword = await bcrypt.compare(password, nurse.password);
     if (!isValidPassword) {
-      return res.status(400).json({ error: 'Invalid credentials' });
+      nurse.failedLoginAttempts = (nurse.failedLoginAttempts !== null && nurse.failedLoginAttempts !== undefined) ? nurse.failedLoginAttempts + 1 : 1;
+      await user.save();
+      return res.status(400).json({ error: 'Incorrect email and password combination'});
     }
+
+    user.failedLoginAttempts = 0;
+    await user.save();
 
     if (!nurse.isApproved) {
       return res.status(400).json({ error: 'Nurse account is not approved by admin' });
     }
 
-    const token = jwt.sign({ _id: nurse._id, role: nurse.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const token = jwt.sign({ _id: nurse._id, email: nurse.email }, process.env.JWT_SECRET, { expiresIn: '1h' });
     res.status(200).json({ message: 'Login successful', token, nurse });
   } catch (error) {
     res.status(500).json({ error: 'Error during login', details: error.message });
@@ -120,7 +143,7 @@ exports.loginNurse = async (req, res) => {
 
 /**
  * @swagger
- * /api/v2/nurse/patients:
+ * /api/v1/nurse/patients:
  *   get:
  *     summary: Get patients assigned to nurse
  *     tags: [Nurse]
@@ -146,7 +169,7 @@ exports.getAssignedPatients = async (req, res) => {
 
 /**
  * @swagger
- * /api/v2/nurse/caretakers/{patientId}:
+ * /api/v1/nurse/caretakers/{patientId}:
  *   get:
  *     summary: Get caretakers assigned to a patient that the nurse is also assigned to
  *     tags: [Nurse]
@@ -188,7 +211,7 @@ exports.getAssignedCaretakersForPatient = async (req, res) => {
 
 /**
  * @swagger
- * /api/v2/nurse/tasks:
+ * /api/v1/nurse/tasks:
  *   post:
  *     summary: Create a task for a caretaker
  *     tags: [Nurse]
@@ -253,7 +276,7 @@ exports.createTask = async (req, res) => {
 
 /**
  * @swagger
- * /api/v2/nurse/tasks/{taskId}:
+ * /api/v1/nurse/tasks/{taskId}:
  *   put:
  *     summary: Update a task
  *     tags: [Nurse]
@@ -278,7 +301,7 @@ exports.createTask = async (req, res) => {
  *       400:
  *         description: Error updating task
  */
-exports.updateTask= async (req, res) => {
+exports.updateTask = async (req, res) => {
   try {
     const task = await Task.findByIdAndUpdate(req.params.taskId, req.body, { new: true });
     if (!task) return res.status(404).json({ message: 'Task not found' });
@@ -290,7 +313,7 @@ exports.updateTask= async (req, res) => {
 
 /**
  * @swagger
- * /api/v2/nurse/tasks/{taskId}:
+ * /api/v1/nurse/tasks/{taskId}:
  *   delete:
  *     summary: Delete a task
  *     tags: [Nurse]
@@ -309,7 +332,7 @@ exports.updateTask= async (req, res) => {
  *       400:
  *         description: Error deleting task
  */
-exports.deleteTask= async (req, res) => {
+exports.deleteTask = async (req, res) => {
   try {
     const task = await Task.findByIdAndDelete(req.params.taskId);
     if (!task) return res.status(404).json({ message: 'Task not found' });
@@ -321,7 +344,7 @@ exports.deleteTask= async (req, res) => {
 
 /**
  * @swagger
- * /api/v2/nurse/profile:
+ * /api/v1/nurse/profile:
  *   get:
  *     summary: Fetch nurse's own profile details
  *     tags: [Nurse]
@@ -331,7 +354,7 @@ exports.deleteTask= async (req, res) => {
  *       400:
  *         description: Error fetching nurse profile
  */
-exports.getNurseProfile= async (req, res) => {
+exports.getNurseProfile = async (req, res) => {
   try {
     const nurse = await Nurse.findById(req.user._id);
     if (!nurse) return res.status(404).json({ message: 'Nurse not found' });
@@ -343,7 +366,7 @@ exports.getNurseProfile= async (req, res) => {
 
 /**
  * @swagger
- * /api/v2/nurse/patient/{patientId}:
+ * /api/v1/nurse/patient/{patientId}:
  *   get:
  *     summary: Fetch patient details
  *     tags: [Nurse]
@@ -362,7 +385,7 @@ exports.getNurseProfile= async (req, res) => {
  *       400:
  *         description: Error fetching patient details
  */
-exports.getPatientDetails= async (req, res) => {
+exports.getPatientDetails = async (req, res) => {
   try {
     const patient = await Patient.findById(req.params.patientId);
     if (!patient) return res.status(404).json({ message: 'Patient not found' });
@@ -374,7 +397,7 @@ exports.getPatientDetails= async (req, res) => {
 
 /**
  * @swagger
- * /api/v2/nurse/caretaker/{caretakerId}:
+ * /api/v1/nurse/caretaker/{caretakerId}:
  *   get:
  *     summary: Fetch caretaker details
  *     tags: [Nurse]
@@ -393,7 +416,7 @@ exports.getPatientDetails= async (req, res) => {
  *       400:
  *         description: Error fetching caretaker details
  */
-exports.getCaretakerDetails= async (req, res) => {
+exports.getCaretakerDetails = async (req, res) => {
   try {
     const caretaker = await Caretaker.findById(req.params.caretakerId);
     if (!caretaker) return res.status(404).json({ message: 'Caretaker not found' });
@@ -405,7 +428,7 @@ exports.getCaretakerDetails= async (req, res) => {
 
 /**
  * @swagger
- * /api/v2/nurse/patient/{patientId}/health-records:
+ * /api/v1/nurse/patient/{patientId}/health-records:
  *   get:
  *     summary: Fetch health records of a patient
  *     tags: [Nurse]
@@ -424,7 +447,7 @@ exports.getCaretakerDetails= async (req, res) => {
  *       400:
  *         description: Error fetching health records
  */
-exports.getHealthRecords= async (req, res) => {
+exports.getHealthRecords = async (req, res) => {
   try {
     const healthRecords = await HealthRecord.find({ patientId: req.params.patientId });
     res.json(healthRecords);
@@ -435,7 +458,7 @@ exports.getHealthRecords= async (req, res) => {
 
 /**
  * @swagger
- * /api/v2/nurse/patient/{patientId}/health-record:
+ * /api/v1/nurse/patient/{patientId}/health-record:
  *   post:
  *     summary: Update health records of a patient
  *     tags: [Nurse]
@@ -468,7 +491,7 @@ exports.getHealthRecords= async (req, res) => {
  *       400:
  *         description: Error updating health records
  */
-exports.updateHealthRecords= async (req, res) => {
+exports.updateHealthRecords = async (req, res) => {
   try {
     const healthRecord = await HealthRecord.findOneAndUpdate(
       { patientId: req.params.patientId },
@@ -483,7 +506,7 @@ exports.updateHealthRecords= async (req, res) => {
 
 /**
  * @swagger
- * /api/v2/nurse/reports:
+ * /api/v1/nurse/reports:
  *   get:
  *     summary: Get daily reports submitted by caretakers
  *     tags: [Nurse]
@@ -493,7 +516,7 @@ exports.updateHealthRecords= async (req, res) => {
  *       400:
  *         description: Error fetching reports
  */
-exports.getDailyReports= async (req, res) => {
+exports.getDailyReports = async (req, res) => {
   try {
     const reports = await Report.find({ nurseId: req.user._id });
     res.json(reports);
@@ -504,7 +527,7 @@ exports.getDailyReports= async (req, res) => {
 
 /**
  * @swagger
- * /api/v2/nurse/tasks/{taskId}/approve:
+ * /api/v1/nurse/tasks/{taskId}/approve:
  *   post:
  *     summary: Approve a task report from a caretaker
  *     tags: [Nurse]
@@ -542,7 +565,7 @@ exports.approveTaskReport = async (req, res) => {
 
 /**
  * @swagger
- * /api/v2/nurse/patients/{patientId}/health-records:
+ * /api/v1/nurse/patients/{patientId}/health-records:
  *   get:
  *     summary: Get health records of a patient assigned to nurse
  *     tags: [Nurse]
@@ -574,7 +597,7 @@ exports.getPatientHealthRecords = async (req, res) => {
 
 /**
  * @swagger
- * /api/v2/nurse/profile:
+ * /api/v1/nurse/profile:
  *   put:
  *     summary: Update nurse profile
  *     tags: [Nurse]
@@ -622,7 +645,7 @@ exports.updateProfile = async (req, res) => {
 
 /**
  * @swagger
- * /api/v2/nurse/vital-signs/{patientId}/approve:
+ * /api/v1/nurse/vital-signs/{patientId}/approve:
  *   post:
  *     summary: Approve vital signs report from caretaker
  *     tags: [Nurse]
@@ -661,7 +684,7 @@ exports.approveVitalSigns = async (req, res) => {
 
 /**
  * @swagger
- * /api/v2/nurse/patient/{patientId}/report:
+ * /api/v1/nurse/patient/{patientId}/report:
  *   get:
  *     summary: Get the report for a patient assigned to nurse
  *     tags: [Nurse]
@@ -709,7 +732,7 @@ exports.getPatientReport = async (req, res) => {
 
 /**
  * @swagger
- * /api/v2/nurse/chat/{caretakerId}:
+ * /api/v1/nurse/chat/{caretakerId}:
  *   post:
  *     summary: Send a chat message to a caretaker
  *     tags: [Nurse]
@@ -765,7 +788,7 @@ exports.sendMessageToCaretaker = async (req, res) => {
 
 /**
  * @swagger
- * /api/v2/nurse/chat/{caretakerId}/messages:
+ * /api/v1/nurse/chat/{caretakerId}/messages:
  *   get:
  *     summary: Get chat messages with a caretaker
  *     tags: [Nurse]
@@ -803,7 +826,7 @@ exports.getChatMessages = async (req, res) => {
 
 /**
  * @swagger
- * /api/v2/nurse/profile:
+ * /api/v1/nurse/profile:
  *   get:
  *     summary: Get nurse profile
  *     tags: [Nurse]
@@ -829,7 +852,7 @@ exports.getProfile = async (req, res) => {
 
 /**
  * @swagger
- * /api/v2/nurse/caretaker/{caretakerId}/profile:
+ * /api/v1/nurse/caretaker/{caretakerId}/profile:
  *   get:
  *     summary: View caretaker profile and provide feedback
  *     tags: [Nurse]
@@ -865,7 +888,7 @@ exports.getCaretakerProfile = async (req, res) => {
 
 /**
  * @swagger
- * /api/v2/nurse/caretaker/{caretakerId}/feedback:
+ * /api/v1/nurse/caretaker/{caretakerId}/feedback:
  *   post:
  *     summary: Provide feedback and rating for caretaker
  *     tags: [Nurse]
@@ -922,7 +945,7 @@ exports.submitFeedbackForCaretaker = async (req, res) => {
 
 /**
  * @swagger
- * /api/v2/nurse/chat/{caretakerId}:
+ * /api/v1/nurse/chat/{caretakerId}:
  *   post:
  *     summary: Send a message to the caretaker
  *     tags: [Nurse]
@@ -970,7 +993,7 @@ exports.sendMessage = async (req, res) => {
 
 /**
  * @swagger
- * /api/v2/nurse/chat/{caretakerId}:
+ * /api/v1/nurse/chat/{caretakerId}:
  *   get:
  *     summary: Fetch chat messages with the caretaker
  *     tags: [Nurse]
@@ -1005,7 +1028,7 @@ exports.getMessages = async (req, res) => {
 
 /**
  * @swagger
- * /api/v2/nurse/care-plan/{patientId}:
+ * /api/v1/nurse/care-plan/{patientId}:
  *   post:
  *     summary: Create or update a care plan for a patient
  *     tags: [Nurse]
@@ -1072,7 +1095,7 @@ exports.createOrUpdateCarePlan = async (req, res) => {
 
 /**
  * @swagger
- * /api/v2/nurse/care-plan/{patientId}:
+ * /api/v1/nurse/care-plan/{patientId}:
  *   get:
  *     summary: Get care plan for a patient
  *     tags: [Nurse]

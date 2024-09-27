@@ -6,7 +6,7 @@
     "description": "API documentation for the Guardian Monitoring App"
   },
   "paths": {
-    "/api/v2/nurse/register": {
+    "/api/v1/nurse/register": {
       "post": {
         "summary": "Register a new nurse",
         "tags": ["Nurse"],
@@ -32,7 +32,7 @@
         }
       }
     },
-   "/api/v2/nurse/login": {
+   "/api/v1/nurse/login": {
       "post": {
         "summary": "Login nurse",
         "tags": ["Nurse"],
