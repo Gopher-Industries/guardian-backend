@@ -219,7 +219,7 @@ exports.sendOTP = async (req, res) => {
   const { email } = req.body;
 
   if (!email) {
-    return res.status(400).json({ message: 'Email is required' });
+    return res.status(400).json({ error: 'Email is required' });
   }
 
   const user = await User.findOne({ email: email });
@@ -247,7 +247,7 @@ exports.sendOTP = async (req, res) => {
     res.status(200).json({ message: 'OTP sent to your email address' });
   } catch (error) {
     console.error('Error saving OTP or sending email:', error);
-    res.status(500).json({ message: 'Error processing your request' });
+    res.status(500).json({ error: 'Error processing your request' });
   }
 };
 
@@ -285,7 +285,7 @@ exports.verifyOTP = async (req, res) => {
   const { email, otp } = req.body;
 
   if (!email || !otp) {
-    return res.status(400).json({ message: 'Email and OTP are required' });
+    return res.status(400).json({ error: 'Email and OTP are required' });
   }
 
   try {
@@ -294,7 +294,7 @@ exports.verifyOTP = async (req, res) => {
 
     // If no record is found, OTP is invalid or expired
     if (!otpRecord) {
-      return res.status(400).json({ message: 'Invalid or expired OTP' });
+      return res.status(400).json({ error: 'Invalid or expired OTP' });
     }
 
     // Remove the OTP entry after successful verification
@@ -303,7 +303,7 @@ exports.verifyOTP = async (req, res) => {
     res.status(200).json({ message: 'OTP verified successfully' });
   } catch (error) {
     console.error('Error verifying OTP:', error);
-    res.status(500).json({ message: 'Error processing your request' });
+    res.status(500).json({ error: 'Error processing your request' });
   }
 };
 
@@ -513,7 +513,7 @@ exports.resetPassword = async (req, res) => {
     const user = await User.findById(decoded._id);
 
     if (!user) {
-      return res.status(400).send({ message: 'Invalid token or user not found.' });
+      return res.status(400).send({ error: 'Invalid token or user not found.' });
     }
 
     user.password_hash = newPassword;
@@ -523,6 +523,6 @@ exports.resetPassword = async (req, res) => {
 
     res.status(200).json({ message: 'Password has been updated successfully' });
   } catch (error) {
-    res.status(400).send({ message: 'Invalid or expired token' });
+    res.status(400).send({ error: 'Invalid or expired token' });
   }
 };
