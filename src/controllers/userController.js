@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const Role = require('../models/Role');
 
 const { OTP, generateOTP } = require('../models/OTP');
 const { sendPasswordResetEmail, sendPinCodeVerificationEmail } = require('../utils/mailer');
@@ -29,6 +30,9 @@ const { sendPasswordResetEmail, sendPinCodeVerificationEmail } = require('../uti
  *               password:
  *                 type: string
  *                 example: Password123
+ *               role:
+ *                 type: string
+ *                 example: nurse
  *     responses:
  *       201:
  *         description: User registered successfully.
@@ -37,10 +41,18 @@ const { sendPasswordResetEmail, sendPinCodeVerificationEmail } = require('../uti
  */
 exports.registerUser = async (req, res) => {
   try {
-    const { fullname, email, password } = req.body;
+    const { fullname, email, password, role } = req.body;
 
     if (!fullname || !email || !password) {
       return res.status(400).json({ error: 'All fields (fullname, email, password) are required' });
+    }
+
+    var userRole;
+    if (role) {
+      userRole = await Role.findOne({ name: role.toLowerCase() });
+      if (!userRole) {
+        return res.status(400).json({ error: role + ' is an invalid role' });
+      }
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -64,6 +76,10 @@ exports.registerUser = async (req, res) => {
       password_hash: password
     });
 
+    if (userRole) {
+      newUser.role = userRole._id;
+    }
+
     await newUser.save();
 
     const token = jwt.sign(
@@ -76,8 +92,11 @@ exports.registerUser = async (req, res) => {
       id: newUser._id,
       fullname: newUser.fullname,
       email: newUser.email,
-      // role: role//roles.map(role => role.role_name)  // Extract role names
     };
+
+    if (userRole) {
+      userResponse.role = userRole.name;
+    }
 
     res.status(201).json({ message: 'User registered successfully', user: userResponse, token });
   } catch (error) {
@@ -145,13 +164,16 @@ exports.login = async (req, res) => {
     const daysSinceLastChange = Math.floor(timeDifference / (1000 * 60 * 60 * 24));
     const daysRemaining = 90 - daysSinceLastChange;
 
+    const userRole = await Role.findOne({ _id: user.role });
+
     const userResponse = {
-      _id: user._id,
+      id: user._id,
       fullname: user.fullname,
       email: user.email,
       lastPasswordChange: user.lastPasswordChange,
       created_at: user.created_at,
-      updated_at: user.updated_at
+      updated_at: user.updated_at,
+      role: userRole.name
     };
 
     const response = { user: userResponse, token };
@@ -390,7 +412,7 @@ exports.requestPasswordReset = async (req, res) => {
 
     if (!user) {
       // TODO? Maybe we should consider returning a success message so attackers can't brute force to find valid email addresses
-      return res.status(404).send({ message: 'User not found' });
+      return res.status(404).send({ error: 'User not found' });
     }
 
     const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, { expiresIn: '15m' });
@@ -440,7 +462,7 @@ exports.renderPasswordResetPage = (req, res) => {
     // If everything is valid, render the reset password form
     res.render('reset-password', { token });
   } catch (error) {
-    res.status(400).send({ message: 'Invalid or expired token' });
+    res.status(400).send({ error: 'Invalid or expired token' });
   }
 };
 

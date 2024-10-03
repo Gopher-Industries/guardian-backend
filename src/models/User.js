@@ -5,7 +5,7 @@ const UserSchema = new mongoose.Schema({
   fullname: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password_hash: { type: String, required: true },
-  role_id: { type: mongoose.Schema.Types.ObjectId, ref: 'UserRole' },
+  role: { type: mongoose.Schema.Types.ObjectId, ref: 'Role' },
   lastPasswordChange: { type: Date, default: Date.now },
   failedLoginAttempts: { type: Number, default: 0 },
   created_at: { type: Date, default: Date.now },
