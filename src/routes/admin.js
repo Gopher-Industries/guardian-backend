@@ -4,6 +4,7 @@ const UserRole = require('../models/UserRole');
 const User = require('../models/User');
 const verifyToken = require('../middleware/verifyToken');
 const verifyRole = require('../middleware/verifyRole');
+const adminController = require('../controllers/adminController');
 
 // Example route protected by role (only admins can access)
 router.post('/admin/approve-nurse/:nurseId', verifyToken, verifyRole(['admin']), async (req, res) => {
@@ -51,5 +52,8 @@ router.get('/caretakers', verifyToken, verifyRole(['admin']), async (req, res) =
       res.status(400).json({ error: error.message });
     }
   });
+
+// Patient Overview API
+router.get('/patients/:patientId', verifyToken, verifyRole(['admin']), adminController.getPatientOverview);
 
 module.exports = router;
