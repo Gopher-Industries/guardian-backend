@@ -270,9 +270,7 @@
             "description": "Error updating task"
           }
         }
-      }
-    },
-    "/api/v1/nurse/tasks/{taskId}": {
+      },
       "delete": {
         "summary": "Delete a task for a caretaker",
         "tags": [
@@ -326,9 +324,7 @@
             "description": "Error fetching nurse profile"
           }
         }
-      }
-    },
-    "/api/v1/nurse/profile": {
+      },
       "put": {
         "summary": "Get nurse profile",
         "tags": [
@@ -707,9 +703,7 @@
             "description": "Error sending message"
           }
         }
-      }
-    },
-    "/api/v1/nurse/chat/{caretakerId}": {
+      },
       "get": {
         "summary": "Fetch chat messages with the caretaker",
         "security": [
@@ -905,9 +899,7 @@
             "description": "Error creating/updating care plan"
           }
         }
-      }
-    },
-    "api/v1/nurse/care-plan/{patientId}": {
+      },
       "get": {
         "summary": "Get care plan for a patient",
         "security": [
@@ -1186,9 +1178,7 @@
             "description": "Invalid or expired token."
           }
         }
-      }
-    },
-    "/api/v1/auth/reset-password": {
+      },
       "post": {
         "summary": "Reset's a user's password using the reset token",
         "requestBody": {
