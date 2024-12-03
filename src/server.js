@@ -7,6 +7,65 @@ const swaggerJsdoc = require('swagger-jsdoc');
 const database = require('./config/db');
 const patientSelfRoutes = require('./routes/patientSelfRegistration');
 const app = express();
+
+// Security Middleware
+const blockScriptRequests = (req, res, next) => {
+  const userAgent = req.headers['user-agent'] || '';
+  const normalizedUserAgent = userAgent.toLowerCase();
+
+  console.log(`Incoming Request - User-Agent: ${normalizedUserAgent}`);
+  console.log('Request Headers:', req.headers);
+
+  // Disallowed User-Agents
+  const disallowedUserAgents = [
+    'curl',
+    'wget',
+    'python-requests',
+    'node-fetch',
+    'axios',
+    'java-http-client',
+    'php',
+    'httpie',
+  ];
+
+  // Browser headers to check
+  const requiredBrowserHeaders = {
+    'sec-fetch-site': /same-origin|cross-site/,
+    'sec-fetch-mode': /navigate|cors/,
+    'sec-fetch-dest': /document|iframe/,
+    'referer': /http(s)?:\/\//,
+    'accept': /text\/html|application\/json/,
+    'cookie': /.*/, // At least one cookie (adjust based on your app)
+  };
+
+  // Block disallowed User-Agents
+  if (!userAgent || disallowedUserAgents.some(ua => normalizedUserAgent.includes(ua))) {
+    console.log('Blocked Request - Disallowed User-Agent Detected');
+    return res.status(403).json({ error: 'Forbidden: CLI or script-based requests are not allowed.' });
+  }
+
+  // Check for browser-specific headers
+  for (const [header, pattern] of Object.entries(requiredBrowserHeaders)) {
+    const headerValue = req.headers[header];
+    if (!headerValue || !pattern.test(headerValue)) {
+      console.log(`Blocked Request - Missing or Invalid Header: ${header}`);
+      return res.status(403).json({ error: `Forbidden: Missing or invalid ${header} header.` });
+    }
+  }
+
+  // Additional validation: Block requests missing cookies (optional)
+  if (!req.headers['cookie']) {
+    console.log('Blocked Request - Missing Cookie Header');
+    return res.status(403).json({ error: 'Forbidden: Missing browser-specific cookie header.' });
+  }
+
+  next(); // Allow legitimate requests
+};
+
+// Apply middleware globally to all endpoints
+app.use(blockScriptRequests);
+
+// Swagger Setup
 const swaggerOptions = {
   definition: {
     openapi: '3.0.0',
@@ -35,7 +94,6 @@ const swaggerOptions = {
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
-
 // Set up EJS as the template engine
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -53,8 +111,8 @@ app.use('/swaggerDocs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use('/api/v1/wifi-csi', wifiCSIRoutes);
 app.use('/api/v1/activity-recognition', activityRecognitionRoutes);
 app.use('/api/v1/alerts', alertsRoutes);
-app.use("/api/v1/nurse", nurseRoutes);
-app.use("/api/v1/auth", userRoutes);
+app.use('/api/v1/nurse', nurseRoutes);
+app.use('/api/v1/auth', userRoutes);
 app.use('/api/v1/patient-self', patientSelfRoutes);
 
 app.get('/redoc', (req, res) => {
