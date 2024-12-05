@@ -1130,3 +1130,47 @@ exports.getCarePlan = async (req, res) => {
     res.status(500).json({ error: 'Error fetching care plan', details: error.message });
   }
 };
+
+
+/**
+ * @swagger
+ * /api/v1/nurse/patients/assigned:
+ *   get:
+ *     summary: Fetch assigned patients for a nurse or caretaker
+ *     tags: [Nurse]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of assigned patients
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Patient'
+ *       403:
+ *         description: Unauthorized role
+ *       500:
+ *         description: Error fetching assigned patients
+ */
+exports.getAssignedPatients = async (req, res) => {
+  try {
+    const { role, _id } = req.user;
+
+    const query = {};
+    if (role === 'nurse') {
+      query.assignedNurse = _id;
+    } else if (role === 'caretaker') {
+      query.assignedCaretaker = _id;
+    } else {
+      return res.status(403).json({ message: 'Unauthorized role' });
+    }
+
+    const patients = await Patient.find(query);
+
+    res.status(200).json(patients);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching assigned patients', details: error.message });
+  }
+};

@@ -46,4 +46,7 @@ router.get('/chat/:caretakerId/messages', verifyToken, nurseController.getChatMe
 // Feedback for Caretaker
 router.post('/caretaker/:caretakerId/feedback', verifyToken, nurseController.submitFeedbackForCaretaker);
 
+// Fecth Assigned Paients API
+router.get('/patients/assigned', verifyToken, nurseController.getAssignedPatients);
+
 module.exports = router;
