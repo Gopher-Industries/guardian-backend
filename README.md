@@ -1,4 +1,4 @@
-### Updated `README.md`:
+
 
 ```markdown
 # Guardian System Management API
@@ -125,6 +125,17 @@ To test the API, use Postman or similar API testing tools.
 - `PORT`: The port on which the application runs (default: 3000).
 - `NODE_ENV`: The environment in which the app is running (e.g., `development`).
 - `JWT_SECRET`: The secret key used to sign JWT tokens.
+
+### Security Features
+Rate Limiter:
+
+Protects the API by limiting the number of requests per IP address within a given time window.
+Configured globally for all endpoints with the following settings:
+Limit: 100 requests per 15 minutes
+Response: HTTP 429 with the message: "Too many requests from this IP, please try again after 15 minutes."
+Request Blocker:
+
+Blocks requests from script-based tools such as curl, wget, or custom scripts by analyzing headers and user agents.
 
 ### Built With
 

@@ -7,6 +7,22 @@ const swaggerJsdoc = require('swagger-jsdoc');
 const database = require('./config/db');
 const patientSelfRoutes = require('./routes/patientSelfRegistration');
 const app = express();
+
+const rateLimit = require('express-rate-limit');
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100, 
+  message: {
+    error: 'Too many requests from this IP, please try again after 15 minutes.',
+  },
+  standardHeaders: true, 
+  legacyHeaders: false, 
+});
+
+
+app.use(limiter);
+
 const swaggerOptions = {
   definition: {
     openapi: '3.0.0',
