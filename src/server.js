@@ -6,6 +6,8 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
 const database = require('./config/db');
 const patientSelfRoutes = require('./routes/patientSelfRegistration');
+const caretakerRoutes = require('./routes/caretakerRoutes'); // Import Caretaker routes
+
 const app = express();
 const swaggerOptions = {
   definition: {
@@ -56,6 +58,7 @@ app.use('/api/v1/alerts', alertsRoutes);
 app.use("/api/v1/nurse", nurseRoutes);
 app.use("/api/v1/auth", userRoutes);
 app.use('/api/v1/patient-self', patientSelfRoutes);
+app.use('/api/v1/caretaker', caretakerRoutes);
 
 app.get('/redoc', (req, res) => {
   res.send(`

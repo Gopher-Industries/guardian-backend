@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Role = require('../models/Role');
 
-const { OTP, generateOTP } = require('../models/OTP');
+const { OTP, generateOTP } = require('../models/otp_v1');
 const { sendPasswordResetEmail, sendPinCodeVerificationEmail } = require('../utils/mailer');
 
 /**
