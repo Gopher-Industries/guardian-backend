@@ -3,7 +3,7 @@ require('dotenv').config();
 const mongoose = require('mongoose');
 const seedRoles = require('../seedRoles');
 
-const mongoDBUrl = process.env.MONGODB_URL || "mongodb://mongo:gAeHtarfcSqbwPXWfTfFApmKsDEjlMXm@junction.proxy.rlwy.net:15841";
+const mongoDBUrl = process.env.MONGODB_URI;
 
 mongoose.set("strictQuery", false);
 mongoose.connect(mongoDBUrl, {
