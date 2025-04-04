@@ -26,5 +26,5 @@ jobs:
 
     - name: Start the application
       env:
-        MONGODB_URL: "mongodb://mongo:TTIDqLOFFZHpnBqXQOSkYTZCjHnlkytZ@autorack.proxy.rlwy.net:28357"
+        MONGODB_URI: "mongodb://mongo:ugvNlAxTEDizUfJSDtruCJJWMZNQvJLt@hopper.proxy.rlwy.net:30442"
       run: node src/server.js # Updated path to match your folder structure
