@@ -4,6 +4,7 @@ const UserRole = require('../models/UserRole');
 const User = require('../models/User');
 const verifyToken = require('../middleware/verifyToken');
 const verifyRole = require('../middleware/verifyRole');
+const adminController = require('../controllers/adminController');
 
 // Example route protected by role (only admins can access)
 router.post('/admin/approve-nurse/:nurseId', verifyToken, verifyRole(['admin']), async (req, res) => {
@@ -51,5 +52,17 @@ router.get('/caretakers', verifyToken, verifyRole(['admin']), async (req, res) =
       res.status(400).json({ error: error.message });
     }
   });
+
+// Patient Overview API
+router.get('/patients/:patientId', verifyToken, verifyRole(['admin']), adminController.getPatientOverview);
+// Support Tickets APIs
+router.post('/support-tickets', verifyToken, adminController.createSupportTicket);
+router.get('/support-tickets', verifyToken, verifyRole(['admin']), adminController.getSupportTickets);
+router.put('/support-tickets/:ticketId', verifyToken, verifyRole(['admin']), adminController.updateSupportTicket);
+
+// Task Management APIs
+router.post('/tasks', verifyToken, verifyRole(['admin']), adminController.createTask);
+router.put('/tasks/:taskId', verifyToken, verifyRole(['admin']), adminController.updateTask);
+router.delete('/tasks/:taskId', verifyToken, verifyRole(['admin']), adminController.deleteTask);
 
 module.exports = router;

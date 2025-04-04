@@ -65,6 +65,21 @@ const blockScriptRequests = (req, res, next) => {
 // Apply middleware globally to all endpoints
 app.use(blockScriptRequests);
 
+
+const rateLimit = require('express-rate-limit');
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100, 
+  message: {
+    error: 'Too many requests from this IP, please try again after 15 minutes.',
+  },
+  standardHeaders: true, 
+  legacyHeaders: false, 
+});
+
+app.use(limiter);
+
+
 // Swagger Setup
 const swaggerOptions = {
   definition: {
