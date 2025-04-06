@@ -3,7 +3,7 @@ name: Run Node.js Application
 on:
   push:
     branches:
-    - '**' # Trigger on any branch for now
+      - '*deploy' # Trigger only on branches ending with 'deploy'
 
 jobs:
   run-app:
@@ -26,5 +26,5 @@ jobs:
 
     - name: Start the application
       env:
-        MONGODB_URI: "mongodb://mongo:ugvNlAxTEDizUfJSDtruCJJWMZNQvJLt@hopper.proxy.rlwy.net:30442"
-      run: node src/server.js # Updated path to match your folder structure
+        MONGODB_URI: "mongodb://mongo:ugvNlAxTEDizUfJSDtruCJJWMZNQvJLt@hopper.proxy.rlwy.net:30442" # Unsafe and should not be hardcoded in VCS
+      run: node src/server.js

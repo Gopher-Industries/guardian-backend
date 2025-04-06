@@ -27,7 +27,7 @@ These instructions will help you get a copy of the project up and running on you
    cd guardian-backend
    ```
 
-3. Set up environment variables by creating a `.env` file in the project root:
+3. Set up environment variables by creating a `.env` file in the project root, or simply rename the `.env.sample` file and remove the `.sample` extension and skip this step:
    ```bash
    touch .env
    ```
