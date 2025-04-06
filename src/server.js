@@ -48,6 +48,11 @@ const blockScriptRequests = (req, res, next) => {
   for (const [header, pattern] of Object.entries(requiredBrowserHeaders)) {
     const headerValue = req.headers[header];
 
+    // Skip validation for optional headers if they are missing
+    if (['sec-fetch-site', 'sec-fetch-mode', 'sec-fetch-dest'].includes(header) && !headerValue) {
+      continue; // Allow requests without these optional headers
+    }
+
     // Skip validation for the "referer" header if it's missing
     if (header === 'referer' && !headerValue) {
       continue; // Allow requests without a "referer" header
