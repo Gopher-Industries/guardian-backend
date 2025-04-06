@@ -47,6 +47,12 @@ const blockScriptRequests = (req, res, next) => {
   // Check for browser-specific headers
   for (const [header, pattern] of Object.entries(requiredBrowserHeaders)) {
     const headerValue = req.headers[header];
+
+    // Skip validation for the "referer" header if it's missing
+    if (header === 'referer' && !headerValue) {
+      continue; // Allow requests without a "referer" header
+    }
+
     if (!headerValue || !pattern.test(headerValue)) {
       console.log(`Blocked Request - Missing or Invalid Header: ${header}`);
       return res.status(403).json({ error: `Forbidden: Missing or invalid ${header} header.` });
@@ -69,12 +75,12 @@ app.use(blockScriptRequests);
 const rateLimit = require('express-rate-limit');
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100, 
+  max: 100,
   message: {
     error: 'Too many requests from this IP, please try again after 15 minutes.',
   },
-  standardHeaders: true, 
-  legacyHeaders: false, 
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
 app.use(limiter);
@@ -104,7 +110,7 @@ const swaggerOptions = {
       bearerAuth: [], // Apply globally to all endpoints
     },
   ],
-  apis: ['./src/routes/*.js','./src/routes/**/*.js', './src/controllers/*.js'],  // Add the controllers path here
+  apis: ['./src/routes/*.js', './src/routes/**/*.js', './src/controllers/*.js'],  // Add the controllers path here
 };
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
