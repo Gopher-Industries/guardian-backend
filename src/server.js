@@ -73,8 +73,9 @@ const blockScriptRequests = (req, res, next) => {
   next(); // Allow legitimate requests
 };
 
-// Apply middleware globally to all endpoints
-app.use(blockScriptRequests);
+// Apply middleware globally to all endpoints 
+// TODO: Need to test this middleware with requests from browsers, postman, and the application
+// app.use(blockScriptRequests);
 
 
 const rateLimit = require('express-rate-limit');
