@@ -1,22 +1,22 @@
-// config/db.js
 require('dotenv').config();
 const mongoose = require('mongoose');
-const seedRoles = require('../seedRoles');
 
 const mongoDBUrl = process.env.MONGODB_URI;
 
 mongoose.set("strictQuery", false);
-mongoose.connect(mongoDBUrl, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-})
-  .then(async () => {
-    console.log('MongoDB connected successfully');
 
-    // Seed roles when the server starts
-    await seedRoles();
-  })
-  .catch(err => console.error('MongoDB connection error:', err));
+const connectDB = async () => {
+  try {
+    await mongoose.connect(mongoDBUrl, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+    console.log("MongoDB connected successfully");
+  } catch (err) {
+    console.error("MongoDB connection error:", err.message);
+    process.exit(1); // Exit with failure code
+  }
+};
 
+connectDB();
 module.exports = mongoose;
-
