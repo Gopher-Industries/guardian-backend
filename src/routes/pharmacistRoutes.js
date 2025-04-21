@@ -53,7 +53,7 @@ router.get('/chat/:caretakerId/messages', verifyToken, pharmacistController.getC
 // Feedback for Caretaker
 router.post('/caretaker/:caretakerId/feedback', verifyToken, pharmacistController.submitFeedbackForCaretaker);
 
-// Fetch Assigned Paients API
+// Fetch Assigned Patients API
 router.get('/patients/assigned', verifyToken, pharmacistController.getAssignedPatients);
 
 module.exports = router;
