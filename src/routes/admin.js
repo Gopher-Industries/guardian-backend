@@ -39,7 +39,7 @@ router.get('/nurses', verifyToken, verifyRole(['admin']), async (req, res) => {
 router.post('/admin/approve-pharmacist/:pharmacistId', verifyToken, verifyRole(['admin']), async (req, res) => {
   try {
     const pharmacistId = req.params.pharmacistId;
-    // Logic for approving the nurse goes here
+    // Logic for approving the pharmacist goes here
     res.status(200).json({ message: `Pharmacist with ID ${pharmacistId} approved` });
   } catch (error) {
     res.status(400).json({ error: error.message });
