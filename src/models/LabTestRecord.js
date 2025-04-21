@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const LabTestRecordSchema = new mongoose.Schema({
   patient: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient', required: true },
   nurse: { type: mongoose.Schema.Types.ObjectId, ref: 'Nurse', required: true },
-  pharmaciest: { type: mongoose.Schema.Types.ObjectId, ref: 'Pharmacist', required: true },
+  pharmacist: { type: mongoose.Schema.Types.ObjectId, ref: 'Pharmacist', required: true },
   caretaker: { type: mongoose.Schema.Types.ObjectId, ref: 'Caretaker', required: true },
   tests: { //required: false, because not all are necessary for the same patient or at the same time  
     oxygenSaturation: { type: Number, required: false},    
