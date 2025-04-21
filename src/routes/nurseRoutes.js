@@ -35,6 +35,14 @@ router.get('/patient/:patientId/health-records', verifyToken, nurseController.ge
 router.post('/patient/:patientId/health-record', verifyToken, nurseController.updateHealthRecords);
 router.post('/vital-signs/:patientId/approve', verifyToken, nurseController.approveVitalSigns);
 
+// Laboratory Test Records Routes
+router.get('/patient/:patientId/lab-records', verifyToken, nurseController.getLabTestRecords);
+router.post('/patient/:patientId/lab-record', verifyToken, nurseController.updateLabTestRecords);
+
+// Medication Records Routes
+router.get('/patient/:patientId/medication-records', verifyToken, nurseController.getMedicationRecords);
+router.post('/patient/:patientId/medication-record', verifyToken, nurseController.updateMedicationRecords);
+
 // Reports and Daily Records Routes
 router.get('/reports', verifyToken, nurseController.getDailyReports);
 router.get('/patient/:patientId/report', verifyToken, nurseController.getPatientReport);
