@@ -33,10 +33,10 @@ exports.getHealthRecords = async (req, res) => {
 
 /**
  * @swagger
- * /api/v1/nurse/patient/{patientId}/health-record:
+ * /api/v1/patient/{patientId}/health-record:
  *   post:
  *     summary: Update health records of a patient
- *     tags: [Nurse]
+ *     tags: [Patient]
  *     parameters:
  *       - in: path
  *         name: patientId
@@ -81,10 +81,10 @@ exports.updateHealthRecords = async (req, res) => {
 
 /**
  * @swagger
- * /api/v1/nurse/patient/{patientId}/report:
+ * /api/v1/patient/{patientId}/report:
  *   get:
  *     summary: Get the report for a patient assigned to nurse
- *     tags: [Nurse]
+ *     tags: [Patient]
  *     security:
  *       - bearerAuth: []
  *     parameters:
