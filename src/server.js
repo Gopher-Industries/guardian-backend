@@ -2,11 +2,27 @@ require('dotenv').config();
 
 const express = require('express');
 const path = require('path');
+const database = require('./config/db');
+const multer = require('multer');
+
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
-const database = require('./config/db');
-const patientSelfRoutes = require('./routes/patientSelfRegistration');
+
 const app = express();
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/'); // Save to "uploads" folder
+  },
+  filename: (req, file, cb) => {
+    const uniqueName = `${Date.now()}-${file.originalname}`;
+    cb(null, uniqueName);
+  }
+});
+
+exports.upload = multer({ storage });
+
+app.use('/uploads', express.static('uploads'));
 
 // Security Middleware
 const blockScriptRequests = (req, res, next) => {
@@ -128,19 +144,35 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
+const userRoutes = require('./routes/user');
+const caretakerRoutes = require('./routes/caretakerRoutes');
+const nurseRoutes = require('./routes/nurseRoutes');
+const patientRoutes = require('./routes/patientRoutes');
 const wifiCSIRoutes = require('./routes/wifiCSI');
 const activityRecognitionRoutes = require('./routes/activityRecognition');
 const alertsRoutes = require('./routes/alerts');
-const nurseRoutes = require('./routes/nurseRoutes'); // Import nurse routes
-const userRoutes = require('./routes/user');
 
-app.use('/swaggerDocs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use('/api/v1/auth', userRoutes);
+app.use('/api/v1/caretaker', caretakerRoutes);
+app.use('/api/v1/nurse', nurseRoutes);
+app.use('/api/v1/patients', patientRoutes);
 app.use('/api/v1/wifi-csi', wifiCSIRoutes);
 app.use('/api/v1/activity-recognition', activityRecognitionRoutes);
 app.use('/api/v1/alerts', alertsRoutes);
-app.use('/api/v1/nurse', nurseRoutes);
-app.use('/api/v1/auth', userRoutes);
-app.use('/api/v1/patient-self', patientSelfRoutes);
+
+app.use(
+  '/swaggerDocs',
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerSpec, {
+    explorer: true,
+    customCssUrl:
+      'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.1/swagger-ui.min.css',
+    customJs: [
+      'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.1/swagger-ui-bundle.min.js',
+      'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.1/swagger-ui-standalone-preset.min.js'
+    ]
+  })
+);
 
 app.get('/redoc', (req, res) => {
   res.send(`

@@ -6,1283 +6,250 @@
     "description": "API documentation for the Guardian Monitoring App"
   },
   "paths": {
-    "/api/v1/nurse/register": {
-      "post": {
-        "summary": "Register a new nurse",
-        "tags": [
-          "Nurse"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "name",
-                  "email",
-                  "password"
-                ],
-                "properties": {
-                  "name": {
-                    "type": "string"
-                  },
-                  "email": {
-                    "type": "string"
-                  },
-                  "password": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Nurse registered successfully"
-          },
-          "400": {
-            "description": "Error registering nurse"
-          }
-        }
-      }
-    },
-    "/api/v1/nurse/login": {
-      "post": {
-        "summary": "Login nurse",
-        "tags": [
-          "Nurse"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "email",
-                  "password"
-                ],
-                "properties": {
-                  "email": {
-                    "type": "string"
-                  },
-                  "password": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Login successful"
-          },
-          "400": {
-            "description": "Invalid credentials"
-          }
-        }
-      }
-    },
-    "/api/v1/nurse/patients": {
-      "get": {
-        "summary": "Get patients assigned to the nurse",
-        "tags": [
-          "Nurse"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "List of assigned patients"
-          },
-          "400": {
-            "description": "Error fetching patients"
-          }
-        }
-      }
-    },
-    "/api/v1/nurse/caretakers/{patientId}": {
-      "get": {
-        "summary": "Get caretakers assigned to a patient",
-        "tags": [
-          "Nurse"
-        ],
-        "parameters": [
-          {
-            "name": "patientId",
-            "in": "path",
-            "required": true,
-            "description": "The unique identifier of the cared for patient.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "List of caretakers assigned to a patient"
-          },
-          "400": {
-            "description": "Error fetching caretakers"
-          }
-        }
-      }
-    },
-    "/api/v1/nurse/tasks": {
-      "post": {
-        "summary": "Create a task for a caretaker",
-        "tags": [
-          "Tasks"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "description",
-                  "dueDate",
-                  "priority",
-                  "caretakerId",
-                  "patientId"
-                ],
-                "properties": {
-                  "description": {
-                    "type": "string"
-                  },
-                  "dueDate": {
-                    "type": "string",
-                    "format": "date"
-                  },
-                  "priority": {
-                    "type": "string",
-                    "enum": [
-                      "low",
-                      "medium",
-                      "high"
-                    ]
-                  },
-                  "caretakerId": {
-                    "type": "string"
-                  },
-                  "patientId": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Task created successfully"
-          },
-          "400": {
-            "description": "Error creating task"
-          }
-        }
-      }
-    },
-    "/api/v1/nurse/tasks/{taskId}": {
-      "put": {
-        "summary": "Update a task for a caretaker",
-        "tags": [
-          "Tasks"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "taskId",
-            "in": "path",
-            "required": true,
-            "description": "The unique identifier of the task to be updated.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "description",
-                  "dueDate",
-                  "priority",
-                  "caretakerId",
-                  "patientId"
-                ],
-                "properties": {
-                  "description": {
-                    "type": "string"
-                  },
-                  "dueDate": {
-                    "type": "string",
-                    "format": "date"
-                  },
-                  "priority": {
-                    "type": "string",
-                    "enum": [
-                      "low",
-                      "medium",
-                      "high"
-                    ]
-                  },
-                  "caretakerId": {
-                    "type": "string"
-                  },
-                  "patientId": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Task updated successfully"
-          },
-          "400": {
-            "description": "Error updating task"
-          }
-        }
-      },
-      "delete": {
-        "summary": "Delete a task for a caretaker",
-        "tags": [
-          "Tasks"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "taskId",
-            "in": "path",
-            "required": true,
-            "description": "The unique identifier of the task to be deleted.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Task deleted successfully"
-          },
-          "400": {
-            "description": "Invalid task ID or error deleting task"
-          },
-          "404": {
-            "description": "Task not found"
-          }
-        }
-      }
-    },
-    "/api/v1/nurse/profile": {
-      "get": {
-        "summary": "Get nurse profile",
-        "tags": [
-          "Nurse"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Nurse profile fetched successfully"
-          },
-          "400": {
-            "description": "Error fetching nurse profile"
-          }
-        }
-      },
-      "put": {
-        "summary": "Get nurse profile",
-        "tags": [
-          "Nurse"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "name",
-                  "password"
-                ],
-                "properties": {
-                  "name": {
-                    "type": "string"
-                  },
-                  "password": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Profile updated successfully"
-          },
-          "400": {
-            "description": "Error updating profile"
-          }
-        }
-      }
-    },
-    "/api/v1/nurse/patient/{patientId}": {
-      "get": {
-        "summary": "Fetch patient details",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "patientId",
-            "in": "path",
-            "required": true,
-            "description": "The ID of the patient to fetch.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Petient details fetched"
-          },
-          "400": {
-            "description": "Error fetching patient details"
-          },
-          "404": {
-            "description": "Patient not found"
-          }
-        }
-      }
-    },
-    "/api/v1/nurse/caretaker/{caretakerId}": {
-      "get": {
-        "summary": "Fetch caretaker details",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "caretakerId",
-            "in": "path",
-            "required": true,
-            "description": "The ID of the caretaker to fetch.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Caretaker details fetched"
-          },
-          "400": {
-            "description": "Error fetching caretaker details"
-          },
-          "404": {
-            "description": "Caretaker not found"
-          }
-        }
-      }
-    },
-    "/api/v1/nurse/patient/{patientId}/health-records": {
-      "get": {
-        "summary": "Fetch health records of a patient",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "patientId",
-            "in": "path",
-            "required": true,
-            "description": "The ID of the patient.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Health record fetched"
-          },
-          "400": {
-            "description": "Error fetching health record"
-          },
-          "404": {
-            "description": "Patient not found"
-          }
-        }
-      }
-    },
-    "/api/v1/nurse/patient/{patientId}/health-record": {
-      "post": {
-        "summary": "Update health records of a patient",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "patientId",
-            "in": "path",
-            "required": true,
-            "description": "The ID of the patient.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "bloodPressure",
-                  "temperature",
-                  "heartRate"
-                ],
-                "properties": {
-                  "bloodPressure": {
-                    "type": "string"
-                  },
-                  "temperature": {
-                    "type": "string"
-                  },
-                  "heartRate": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Health records updated successfully"
-          },
-          "400": {
-            "description": "Error updating health records"
-          }
-        }
-      }
-    },
-    "/api/v1/nurse/reports": {
-      "get": {
-        "summary": "Get daily reports submitted by caretakers",
-        "tags": [
-          "Nurse"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "List of reports"
-          },
-          "400": {
-            "description": "Error fetching reports"
-          }
-        }
-      }
-    },
-    "/api/v1/nurse/tasks/{taskId}/approve": {
-      "post": {
-        "summary": "Approve a task report from a caretaker",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "taskId",
-            "in": "path",
-            "required": true,
-            "description": "The ID of the task to approve.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Task approved successfully"
-          },
-          "400": {
-            "description": "Error approving task"
-          }
-        }
-      }
-    },
-    "/api/v1/nurse/patients/{patientId}/health-records": {
-      "get": {
-        "summary": "Fetch health records of a patient assigned to a nurse",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "patientId",
-            "in": "path",
-            "required": true,
-            "description": "The ID of the patient.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Health record fetched"
-          },
-          "400": {
-            "description": "Error fetching health record"
-          }
-        }
-      }
-    },
-    "/api/v1/nurse/vital-signs/{patientId}/approve": {
-      "post": {
-        "summary": "Approve vital signs report from a caretaker",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "patientId",
-            "in": "path",
-            "required": true,
-            "description": "The ID of the patient.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Vital signs report approved successfully"
-          },
-          "400": {
-            "description": "Error approving report"
-          }
-        }
-      }
-    },
-    "/api/v1/nurse/patient/{patientId}/report": {
-      "get": {
-        "summary": "Get the report for a patient assigned to a nurse",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "patientId",
-            "in": "path",
-            "required": true,
-            "description": "The ID of the patient.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Report fetched successfully"
-          },
-          "400": {
-            "description": "Error fetching patient report"
-          },
-          "404": {
-            "description": "Patient not found or no report available"
-          }
-        }
-      }
-    },
-    "/api/v1/nurse/chat/{caretakerId}": {
-      "post": {
-        "summary": "Send a message to the caretaker",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "caretakerId ",
-            "in": "path",
-            "required": true,
-            "description": "The ID of the caretaker.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "message"
-                ],
-                "properties": {
-                  "message": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Message sent successfully"
-          },
-          "400": {
-            "description": "Error sending message"
-          }
-        }
-      },
-      "get": {
-        "summary": "Fetch chat messages with the caretaker",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "caretakerId",
-            "schema": {
-              "type": "string"
-            },
-            "required": true,
-            "description": "The ID of the caretaker"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "List of chat messages"
-          },
-          "400": {
-            "description": "Error fetching chat messages"
-          }
-        }
-      }
-    },
-    "/api/v1/nurse/chat/{caretakerId}/messages": {
-      "get": {
-        "summary": "Get chat messages with a caretaker",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "caretakerId",
-            "schema": {
-              "type": "string"
-            },
-            "required": true,
-            "description": "The ID of the caretaker"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Chat messages fetched successfully"
-          },
-          "400": {
-            "description": "Error fetching messages"
-          }
-        }
-      }
-    },
-    "/api/v1/nurse/caretaker/{caretakerId}/profile": {
-      "get": {
-        "summary": "View caretaker profile and provide feedback",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "caretakerId",
-            "schema": {
-              "type": "string"
-            },
-            "required": true,
-            "description": "The ID of the caretaker"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Caretaker profile fetched successfully"
-          },
-          "400": {
-            "description": "Error fetching caretaker profile"
-          }
-        }
-      }
-    },
-    "/api/v1/nurse/caretaker/{caretakerId}/feedback": {
-      "post": {
-        "summary": "Provide feedback and rating for caretaker",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "caretakerId ",
-            "in": "path",
-            "required": true,
-            "description": "The ID of the caretaker.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "feedback",
-                  "rating"
-                ],
-                "properties": {
-                  "feedback": {
-                    "type": "string"
-                  },
-                  "rating": 5
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Feedback submitted successfully"
-          },
-          "400": {
-            "description": "Error submitting feedback"
-          }
-        }
-      }
-    },
-    "api/v1/nurse/care-plan/{patientId}": {
-      "post": {
-        "summary": "Create or update a care plan for a patient",
-        "tags": [
-          "Care Plans"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "patientId",
-            "schema": {
-              "type": "string"
-            },
-            "required": true,
-            "description": "The ID of the patient"
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "required": ["description", "dueDate", "priority"],
-                  "properties": {
-                    "description": {
-                      "type": "string",
-                      "example": "Administer medication"
-                    },
-                    "dueDate": {
-                      "type": "string",
-                      "format": "date",
-                      "example": "2024-12-05"
-                    },
-                    "priority": {
-                      "type": "string",
-                      "enum": ["low", "medium", "high"],
-                      "example": "high"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Care plan created/updated successfully"
-          },
-          "400": {
-            "description": "Error creating/updating care plan"
-          }
-        }
-      },
-      "get": {
-        "summary": "Get care plan for a patient",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "patientId",
-            "schema": {
-              "type": "string"
-            },
-            "required": true,
-            "description": "The ID of the patient"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Care plan fetched successfully"
-          },
-          "400": {
-            "description": "Error fetching care plan"
-          },
-          "404": {
-            "description": "Care plan not found"
-          }
-        }
-      }
-    },
     "/api/v1/auth/register": {
       "post": {
         "summary": "Register a new user",
+        "tags": ["Authentication"],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "fullname",
-                  "email",
-                  "password",
-                  "role"
-                ],
+                "required": ["fullname", "email", "password", "role"],
                 "properties": {
-                  "name": {
-                    "type": "string"
-                  },
-                  "email": {
-                    "type": "string"
-                  },
-                  "password": {
-                    "type": "string"
-                  },
-                  "role": {
-                    "type": "string"
-                  }
+                  "fullname": { "type": "string" },
+                  "email": { "type": "string" },
+                  "password": { "type": "string" },
+                  "role": { "type": "string" }
                 }
               }
             }
           }
         },
         "responses": {
-          "201": {
-            "description": "User registered successfully"
-          },
-          "400": {
-            "description": "Registration unsuccessful. Could be due to missing fields or invalid email/password."
-          }
+          "201": { "description": "User registered successfully" },
+          "400": { "description": "Bad request" }
         }
       }
     },
     "/api/v1/auth/login": {
       "post": {
         "summary": "Log in a user",
+        "tags": ["Authentication"],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "email",
-                  "password"
-                ],
+                "required": ["email", "password"],
                 "properties": {
-                  "email": {
-                    "type": "string"
-                  },
-                  "password": {
-                    "type": "string"
-                  }
+                  "email": { "type": "string" },
+                  "password": { "type": "string" }
                 }
               }
             }
           }
         },
         "responses": {
-          "200": {
-            "description": "Successful login with JWT token and user information."
-          },
-          "400": {
-            "description": "Bad request. Invalid credentials or account locked."
-          }
+          "200": { "description": "Login successful" },
+          "400": { "description": "Invalid credentials" }
         }
       }
     },
-    "/api/v1/auth/send-pin": {
+    "/api/v1/admin/support-ticket": {
       "post": {
-        "summary": "Send OTP for email verification",
+        "summary": "Create a support ticket",
+        "tags": ["Admin"],
+        "security": [{ "bearerAuth": [] }],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "email"
-                ],
+                "required": ["subject", "description"],
                 "properties": {
-                  "email": {
-                    "type": "string"
-                  }
+                  "subject": { "type": "string" },
+                  "description": { "type": "string" },
+                  "status": { "type": "string", "default": "open" }
                 }
               }
             }
           }
         },
         "responses": {
-          "200": {
-            "description": "OTP sent to your email address."
-          },
-          "400": {
-            "description": "Bad request. Email is required."
-          },
-          "500": {
-            "description": "Internal server error. Error processing the request."
-          }
+          "201": { "description": "Support ticket created successfully" },
+          "500": { "description": "Error creating support ticket" }
         }
       }
     },
-    "/api/v1/auth/verify-pin": {
+    "/api/v1/admin/tasks": {
       "post": {
-        "summary": "Verifies OTP sent to user email",
+        "summary": "Create a new task",
+        "tags": ["Admin"],
+        "security": [{ "bearerAuth": [] }],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "email",
-                  "otp"
-                ],
+                "required": ["title", "description", "patientId", "dueDate"],
                 "properties": {
-                  "email": {
-                    "type": "string"
-                  },
-                  "otp": {
-                    "type": "string"
-                  }
+                  "title": { "type": "string" },
+                  "description": { "type": "string" },
+                  "patientId": { "type": "string" },
+                  "dueDate": { "type": "string", "format": "date" },
+                  "assignedTo": { "type": "string" }
                 }
               }
             }
           }
         },
         "responses": {
-          "200": {
-            "description": "OTP verified successfully."
-          },
-          "400": {
-            "description": "Bad request. Email and OTP are required or invalid/expired OTP."
-          },
-          "500": {
-            "description": "Internal server error. Error processing the request."
-          }
+          "201": { "description": "Task created successfully" },
+          "500": { "description": "Error creating task" }
         }
       }
     },
-    "/api/v1/auth/change-password": {
-      "post": {
-        "summary": "Change a user's password",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "oldPassword",
-                  "newPassword",
-                  "confirmPassword"
-                ],
-                "properties": {
-                  "oldPassword": {
-                    "type": "string"
-                  },
-                  "newPassword": {
-                    "type": "string"
-                  },
-                  "confirmPassword": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Password changed successfully."
-          },
-          "400": {
-            "description": "Bad request. Incorrect old password or new passwords don't match."
-          }
-        }
-      }
-    },
-    "/api/v1/auth/reset-password-request": {
-      "post": {
-        "summary": "Request a password reset",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "email"
-                ],
-                "properties": {
-                  "email": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Password reset link sent to the user's email."
-          },
-          "404": {
-            "description": "User not found."
-          }
-        }
-      }
-    },
-    "/api/v1/auth/reset-password": {
+    "/api/v1/caretaker/assigned-patients": {
       "get": {
-        "summary": "Render password reset page",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "query",
-            "name": "token",
-            "schema": {
-              "type": "string"
-            },
-            "required": true,
-            "description": "JWT reset token"
-          }
-        ],
+        "summary": "Fetch patients assigned to a caretaker",
+        "tags": ["Caretaker"],
+        "security": [{ "bearerAuth": [] }],
         "responses": {
           "200": {
-            "description": "Renders password reset page."
-          },
-          "400": {
-            "description": "Invalid or expired token."
-          }
-        }
-      },
-      "post": {
-        "summary": "Reset's a user's password using the reset token",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "token",
-                  "newPassword",
-                  "confirmPassword"
-                ],
-                "properties": {
-                  "token": {
-                    "type": "string",
-                    "example": "JWT_TOKEN_HERE"
-                  },
-                  "newPassword": {
-                    "type": "string",
-                    "example": "NewPassword123"
-                  },
-                  "confirmPassword": {
-                    "type": "string",
-                    "example": "NewPassword123"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Password has been updated successfully."
-          },
-          "400": {
-            "description": "Invalid or expired token, or passwords don't match."
-          }
-        }
-      }
-    },
-    "/api/v1/users": {
-      "get": {
-        "summary": "Get all users",
-        "tags": [
-          "Users"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A list of users",
+            "description": "List of assigned patients",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/User"
-                  }
+                  "items": { "$ref": "#/components/schemas/Patient" }
                 }
               }
             }
+          },
+          "403": { "description": "Unauthorized role" },
+          "500": { "description": "Error fetching assigned patients" }
+        }
+      }
+    },
+    "/api/v1/health-records/{patientId}": {
+      "get": {
+        "summary": "Fetch health records for a patient",
+        "tags": ["HealthRecord"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "patientId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "The ID of the patient"
           }
+        ],
+        "responses": {
+          "200": {
+            "description": "Health records retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/HealthRecord" }
+                }
+              }
+            }
+          },
+          "404": { "description": "Patient not found" },
+          "500": { "description": "Error fetching health records" }
+        }
+      }
+    },
+    "/api/v1/nurse/assigned-patients": {
+      "get": {
+        "summary": "Fetch patients assigned to a nurse",
+        "tags": ["Nurse"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "List of assigned patients",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Patient" }
+                }
+              }
+            }
+          },
+          "403": { "description": "Unauthorized role" },
+          "500": { "description": "Error fetching assigned patients" }
+        }
+      }
+    },
+    "/api/v1/user/profile": {
+      "get": {
+        "summary": "Fetch user profile",
+        "tags": ["User"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "User profile retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/User" }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "500": { "description": "Error fetching user profile" }
         }
       }
     }
   },
   "components": {
-    "schemas": {
-      "User": {
-        "type": "object",
-        "properties": {
-          "_id": {
-            "type": "string"
-          },
-          "username": {
-            "type": "string"
-          },
-          "email": {
-            "type": "string"
-          },
-          "lastPasswordChange": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      }
-    },
     "securitySchemes": {
       "bearerAuth": {
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "Patient": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "fullname": { "type": "string" },
+          "age": { "type": "integer" },
+          "gender": { "type": "string" },
+          "caretaker": { "type": "string" },
+          "assignedNurses": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      },
+      "HealthRecord": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "patientId": { "type": "string" },
+          "recordType": { "type": "string" },
+          "description": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "fullname": { "type": "string" },
+          "email": { "type": "string" },
+          "role": { "type": "string" }
+        }
       }
     }
   }
