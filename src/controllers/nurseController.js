@@ -72,6 +72,7 @@ exports.registerNurse = async (req, res) => {
       _id: newNurse._id,
       name: newNurse.name,
       email: newNurse.email,
+      ahpra: newNurse.ahpra,
       role: newNurse.role
     };
 
@@ -123,12 +124,12 @@ exports.loginNurse = async (req, res) => {
     const isValidPassword = await bcrypt.compare(password, nurse.password);
     if (!isValidPassword) {
       nurse.failedLoginAttempts = (nurse.failedLoginAttempts !== null && nurse.failedLoginAttempts !== undefined) ? nurse.failedLoginAttempts + 1 : 1;
-      await user.save();
+      await nurse.save();
       return res.status(400).json({ error: 'Incorrect email and password combination'});
     }
 
-    user.failedLoginAttempts = 0;
-    await user.save();
+    nurse.failedLoginAttempts = 0;
+    await nurse.save();
 
     if (!nurse.isApproved) {
       return res.status(400).json({ error: 'Nurse account is not approved by admin' });
@@ -504,6 +505,50 @@ exports.updateHealthRecords = async (req, res) => {
   }
 }
 
+exports.getLabTestRecords = async (req, res) => {
+  try {
+    const labTestRecords = await LabTestRecord.find({ patientId: req.params.patientId });
+    res.json(labTestRecords);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+}
+
+exports.updateLabTestRecords = async (req, res) => {
+  try {
+    const labTestRecord = await LabTestRecord.findOneAndUpdate(
+      { patientId: req.params.patientId },
+      { $push: { records: req.body.vitals } },
+      { new: true }
+    );
+    res.json(labTestRecord);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+}
+
+exports.getMedicationRecords = async (req, res) => {
+  try {
+    const medicationRecords = await MedicationRecord.find({ patientId: req.params.patientId });
+    res.json(medicationRecords);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+}
+
+exports.updateMedicationRecords = async (req, res) => {
+  try {
+    const medicationRecord = await MedicationRecord.findOneAndUpdate(
+      { patientId: req.params.patientId },
+      { $push: { records: req.body.vitals } },
+      { new: true }
+    );
+    res.json(medicationRecord);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+}
+
 /**
  * @swagger
  * /api/v1/nurse/reports:
@@ -620,6 +665,29 @@ exports.getPatientHealthRecords = async (req, res) => {
  *       400:
  *         description: Error updating profile
  */
+
+exports.getPatientLabTestRecords = async (req, res) => {
+  try {
+    const { patientId } = req.params;
+
+    const labTestRecords = await LabTestRecord.find({ patient: patientId });
+    res.status(200).json(labTestRecords);
+  } catch (error) {
+    res.status(500).json({ error: 'Error fetching laboratory test records', details: error.message });
+  }
+};
+
+exports.getPatientMedicationRecords = async (req, res) => {
+  try {
+    const { patientId } = req.params;
+
+    const medicationRecord = await MedicationRecord.find({ patient: patientId });
+    res.status(200).json(medicationRecord);
+  } catch (error) {
+    res.status(500).json({ error: 'Error fetching medication records', details: error.message });
+  }
+};
+
 exports.updateProfile = async (req, res) => {
   try {
     const { name, password } = req.body;

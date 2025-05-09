@@ -8,6 +8,7 @@ const TaskSchema = new mongoose.Schema({
   patient: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient', required: true },
   caretaker: { type: mongoose.Schema.Types.ObjectId, ref: 'Caretaker', required: true },
   nurse_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Assigned nurse
+  pharmacist_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Assigned pharmacist
   created_at: { type: Date, default: Date.now },
   report: { type: String }, // Task report provided by caretaker
   updated_at: { type: Date, default: Date.now }

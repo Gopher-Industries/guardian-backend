@@ -6,6 +6,7 @@ const CarePlanSchema = new mongoose.Schema({
   patient: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient', required: true },
   caretaker: { type: mongoose.Schema.Types.ObjectId, ref: 'Caretaker', required: true },
   nurse: { type: mongoose.Schema.Types.ObjectId, ref: 'Nurse', required: true },
+  pharmacist: { type: mongoose.Schema.Types.ObjectId, ref: 'Pharmacist', required: true },
   created_at: { type: Date, default: Date.now }
 });
 

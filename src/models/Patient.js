@@ -5,6 +5,7 @@ const PatientSchema = new mongoose.Schema({
   age: { type: Number, required: true },
   healthConditions: [{ type: String }], // List of health conditions
   assignedNurses: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Nurse' }],
+  assignedPharmacist: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Pharmacist' }],
   assignedCaretakers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Caretaker' }],
   created_at: { type: Date, default: Date.now },
   updated_at: { type: Date, default: Date.now }

@@ -132,6 +132,7 @@ const wifiCSIRoutes = require('./routes/wifiCSI');
 const activityRecognitionRoutes = require('./routes/activityRecognition');
 const alertsRoutes = require('./routes/alerts');
 const nurseRoutes = require('./routes/nurseRoutes'); // Import nurse routes
+const pharmacistRoutes = require('./routes/pharmacistRoutes.js'); //import pharmacist routes
 const userRoutes = require('./routes/user');
 
 app.use('/swaggerDocs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
@@ -139,6 +140,7 @@ app.use('/api/v1/wifi-csi', wifiCSIRoutes);
 app.use('/api/v1/activity-recognition', activityRecognitionRoutes);
 app.use('/api/v1/alerts', alertsRoutes);
 app.use('/api/v1/nurse', nurseRoutes);
+app.use('/api/v1/pharmacist', pharmacistRoutes);
 app.use('/api/v1/auth', userRoutes);
 app.use('/api/v1/patient-self', patientSelfRoutes);
 
