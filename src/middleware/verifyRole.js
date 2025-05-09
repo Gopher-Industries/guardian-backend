@@ -1,9 +1,9 @@
-const UserRole = require('../models/UserRole');
+const Role = require('../models/Role');
 
 // Middleware to verify if the user has the required role
 const verifyRole = (roles) => async (req, res, next) => {
   try {
-    const userRole = await UserRole.findOne({ user_id: req.user._id });
+    const userRole = await Role.findOne({ user_id: req.user._id });
     
     if (!userRole || !roles.includes(userRole.role_name)) {
       return res.status(403).json({ message: 'Access denied. Insufficient permissions.' });
