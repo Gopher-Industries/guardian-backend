@@ -4,6 +4,6 @@ const nurseController = require('../controllers/nurseController');
 const verifyToken = require('../middleware/verifyToken');
 
 
-router.get('/:nurseId/profile', verifyToken, nurseController.getProfile);
+router.get('/profile', verifyToken, nurseController.getProfile);
 
 module.exports = router;
