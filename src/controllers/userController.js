@@ -173,7 +173,8 @@ exports.login = async (req, res) => {
       lastPasswordChange: user.lastPasswordChange,
       created_at: user.created_at,
       updated_at: user.updated_at,
-      role: userRole.name
+      role: userRole.name,
+      twoFactorRequired: userRole.name.toLowerCase() !== 'nurse' // Add twoFactorRequired field
     };
 
     const response = { user: userResponse, token };
