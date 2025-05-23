@@ -1,0 +1,45 @@
+# openapi/paths/pharmacist/message.yaml
+paths:
+  /pharmacist/message/{caretakerId}:
+    post:
+      summary: Send a message to a caretaker
+      tags:
+        - Pharmacist
+      parameters:
+        - in: path
+          name: caretakerId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                  example: "Please check the patient’s latest INR result."
+      responses:
+        200:
+          description: Message sent successfully
+        400:
+          description: Bad request
+
+  /pharmacist/message/{caretakerId}/history:
+    get:
+      summary: Get message history with a caretaker
+      tags:
+        - Pharmacist
+      parameters:
+        - in: path
+          name: caretakerId
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Message history retrieved
+        400:
+          description: Error retrieving message history

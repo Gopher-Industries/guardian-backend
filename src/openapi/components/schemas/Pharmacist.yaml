@@ -1,0 +1,38 @@
+type: object
+required:
+  - name
+  - email
+  - password
+  - ahpra
+properties:
+  name:
+    type: string
+  email:
+    type: string
+  password:
+    type: string
+  ahpra:
+    type: integer
+    description: AHPRA registration number
+  isApproved:
+    type: boolean
+    default: false
+  assignedPatients:
+    type: array
+    items:
+      type: string
+      format: ObjectId
+  role:
+    type: string
+    enum: [pharmacist]
+  lastPasswordChange:
+    type: string
+    format: date-time
+  failedLoginAttempts:
+    type: integer
+  createdAt:
+    type: string
+    format: date-time
+  updatedAt:
+    type: string
+    format: date-time

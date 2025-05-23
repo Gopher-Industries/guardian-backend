@@ -1,0 +1,26 @@
+paths:
+  /pharmacist/patient/{patientId}/nurse-observations:
+    get:
+      summary: Retrieve nurse-recorded observations for a specific patient
+      tags:
+      - Pharmacist
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: patientId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: MongoDB ObjectId of the patient
+      responses:
+        '200':
+          description: List of nurse observations returned
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: ../../components/schemas/NurseObservation.yaml#/NurseObservation
+        '400':
+          description: Invalid patient ID or unauthorized access

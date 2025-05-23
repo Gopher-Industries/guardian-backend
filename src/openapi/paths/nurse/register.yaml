@@ -1,0 +1,26 @@
+post:
+  summary: Register a new nurse
+  tags:
+    - Nurse
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - name
+            - email
+            - password
+          properties:
+            name:
+              type: string
+            email:
+              type: string
+            password:
+              type: string
+  responses:
+    '201':
+      description: Nurse registered successfully
+    '400':
+      description: Error registering nurse

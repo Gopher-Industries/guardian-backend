@@ -1,0 +1,20 @@
+get:
+  summary: Get the report for a patient assigned to a nurse
+  tags:
+    - Nurse
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: patientId
+      in: path
+      required: true
+      description: The ID of the patient.
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Report fetched successfully
+    '400':
+      description: Error fetching patient report
+    '404':
+      description: Patient not found or no report available

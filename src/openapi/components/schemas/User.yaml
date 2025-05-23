@@ -1,0 +1,23 @@
+type: object
+properties:
+  _id:
+    type: string
+    example: "64fdc834f47c4a2e50d2a4e1"
+  username:
+    type: string
+    example: "johndoe"
+  email:
+    type: string
+    example: "johndoe@example.com"
+  lastPasswordChange:
+    type: string
+    format: date-time
+    example: "2024-04-12T10:15:30Z"
+  created_at:
+    type: string
+    format: date-time
+    example: "2024-01-01T00:00:00Z"
+  updated_at:
+    type: string
+    format: date-time
+    example: "2024-04-01T12:00:00Z"

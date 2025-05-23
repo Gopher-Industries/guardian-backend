@@ -35,6 +35,35 @@ router.get('/nurses', verifyToken, verifyRole(['admin']), async (req, res) => {
     }
   });
 
+  // Example route protected by role (only admins can access)
+router.post('/admin/approve-pharmacist/:pharmacistId', verifyToken, verifyRole(['admin']), async (req, res) => {
+  try {
+    const pharmacistId = req.params.pharmacistId;
+    // Logic for approving the nurse goes here
+    res.status(200).json({ message: `Pharmacist with ID ${pharmacistId} approved` });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Route to get all pharmacists (admin-only)
+router.get('/pharmacists', verifyToken, verifyRole(['admin']), async (req, res) => {
+    try {
+      // Find all pharmacists by looking up the UserRole model
+      const pharmacistRoles = await UserRole.find({ role_name: 'pharmacist' });
+      
+      // Extract the user IDs of all pharmacists
+      const pharmacistIds = pharmacistRoles.map(role => role.user_id);
+  
+      // Find all pharmacists user details using their IDs
+      const pharmacists = await User.find({ _id: { $in: pharmacistIds } });
+  
+      res.status(200).json(pharmacists);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
   // Route to get all caretakers (admin-only)
 router.get('/caretakers', verifyToken, verifyRole(['admin']), async (req, res) => {
     try {

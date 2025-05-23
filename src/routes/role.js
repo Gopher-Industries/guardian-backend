@@ -23,7 +23,7 @@ router.post('/assign-role', async (req, res) => {
     // Assign the role to the user by creating an entry in the UserRole model
     const userRole = new UserRole({
       user_id: userId,
-      role_name: role  // Assign the role provided (e.g., 'admin', 'nurse', 'caretaker')
+      role_name: role  // Assign the role provided (e.g., 'admin', 'nurse', 'pharmacist', 'caretaker')
     });
 
     await userRole.save();

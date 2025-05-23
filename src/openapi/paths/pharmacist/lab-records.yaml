@@ -1,0 +1,26 @@
+paths:
+  /pharmacist/patient/{patientId}/lab-records:
+    get:
+      summary: Get lab test records for a specific patient
+      tags:
+      - Pharmacist
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: patientId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: ID of the patient
+      responses:
+        '200':
+          description: Lab test records retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: ../../components/schemas/LabTestRecord.yaml#/LabTestRecord
+        '400':
+          description: Invalid request or unauthorized access

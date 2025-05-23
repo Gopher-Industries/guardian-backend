@@ -4,14 +4,14 @@ const bcrypt = require('bcryptjs');
 const CaretakerSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
+  password: { type: String, required: true, select: false },
   isApproved: { type: Boolean, default: false },
   assignedPatients: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Patient' }], // Assigned patients
   role: { type: String, default: 'caretaker', immutable: true },  // Make role immutable means it can not be changed
   lastPasswordChange: { type: Date, default: Date.now },
-  failedLoginAttempts: { type: Number, default: 0 },
-  created_at: { type: Date, default: Date.now },
-  updated_at: { type: Date, default: Date.now }
+  failedLoginAttempts: { type: Number, default: 0 }
+}, {
+  timestamps: true, // Automatically handles createdAt and updatedAt
 });
 
 // Hash the password before saving
@@ -23,6 +23,11 @@ CaretakerSchema.pre('save', async function (next) {
   this.lastPasswordChange = Date.now();
   next();
 });
+
+// Define a method to check if the entered password matches the stored one
+CaretakerSchema.methods.comparePassword = async function (enteredPassword) {
+  return bcrypt.compare(enteredPassword, this.password);
+};
 
 const Caretaker = mongoose.model('Caretaker', CaretakerSchema);
 

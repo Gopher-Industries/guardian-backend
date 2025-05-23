@@ -1,0 +1,36 @@
+type: object
+required:
+  - doctorName
+  - clinicName
+properties:
+  _id:
+    type: string
+    description: Unique identifier for the general practitioner
+  doctorName:
+    type: string
+    description: Full name of the GP
+  clinicName:
+    type: string
+    description: Name of the clinic or practice
+  contactNumber:
+    type: string
+    description: Phone number of the GP or clinic
+  email:
+    type: string
+    format: email
+    description: Email address (stored in lowercase)
+  address:
+    type: string
+    description: Physical address of the clinic
+  faxNumber:
+    type: string
+    description: Fax number for the clinic
+  notes:
+    type: string
+    description: Additional notes about the GP or practice
+  createdAt:
+    type: string
+    format: date-time
+  updatedAt:
+    type: string
+    format: date-time

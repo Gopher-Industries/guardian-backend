@@ -1,0 +1,20 @@
+paths:
+  /api/v1/nurse/caretaker/{caretakerId}/profile:
+    get:
+      summary: View caretaker profile and provide feedback
+      tags:
+        - Nurse
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: caretakerId
+          in: path
+          required: true
+          description: The ID of the caretaker
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Caretaker profile fetched successfully
+        '400':
+          description: Error fetching caretaker profile

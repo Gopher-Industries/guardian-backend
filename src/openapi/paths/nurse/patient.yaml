@@ -1,0 +1,20 @@
+get:
+  summary: Fetch patient details
+  tags:
+    - Nurse
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: patientId
+      in: path
+      required: true
+      description: The ID of the patient to fetch.
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Patient details fetched
+    '400':
+      description: Error fetching patient details
+    '404':
+      description: Patient not found

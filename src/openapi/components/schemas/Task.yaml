@@ -1,0 +1,39 @@
+type: object
+required:
+  - description
+  - dueDate
+  - priority
+  - patient
+  - caretaker
+properties:
+  description:
+    type: string
+  dueDate:
+    type: string
+    format: date-time
+  priority:
+    type: string
+    enum: [low, medium, high]
+  status:
+    type: string
+    enum: [pending, in progress, completed]
+  patient:
+    type: string
+    format: ObjectId
+  caretaker:
+    type: string
+    format: ObjectId
+  nurse_id:
+    type: string
+    format: ObjectId
+  pharmacist_id:
+    type: string
+    format: ObjectId
+  created_at:
+    type: string
+    format: date-time
+  updated_at:
+    type: string
+    format: date-time
+  report:
+    type: string

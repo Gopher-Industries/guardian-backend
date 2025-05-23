@@ -2,17 +2,20 @@ const jwt = require('jsonwebtoken');
 
 const verifyToken = (req, res, next) => {
   const authHeader = req.header('Authorization');
-  if (!authHeader) return res.status(401).json({ message: 'Access denied. No token provided.' });
 
-  const token = authHeader.split(' ')[1]; // Extract the token part
-  if (!token) return res.status(401).json({ message: 'Access denied. No token provided.' });
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ message: 'Access denied. No token provided or malformed header.' });
+  }
+
+  const token = authHeader.split(' ')[1];
 
   try {
-    const verified = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = verified;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded; // Includes _id, email, role, etc.
     next();
   } catch (error) {
-    res.status(400).json({ message: 'Invalid token.' });
+    console.error('[verifyToken] Invalid token:', error.message); // optional logging
+    res.status(401).json({ message: 'Invalid token.' });
   }
 };
 

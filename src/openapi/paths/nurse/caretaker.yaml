@@ -1,0 +1,20 @@
+get:
+  summary: Fetch caretaker details
+  tags:
+    - Nurse
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: caretakerId
+      in: path
+      required: true
+      description: The ID of the caretaker to fetch.
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Caretaker details fetched
+    '400':
+      description: Error fetching caretaker details
+    '404':
+      description: Caretaker not found

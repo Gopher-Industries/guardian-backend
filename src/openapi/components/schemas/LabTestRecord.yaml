@@ -1,0 +1,78 @@
+LabTestRecord:
+  type: object
+  properties:
+    patient:
+      type: string
+    nurse:
+      type: string
+    pharmacist:
+      type: string
+    caretaker:
+      type: string
+    tests:
+      type: object
+      properties:
+        oxygenSaturation: { type: number }
+        potassium: { type: number }
+        sodium: { type: number }
+        calcium: { type: number }
+        calcidiol: { type: number }
+        calcitriol: { type: number }
+        parathyroidHormone: { type: number }
+        bicarbonate: { type: number }
+        hdlc: { type: number }
+        ldlc: { type: number }
+        totalChol: { type: number }
+        triglycerides: { type: number }
+        postprandialBSL: { type: number }
+        fastingBSL: { type: number }
+        ejectionFraction: { type: number }
+        strokeVolume: { type: number }
+        b12: { type: number }
+        serumIron: { type: number }
+        transferrin: { type: number }
+        ferritin: { type: number }
+        tansferrinSaturation: { type: number }
+        creatinineClearance: { type: number }
+        eGFR: { type: number }
+        alt: { type: number }
+        ast: { type: number }
+        ggt: { type: number }
+        bilirubin: { type: number }
+        t4: { type: number }
+        t3: { type: number }
+        tsh: { type: number }
+        crp: { type: number }
+        esr: { type: number }
+        microbialCulture: { type: string }
+        microbialSensitivity: { type: string }
+        microbialResistance: { type: string }
+    notes:
+      type: string
+    signedBy:
+      type: object
+      properties:
+        id:
+          type: string
+          description: MongoDB ObjectId of reviewer
+        name:
+          type: string
+          description: Full name of the reviewer
+        signedAt:
+          type: string
+          format: date-time
+          description: Timestamp of signature
+        signedByModel:
+          type: string
+          enum: [Pharmacist, Nurse]
+          description: Type of reviewer model
+      required:
+        - id
+        - name
+        - signedAt
+        - signedByModel
+  required:
+    - patient
+    - nurse
+    - pharmacist
+    - caretaker

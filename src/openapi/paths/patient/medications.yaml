@@ -1,0 +1,24 @@
+get:
+  summary: Retrieve a patient's medication record
+  tags:
+    - MedicationRecord
+  security:
+    - bearerAuth: []
+  parameters:
+    - in: path
+      name: patientId
+      required: true
+      schema:
+        type: string
+      description: ID of the patient
+  responses:
+    '200':
+      description: Medication record retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/MedicationRecord'
+    '403':
+      description: Unauthorized
+    '500':
+      description: Server error

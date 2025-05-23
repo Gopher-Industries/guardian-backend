@@ -1,0 +1,128 @@
+{
+  "info": {
+    "name": "Pharmacist API Collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Register Pharmacist",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/pharmacist/register",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "pharmacist",
+            "register"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Jane Doe\",\n  \"email\": \"jane@pharma.com\",\n  \"password\": \"SecurePass123\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Login Pharmacist",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/pharmacist/login",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "pharmacist",
+            "login"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"jane@pharma.com\",\n  \"password\": \"SecurePass123\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Get Profile",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/pharmacist/profile",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "pharmacist",
+            "profile"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Assigned Patients",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/pharmacist/patients",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "pharmacist",
+            "patients"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Patient Report",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/pharmacist/patient/{{patientId}}/report",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "pharmacist",
+            "patient",
+            "{{patientId}}",
+            "report"
+          ]
+        }
+      }
+    }
+  ]
+}

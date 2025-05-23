@@ -1,0 +1,27 @@
+/api/v1/pharmacist/register:
+  post:
+    summary: Register a new pharmacist
+    tags:
+      - Pharmacist
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - name
+              - email
+              - password
+            properties:
+              name:
+                type: string
+              email:
+                type: string
+              password:
+                type: string
+    responses:
+      '201':
+        description: Pharmacist registered successfully
+      '400':
+        description: Error registering pharmacist

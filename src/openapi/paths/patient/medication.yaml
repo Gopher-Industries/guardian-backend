@@ -1,0 +1,69 @@
+post:
+  summary: Submit or update a patient's medication record
+  tags:
+    - MedicationRecord
+  security:
+    - bearerAuth: []
+  parameters:
+    - in: path
+      name: patientId
+      required: true
+      schema:
+        type: string
+      description: ID of the patient
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - allergies
+            - records
+          properties:
+            allergies:
+              type: array
+              items:
+                type: string
+              description: Known patient allergies
+            records:
+              type: array
+              items:
+                type: object
+                required:
+                  - medicationName
+                  - dosage
+                  - frequency
+                  - route
+                  - indication
+                properties:
+                  medicationName:
+                    type: string
+                  dosage:
+                    type: string
+                  frequency:
+                    type: string
+                  route:
+                    type: string
+                  startDate:
+                    type: string
+                    format: date
+                  endDate:
+                    type: string
+                    format: date
+                  indication:
+                    type: string
+                  notes:
+                    type: string
+            changes:
+              type: string
+              description: Summary of changes (for revision history)
+  responses:
+    '201':
+      description: Medication record submitted successfully
+    '400':
+      description: Validation error
+    '403':
+      description: Unauthorized role
+    '500':
+      description: Server error

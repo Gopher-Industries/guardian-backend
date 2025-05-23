@@ -7,9 +7,9 @@ const AdminSchema = new mongoose.Schema({
   password: { type: String, required: true },
   role: { type: String, default: 'admin', immutable: true },  // Make role immutable means it can not be changed
   lastPasswordChange: { type: Date, default: Date.now },
-  failedLoginAttempts: { type: Number, default: 0 },
-  created_at: { type: Date, default: Date.now },
-  updated_at: { type: Date, default: Date.now }
+  failedLoginAttempts: { type: Number, default: 0 }
+}, {
+  timestamps: true, // Automatically handles createdAt and updatedAt
 });
 
 // Hash the password before saving
