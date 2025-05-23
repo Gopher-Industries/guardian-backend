@@ -1,0 +1,36 @@
+IncidentReport:
+  type: object
+  properties:
+    _id:
+      type: string
+      description: Unique ID of the incident report
+    patient:
+      type: string
+      description: ID of the patient involved
+    reportedBy:
+      type: object
+      properties:
+        id:
+          type: string
+          description: ID of the reporting nurse or pharmacist
+        name:
+          type: string
+          description: Name of the reporting nurse or pharmacist
+    incidentType:
+      type: string
+      description: The type or nature of the incident
+    description:
+      type: string
+      description: Details about the incident
+    followUpActions:
+      type: string
+      description: Actions taken or planned in response
+    resolved:
+      type: boolean
+      description: Whether the incident has been resolved
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time

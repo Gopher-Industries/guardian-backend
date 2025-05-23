@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const NurseSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
+  password: { type: String, required: true, select: false },
   ahpra: { type: Number, required: true }, // AHPRA registration number
   isApproved: { type: Boolean, default: false },
   assignedPatients: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Patient' }], // Assigned patients

@@ -1,0 +1,11 @@
+get:
+  summary: Get patients assigned to the nurse
+  tags:
+    - Nurse
+  security:
+    - bearerAuth: []
+  responses:
+    '200':
+      description: List of assigned patients
+    '400':
+      description: Error fetching patients

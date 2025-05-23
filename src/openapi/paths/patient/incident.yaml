@@ -1,0 +1,41 @@
+post:
+  summary: File an incident report for a patient
+  tags:
+    - IncidentReport
+  security:
+    - bearerAuth: []
+  parameters:
+    - in: path
+      name: patientId
+      required: true
+      schema:
+        type: string
+      description: ID of the patient
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - incidentType
+            - description
+          properties:
+            incidentType:
+              type: string
+              description: Type or title of the incident
+            description:
+              type: string
+              description: Detailed description of the incident
+            followUpActions:
+              type: string
+              description: Actions taken or planned in response
+  responses:
+    '201':
+      description: Incident report filed successfully
+    '400':
+      description: Invalid request
+    '403':
+      description: Unauthorized role
+    '500':
+      description: Server error

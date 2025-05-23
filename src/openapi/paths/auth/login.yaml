@@ -1,0 +1,23 @@
+post:
+  summary: Log in a user
+  tags:
+    - Auth
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - email
+            - password
+          properties:
+            email:
+              type: string
+            password:
+              type: string
+  responses:
+    '200':
+      description: Successful login with JWT token and user information.
+    '400':
+      description: Bad request. Invalid credentials or account locked.

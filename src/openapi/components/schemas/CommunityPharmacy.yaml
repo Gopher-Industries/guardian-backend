@@ -1,0 +1,29 @@
+type: object
+required:
+  - name
+properties:
+  _id:
+    type: string
+    description: Unique identifier for the community pharmacy
+  name:
+    type: string
+    description: Name of the pharmacy
+  contactNumber:
+    type: string
+    description: Contact number for the pharmacy
+  faxNumber:
+    type: string
+    description: Fax number for the pharmacy
+  address:
+    type: string
+    description: Street address of the pharmacy
+  email:
+    type: string
+    format: email
+    description: Email address of the pharmacy
+  createdAt:
+    type: string
+    format: date-time
+  updatedAt:
+    type: string
+    format: date-time

@@ -1,15 +1,16 @@
 const mongoose = require('mongoose');
 
-
 const CarePlanSchema = new mongoose.Schema({
-  tasks: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Task' }], // List of tasks
+  planTitle: { type: String, required: true },
+  objectives: [{ type: String }],
+  interventions: [{ type: String }],
+  goals: [{ type: String }],
+  notes: { type: String },
+  tasks: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Task' }],
   patient: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient', required: true },
-  caretaker: { type: mongoose.Schema.Types.ObjectId, ref: 'Caretaker', required: true },
-  nurse: { type: mongoose.Schema.Types.ObjectId, ref: 'Nurse', required: true },
-  pharmacist: { type: mongoose.Schema.Types.ObjectId, ref: 'Pharmacist', required: true },
-  created_at: { type: Date, default: Date.now }
-});
+  caretaker: { type: mongoose.Schema.Types.ObjectId, ref: 'Caretaker' },
+  nurse: { type: mongoose.Schema.Types.ObjectId, ref: 'Nurse' },
+  pharmacist: { type: mongoose.Schema.Types.ObjectId, ref: 'Pharmacist' }
+}, { timestamps: true });
 
-const CarePlan = mongoose.model('CarePlan', CarePlanSchema);
-
-module.exports = CarePlan;
+module.exports = mongoose.model('CarePlan', CarePlanSchema);

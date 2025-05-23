@@ -1,0 +1,58 @@
+NurseObservation:
+  type: object
+  required:
+  - patient
+  - nurse
+  - observations
+  properties:
+    patient:
+      type: string
+      format: ObjectId
+    nurse:
+      type: string
+      format: ObjectId
+    observations:
+      type: array
+      items:
+        type: object
+        required:
+        - temperature
+        - bloodPressure
+        - heartRate
+        - mobility
+        - respiratoryRate
+        - painScore
+        - glascowComaScale
+        - dysphagia
+        - iddsi
+        properties:
+          temperature:
+            type: number
+          bloodPressure:
+            type: object
+            properties:
+              systolic:
+                type: number
+              diastolic:
+                type: number
+          heartRate:
+            type: number          
+          oxygenSaturation:
+            type: number
+          mobility:
+            type: string
+          respiratoryRate:
+            type: number
+          painScore:
+            type: number
+          glascowComaScale:
+            type: number
+          dysphagia:
+            type: string
+          iddsi:
+            type: integer          
+          timestamp:
+            type: string
+            format: date-time
+    notes:
+      type: string

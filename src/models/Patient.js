@@ -3,12 +3,14 @@ const mongoose = require('mongoose');
 const PatientSchema = new mongoose.Schema({
   name: { type: String, required: true },
   age: { type: Number, required: true },
-  healthConditions: [{ type: String }], // List of health conditions
+  generalPractitioner: { type: mongoose.Schema.Types.ObjectId, ref: 'GeneralPractitioner' },
+  communityPharmacy: { type: mongoose.Schema.Types.ObjectId, ref: 'CommunityPharmacy' },
+  medicalConditions: [{ type: String }], // List of health conditions
+  role: { type: String, default: 'caretaker', immutable: true },
   assignedNurses: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Nurse' }],
-  assignedPharmacist: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Pharmacist' }],
-  assignedCaretakers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Caretaker' }],
-  created_at: { type: Date, default: Date.now },
-  updated_at: { type: Date, default: Date.now }
+  assignedCaretakers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Caretaker' }]
+}, {
+  timestamps: true, // Automatically handles createdAt and updatedAt
 });
 
 PatientSchema.pre('save', function (next) {

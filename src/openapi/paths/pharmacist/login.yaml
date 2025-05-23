@@ -1,0 +1,24 @@
+/api/v1/pharmacist/login:
+  post:
+    summary: Login pharmacist
+    tags:
+      - Pharmacist
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - email
+              - password
+            properties:
+              email:
+                type: string
+              password:
+                type: string
+    responses:
+      '200':
+        description: Login successful
+      '400':
+        description: Invalid credentials

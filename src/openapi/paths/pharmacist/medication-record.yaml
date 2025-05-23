@@ -1,0 +1,30 @@
+# openapi/paths/pharmacist/medication-record.yaml
+paths:
+  /pharmacist/patient/{patientId}/medication-record:
+    post:
+      summary: Add or update a medication record for a patient
+      tags:
+        - Pharmacist
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: patientId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the patient
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                medicationRecord:
+                  $ref: '../../components/schemas/MedicationRecord.yaml'
+      responses:
+        200:
+          description: Medication record updated
+        400:
+          description: Invalid input or validation error

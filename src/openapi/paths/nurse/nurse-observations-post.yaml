@@ -1,0 +1,26 @@
+paths:
+  /nurse/patient/{patientId}/nurse-observations:
+    post:
+      summary: Submit a new nurse observation for a patient
+      tags:
+      - Nurse
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: patientId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: ID of the patient
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../../components/schemas/NurseObservation.yaml#/NurseObservation
+      responses:
+        '201':
+          description: Nurse observation recorded successfully
+        '400':
+          description: Invalid input or unauthorized access

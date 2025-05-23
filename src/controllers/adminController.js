@@ -1,51 +1,103 @@
-const Patient = require('../models/Patient');
+/*
 const HealthRecord = require('../models/HealthRecord');
 const Task = require('../models/Task');
 const CarePlan = require('../models/CarePlan');
 const SupportTicket = require('../models/SupportTicket');
-const Task = require('../models/Task');
+const Task = require('../models/Task');*/
 
-/**
- * @swagger
- * /api/v1/admin/patient-overview/{patientId}:
- *   get:
- *     summary: Fetch detailed patient overview
- *     tags: [Admin]
- *     parameters:
- *       - in: path
- *         name: patientId
- *         required: true
- *         schema:
- *           type: string
- *         description: ID of the patient
- *     responses:
- *       200:
- *         description: Detailed patient overview
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 patient:
- *                   $ref: '#/components/schemas/Patient'
- *                 healthRecords:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/HealthRecord'
- *                 carePlan:
- *                   $ref: '#/components/schemas/CarePlan'
- *                 tasks:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Task'
- *                 taskCompletionRate:
- *                   type: number
- *                   description: Percentage of completed tasks
- *       404:
- *         description: Patient not found
- *       500:
- *         description: Error fetching patient overview
- */
+const Patient = require('../models/Patient');
+const Caretaker = require('../models/Caretaker');
+const Nurse = require('../models/Nurse');
+const Pharmacist = require('../models/Pharmacist');
+const User = require('../models/User');
+
+const { formatUserProfile } = require('../services/profileService');
+const { getPatientById } = require('../services/patientLookupService');
+const { createOrUpdateCarePlan } = require('../services/carePlanService');
+
+// Fetch patient-caregiver assignment
+exports.getAssignedUsers = async (req, res) => {
+  try {
+    const { patientId } = req.params;
+    const patient = await getPatientById(patientId);
+
+    const nurses = await Nurse.find({ assignedPatients: patientId }).select('-password');
+    const caretakers = await Caretaker.find({ assignedPatients: patientId }).select('-password');
+    const pharmacists = await Pharmacist.find({ assignedPatients: patientId }).select('-password');
+
+    res.status(200).json({
+      nurses,
+      caretakers,
+      pharmacists
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Error fetching assigned users', details: error.message });
+  }
+};
+
+// Get pharmacist profile (by ID)
+exports.getPharmacistProfile = async (req, res) => {
+  try {
+    const { pharmacistId } = req.params;
+    const pharmacist = await Pharmacist.findById(pharmacistId).select('-password');
+    if (!pharmacist) {
+      return res.status(404).json({ error: 'Pharmacist not found' });
+    }
+    res.status(200).json(await formatUserProfile(pharmacist));
+  } catch (error) {
+    res.status(500).json({ error: 'Error fetching pharmacist profile', details: error.message });
+  }
+};
+
+// Get caretaker profile (by ID)
+exports.getCaretakerProfile = async (req, res) => {
+  try {
+    const { caretakerId } = req.params;
+    const caretaker = await Caretaker.findById(caretakerId).select('-password');
+    if (!caretaker) {
+      return res.status(404).json({ error: 'Caretaker not found' });
+    }
+    res.status(200).json(await formatUserProfile(caretaker));
+  } catch (error) {
+    res.status(500).json({ error: 'Error fetching caretaker profile', details: error.message });
+  }
+};
+
+// Create or update care plan for a patient
+exports.createOrUpdateCarePlan = async (req, res) => {
+  try {
+    const { patientId } = req.params;
+    const { tasks } = req.body;
+
+    const patient = await getPatientById(patientId);
+    const carePlan = await createOrUpdateCarePlan(patient._id, tasks);
+
+    res.status(200).json({
+      message: 'Care plan created or updated successfully',
+      carePlan
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Error creating or updating care plan', details: error.message });
+  }
+};
+
+// Get care plan for a patient
+exports.getCarePlan = async (req, res) => {
+  try {
+    const { patientId } = req.params;
+    const carePlan = await CarePlan.findOne({ patient: patientId });
+
+    if (!carePlan) {
+      return res.status(404).json({ error: 'Care plan not found' });
+    }
+
+    res.status(200).json(carePlan);
+  } catch (error) {
+    res.status(500).json({ error: 'Error fetching care plan', details: error.message });
+  }
+};
+
+/*
 exports.getPatientOverview = async (req, res) => {
   try {
     const { patientId } = req.params;
@@ -80,35 +132,6 @@ exports.getPatientOverview = async (req, res) => {
   }
 };
 
-/**
- * @swagger
- * /api/v1/admin/support-ticket:
- *   post:
- *     summary: Create a support ticket
- *     tags: [Admin]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - subject
- *               - description
- *             properties:
- *               subject:
- *                 type: string
- *               description:
- *                 type: string
- *               status:
- *                 type: string
- *                 default: open
- *     responses:
- *       201:
- *         description: Support ticket created successfully
- *       500:
- *         description: Error creating support ticket
- */
 exports.createSupportTicket = async (req, res) => {
   try {
     const { subject, description, status } = req.body;
@@ -127,37 +150,6 @@ exports.createSupportTicket = async (req, res) => {
   }
 };
 
-/**
- * @swagger
- * /api/v1/admin/support-tickets:
- *   get:
- *     summary: Fetch all support tickets
- *     tags: [Admin]
- *     parameters:
- *       - in: query
- *         name: status
- *         required: false
- *         schema:
- *           type: string
- *         description: Filter tickets by status (e.g., open, closed)
- *       - in: query
- *         name: userId
- *         required: false
- *         schema:
- *           type: string
- *         description: Filter tickets by user ID
- *     responses:
- *       200:
- *         description: List of support tickets
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/SupportTicket'
- *       500:
- *         description: Error fetching support tickets
- */
 exports.getSupportTickets = async (req, res) => {
   try {
     const { status, userId } = req.query;
@@ -173,49 +165,6 @@ exports.getSupportTickets = async (req, res) => {
   }
 };
 
-/**
- * @swagger
- * /api/v1/admin/support-ticket/{ticketId}:
- *   put:
- *     summary: Update a support ticket
- *     tags: [Admin]
- *     parameters:
- *       - in: path
- *         name: ticketId
- *         required: true
- *         schema:
- *           type: string
- *         description: ID of the support ticket to be updated
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               status:
- *                 type: string
- *                 description: New status of the support ticket (e.g., open, closed)
- *               adminResponse:
- *                 type: string
- *                 description: Response or comments from the admin
- *     responses:
- *       200:
- *         description: Support ticket updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 ticket:
- *                   $ref: '#/components/schemas/SupportTicket'
- *       404:
- *         description: Support ticket not found
- *       500:
- *         description: Error updating support ticket
- */
 exports.updateSupportTicket = async (req, res) => {
   try {
     const { ticketId } = req.params;
@@ -237,53 +186,6 @@ exports.updateSupportTicket = async (req, res) => {
   }
 };
 
-/**
- * @swagger
- * /api/v1/admin/tasks:
- *   post:
- *     summary: Create a new task
- *     tags: [Admin]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - title
- *               - description
- *               - patientId
- *               - dueDate
- *               - assignedTo
- *             properties:
- *               title:
- *                 type: string
- *               description:
- *                 type: string
- *               patientId:
- *                 type: string
- *                 description: ID of the patient to whom the task is assigned
- *               dueDate:
- *                 type: string
- *                 format: date
- *               assignedTo:
- *                 type: string
- *                 description: ID of the user (caretaker or nurse) assigned to the task
- *     responses:
- *       201:
- *         description: Task created successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 task:
- *                   $ref: '#/components/schemas/Task'
- *       500:
- *         description: Error creating task
- */
 exports.createTask = async (req, res) => {
   try {
     const { title, description, patientId, dueDate, assignedTo } = req.body;
@@ -297,52 +199,6 @@ exports.createTask = async (req, res) => {
   }
 };
 
-/**
- * @swagger
- * /api/v1/admin/tasks/{taskId}:
- *   put:
- *     summary: Update a task
- *     tags: [Admin]
- *     parameters:
- *       - in: path
- *         name: taskId
- *         required: true
- *         schema:
- *           type: string
- *         description: ID of the task to update
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               title:
- *                 type: string
- *               description:
- *                 type: string
- *               dueDate:
- *                 type: string
- *                 format: date
- *               assignedTo:
- *                 type: string
- *     responses:
- *       200:
- *         description: Task updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 task:
- *                   $ref: '#/components/schemas/Task'
- *       404:
- *         description: Task not found
- *       500:
- *         description: Error updating task
- */
 exports.updateTask = async (req, res) => {
   try {
     const { taskId } = req.params;
@@ -360,34 +216,6 @@ exports.updateTask = async (req, res) => {
   }
 };
 
-/**
- * @swagger
- * /api/v1/admin/tasks/{taskId}:
- *   delete:
- *     summary: Delete a task
- *     tags: [Admin]
- *     parameters:
- *       - in: path
- *         name: taskId
- *         required: true
- *         schema:
- *           type: string
- *         description: ID of the task to delete
- *     responses:
- *       200:
- *         description: Task deleted successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *       404:
- *         description: Task not found
- *       500:
- *         description: Error deleting task
- */
 exports.deleteTask = async (req, res) => {
   try {
     const { taskId } = req.params;
@@ -402,4 +230,4 @@ exports.deleteTask = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: 'Error deleting task', details: error.message });
   }
-};
+};*/

@@ -1,0 +1,62 @@
+/api/v1/pharmacist/care-plan/{patientId}:
+  post:
+    summary: Create or update a care plan for a patient
+    tags:
+      - Care Plans
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: patientId
+        in: path
+        required: true
+        description: The ID of the patient
+        schema:
+          type: string
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              required:
+                - description
+                - dueDate
+                - priority
+              properties:
+                description:
+                  type: string
+                  example: Administer medication
+                dueDate:
+                  type: string
+                  format: date
+                  example: 2024-12-05
+                priority:
+                  type: string
+                  enum: [low, medium, high]
+                  example: high
+    responses:
+      '200':
+        description: Care plan created/updated successfully
+      '400':
+        description: Error creating/updating care plan
+
+  get:
+    summary: Get care plan for a patient
+    security:
+      - bearerAuth: []
+    parameters:
+      - name: patientId
+        in: path
+        required: true
+        description: The ID of the patient
+        schema:
+          type: string
+    responses:
+      '200':
+        description: Care plan fetched successfully
+      '400':
+        description: Error fetching care plan
+      '404':
+        description: Care plan not found

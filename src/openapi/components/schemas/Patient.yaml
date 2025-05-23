@@ -1,0 +1,44 @@
+type: object
+properties:
+  _id:
+    type: string
+    example: "64ff12a4e23f1b001d1fabc3"
+  medications:
+    type: array
+    items:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "Paracetamol"
+        dosage:
+          type: string
+          example: "500mg"
+        frequency:
+          type: string
+          example: "Twice daily"
+  labResults:
+    type: array
+    items:
+      type: object
+      properties:
+        testName:
+          type: string
+          example: "Complete Blood Count"
+        result:
+          type: string
+          example: "Normal"
+        date:
+          type: string
+          format: date
+          example: "2024-05-12"
+  allergies:
+    type: array
+    items:
+      type: string
+      example: "Penicillin"
+  healthConditions:
+    type: array
+    items:
+      type: string
+      example: "Hypertension"

@@ -1,0 +1,22 @@
+post:
+  summary: Send OTP for email verification
+  tags:
+    - Auth
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - email
+          properties:
+            email:
+              type: string
+  responses:
+    '200':
+      description: OTP sent to your email address.
+    '400':
+      description: Bad request. Email is required.
+    '500':
+      description: Internal server error. Error processing the request.

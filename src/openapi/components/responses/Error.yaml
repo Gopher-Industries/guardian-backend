@@ -1,0 +1,18 @@
+description: Error response
+content:
+  application/json:
+    schema:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          example: "BadRequest"
+        message:
+          type: string
+          example: "Invalid input. Please check the submitted data."
+        statusCode:
+          type: integer
+          example: 400

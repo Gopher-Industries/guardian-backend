@@ -1,0 +1,18 @@
+get:
+  summary: Fetch laboratory test records of a patient assigned to a nurse
+  tags:
+    - Nurse
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: patientId
+      in: path
+      required: true
+      description: The ID of the patient.
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Laboratory test record fetched
+    '400':
+      description: Error fetching laboratory test record

@@ -1,0 +1,76 @@
+MedicationRecord:
+  type: object
+  properties:
+    _id:
+      type: string
+    patient:
+      type: string
+      description: ID of the patient
+    allergies:
+      type: array
+      items:
+        type: string
+    records:
+      type: array
+      items:
+        type: object
+        required:
+          - medicationName
+          - dosage
+          - frequency
+          - route
+          - indication
+        properties:
+          medicationName:
+            type: string
+          dosage:
+            type: string
+          frequency:
+            type: string
+          route:
+            type: string
+          indication:
+            type: string
+          startDate:
+            type: string
+            format: date
+          endDate:
+            type: string
+            format: date          
+          notes:
+            type: string
+    reviewerSignature:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        signedAt:
+          type: string
+          format: date-time
+    revisionHistory:
+      type: array
+      items:
+        type: object
+        properties:
+          updatedBy:
+            type: object
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+              role:
+                type: string
+          updatedAt:
+            type: string
+            format: date-time
+          changes:
+            type: string
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time

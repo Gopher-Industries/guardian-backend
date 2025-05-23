@@ -13,6 +13,23 @@ const loginSchema = Joi.object({
   password: Joi.string().min(6).required(),
 });
 
+// Medication record validation
+const medicationRecordSchema = Joi.object({
+  medicationRecord: Joi.object({
+    allergies: Joi.string().required(),
+    drugName: Joi.string().required(),
+    dose: Joi.number().required(),
+    frequency: Joi.string().required(),
+    duration: Joi.string().required(),
+    indication: Joi.string().required()
+  }).required()
+});
+
+// Lab test record validation
+const labTestRecordSchema = Joi.object({
+  labTestRecord: Joi.object().required()
+});
+
 const validationMiddleware = (schema) => {
   return (req, res, next) => {
     const { error } = schema.validate(req.body);
@@ -27,5 +44,7 @@ const validationMiddleware = (schema) => {
 module.exports = {
   registerSchema,
   loginSchema,
+  medicationRecordSchema,
+  labTestRecordSchema,
   validationMiddleware,
 };

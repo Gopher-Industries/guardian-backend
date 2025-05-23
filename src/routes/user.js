@@ -5,6 +5,9 @@ const verifyToken = require('../middleware/verifyToken');
 const checkPasswordExpiry = require('../middleware/checkPasswordExpiry');
 const { registerSchema, loginSchema, validationMiddleware } = require('../middleware/validationMiddleware');
 
+// User's own data retrieval
+router.get('/profile', verifyToken, userController.getUserProfile);
+
 // User Registration and Login Routes
 router.post('/register', validationMiddleware(registerSchema), userController.registerUser);
 router.post('/login', userController.login);

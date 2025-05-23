@@ -1,0 +1,171 @@
+openapi: 3.0.0
+info:
+  title: Aged Care Management API
+  version: 1.0.0
+  description: API documentation for managing users, healthcare professionals, patients, tasks, and medical records in a residential aged care setting.
+
+servers:
+  - url: /api/v1
+
+paths:
+  # Patient Routes
+  /patients/{patientId}/medications:
+    $ref: './paths/patient/medications.yaml'
+  /patients/{patientId}/medications/post:
+    $ref: './paths/patient/medication.yaml'
+  /patients/{patientId}/incidents:
+    $ref: './paths/patient/incidents.yaml'
+  /patients/{patientId}/incidents/post:
+    $ref: './paths/patient/incident.yaml'
+
+  # Pharmacist Routes
+  /pharmacist/register:
+    $ref: './paths/pharmacist/register.yaml'
+  /pharmacist/login:
+    $ref: './paths/pharmacist/login.yaml'
+  /pharmacist/patients:
+    $ref: './paths/pharmacist/patients.yaml'
+  /pharmacist/caretakers/{patientId}:
+    $ref: './paths/pharmacist/caretakers.yaml'
+  /pharmacist/profile:
+    $ref: './paths/pharmacist/profile.yaml'
+  /pharmacist/tasks:
+    $ref: './paths/pharmacist/tasks.yaml'
+  /pharmacist/tasks/{taskId}:
+    $ref: './paths/pharmacist/tasks-id.yaml'
+  /pharmacist/tasks/{taskId}/approve:
+    $ref: './paths/pharmacist/approve-task.yaml'
+  /pharmacist/patient/{patientId}:
+    $ref: './paths/pharmacist/patient-id.yaml'
+  /pharmacist/caretaker/{caretakerId}:
+    $ref: './paths/pharmacist/caretaker-id.yaml'
+  /pharmacist/patient/{patientId}/health-record:
+    $ref: './paths/pharmacist/health-record-post.yaml'
+  /pharmacist/patient/{patientId}/health-records:
+    $ref: './paths/pharmacist/healthRecords.yaml'
+  /pharmacist/patients/{patientId}/health-records:
+    $ref: './paths/pharmacist/healthRecords-assigned.yaml'
+  /pharmacist/patients/{patientId}/lab-records:
+    $ref: './paths/pharmacist/labRecords.yaml'
+  /pharmacist/patients/{patientId}/medicaiton-records:
+    $ref: './paths/pharmacist/medicationRecords.yaml'
+  /pharmacist/vital-signs/{patientId}/approve:
+    $ref: './paths/pharmacist/vital-approve.yaml'
+  /pharmacist/patient/{patientId}/report:
+    $ref: './paths/pharmacist/patient-report.yaml'
+  /pharmacist/chat/{caretakerId}:
+    $ref: './paths/pharmacist/chat.yaml'
+  /pharmacist/chat/{caretakerId}/messages:
+    $ref: './paths/pharmacist/chat-messages.yaml'
+  /pharmacist/caretaker/{caretakerId}/profile:
+    $ref: './paths/pharmacist/caretaker-profile.yaml'
+  /pharmacist/care-plan/{patientId}:
+    $ref: './paths/pharmacist/carePlan.yaml'
+  /pharmacist/reports:
+    $ref: './paths/pharmacist/reports.yaml'
+
+  # Nurse Routes
+  /nurse/register:
+    $ref: './paths/nurse/register.yaml'
+  /nurse/login:
+    $ref: './paths/nurse/login.yaml'
+  /nurse/patients:
+    $ref: './paths/nurse/patients.yaml'
+  /nurse/caretakers/{patientId}:
+    $ref: './paths/nurse/caretakers.yaml'
+  /nurse/profile:
+    $ref: './paths/nurse/profile.yaml'
+  /nurse/tasks:
+    $ref: './paths/nurse/tasks.yaml'
+  /nurse/tasks/{taskId}:
+    $ref: './paths/nurse/tasks-id.yaml'
+  /nurse/tasks/{taskId}/approve:
+    $ref: './paths/nurse/approve-task.yaml'
+  /nurse/patient/{patientId}:
+    $ref: './paths/nurse/patient-id.yaml'
+  /nurse/caretaker/{caretakerId}:
+    $ref: './paths/nurse/caretaker-id.yaml'
+  /nurse/patient/{patientId}/health-record:
+    $ref: './paths/nurse/health-record-post.yaml'
+  /nurse/patient/{patientId}/health-records:
+    $ref: './paths/nurse/healthRecords.yaml'
+  /nurse/patients/{patientId}/health-records:
+    $ref: './paths/nurse/healthRecords-assigned.yaml'
+  /nurse/patients/{patientId}/lab-records:
+    $ref: './paths/nurse/labRecords.yaml'
+  /nurse/patients/{patientId}/medicaiton-records:
+    $ref: './paths/nurse/medicationRecords.yaml'
+  /nurse/vital-signs/{patientId}/approve:
+    $ref: './paths/nurse/vital-approve.yaml'
+  /nurse/patient/{patientId}/report:
+    $ref: './paths/nurse/patient-report.yaml'
+  /nurse/chat/{caretakerId}:
+    $ref: './paths/nurse/chat.yaml'
+  /nurse/chat/{caretakerId}/messages:
+    $ref: './paths/nurse/chat-messages.yaml'
+  /nurse/caretaker/{caretakerId}/profile:
+    $ref: './paths/nurse/caretaker-profile.yaml'
+  /nurse/caretaker/{caretakerId}/feedback:
+    $ref: './paths/nurse/caretaker-feedback.yaml'
+  /nurse/care-plan/{patientId}:
+    $ref: './paths/nurse/carePlan.yaml'
+  /nurse/reports:
+    $ref: './paths/nurse/reports.yaml'
+
+  # Auth Routes
+  /auth/register:
+    $ref: './paths/auth/register.yaml'
+  /auth/login:
+    $ref: './paths/auth/login.yaml'
+  /auth/send-pin:
+    $ref: './paths/auth/send-pin.yaml'
+  /auth/verify-pin:
+    $ref: './paths/auth/verify-pin.yaml'
+  /auth/change-password:
+    $ref: './paths/auth/change-password.yaml'
+  /auth/reset-password-request:
+    $ref: './paths/auth/reset-password-request.yaml'
+  /auth/reset-password:
+    $ref: './paths/auth/reset-password.yaml'
+
+  # User Management
+  /users:
+    $ref: './paths/users.yaml'
+
+components:
+  schemas:
+    Pharmacist:
+      $ref: './components/schemas/Pharmacist.yaml'
+    Nurse:
+      $ref: './components/schemas/Nurse.yaml'
+    Patient:
+      $ref: './components/schemas/Patient.yaml'
+    Task:
+      $ref: './components/schemas/Task.yaml'
+    IncidentReport:
+      $ref: './components/schemas/IncidentReport.yaml'
+    NurseObservation:
+      $ref: './components/schemas/NurseObservation.yaml'
+    LabTestRecord:
+      $ref: './components/schemas/LabTestRecord.yaml'
+    MedicationRecord:
+      $ref: './components/schemas/MedicationRecord.yaml'
+    GeneralPractitioner:
+      $ref: './components/schemas/GeneralPractitioner.yaml'
+    CommunityPharmacy:
+      $ref: './components/schemas/CommunityPharmacy.yaml'
+    User:
+      $ref: './components/schemas/User.yaml'
+
+  responses:
+    Error:
+      $ref: './components/responses/Error.yaml'
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []

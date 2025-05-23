@@ -7,11 +7,11 @@ const TaskSchema = new mongoose.Schema({
   status: { type: String, enum: ['pending', 'in progress', 'completed'], default: 'pending' },
   patient: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient', required: true },
   caretaker: { type: mongoose.Schema.Types.ObjectId, ref: 'Caretaker', required: true },
-  nurse_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Assigned nurse
-  pharmacist_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Assigned pharmacist
-  created_at: { type: Date, default: Date.now },
-  report: { type: String }, // Task report provided by caretaker
-  updated_at: { type: Date, default: Date.now }
+  nurse: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Assigned nurse
+  pharmacist: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Assigned pharmacist
+  report: { type: String } // Task report provided by caretaker
+}, {
+  timestamps: true, // Automatically handles createdAt and updatedAt
 });
 
 TaskSchema.pre('save', function (next) {

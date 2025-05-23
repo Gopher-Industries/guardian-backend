@@ -1,0 +1,19 @@
+/api/v1/pharmasit/caretakers/{patientId}:
+  get:
+    summary: Get caretakers assigned to a patient
+    tags:
+      - Pharmacist
+    parameters:
+      - name: patientId
+        in: path
+        required: true
+        description: The unique identifier of the cared for patient.
+        schema:
+          type: string
+    security:
+      - bearerAuth: []
+    responses:
+      '200':
+        description: List of caretakers assigned to a patient
+      '400':
+        description: Error fetching caretakers

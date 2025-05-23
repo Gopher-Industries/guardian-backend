@@ -2,58 +2,87 @@ const express = require('express');
 const router = express.Router();
 const pharmacistController = require('../controllers/pharmacistController');
 const verifyToken = require('../middleware/verifyToken');
-const { registerSchema, loginSchema, validationMiddleware } = require('../middleware/validationMiddleware');
+const verifyAssignedPatientAccess = require('../middleware/verifyAssignedPatientAccess');
+const {
+  registerSchema,
+  loginSchema,
+  medicationRecordSchema,
+  labTestRecordSchema,
+  validationMiddleware
+} = require('../middleware/validationMiddleware');
 
-// Pharmacist Registration and Login Routes
+// Auth
 router.post('/register', validationMiddleware(registerSchema), pharmacistController.registerPharmacist);
 router.post('/login', validationMiddleware(loginSchema), pharmacistController.loginPharmacist);
 
-// Pharmacist Profile Routes
-router.get('/profile', verifyToken, pharmacistController.getPharmacistProfile);
+// Profile
+router.get('/profile', verifyToken, pharmacistController.getProfile);
 router.put('/profile', verifyToken, pharmacistController.updateProfile);
 
-// Patient and Caretaker Routes
+// Patients & Caretakers
 router.get('/patients', verifyToken, pharmacistController.getAssignedPatients);
 router.get('/patient/:patientId', verifyToken, pharmacistController.getPatientDetails);
 router.get('/caretakers/:patientId', verifyToken, pharmacistController.getAssignedCaretakersForPatient);
-router.get('/caretaker/:caretakerId', verifyToken, pharmacistController.getCaretakerDetails);
 router.get('/caretaker/:caretakerId/profile', verifyToken, pharmacistController.getCaretakerProfile);
 
-// Task Routes
+// Nurse Observations
+router.get(
+  '/patient/:patientId/nurse-observations',
+  verifyToken,
+  verifyAssignedPatientAccess,
+  pharmacistController.getObservations
+);
+
+// Lab Records
+router.get(
+  '/patient/:patientId/lab-records',
+  verifyToken,
+  verifyAssignedPatientAccess,
+  pharmacistController.getLabTestRecords
+);
+router.post(
+  '/patient/:patientId/lab-record',
+  verifyToken,
+  verifyAssignedPatientAccess,
+  validationMiddleware(labTestRecordSchema),
+  pharmacistController.updateLabTestRecords
+);
+
+// Medication Records
+router.get(
+  '/patient/:patientId/medication-records',
+  verifyToken,
+  verifyAssignedPatientAccess,
+  pharmacistController.getMedicationRecords
+);
+router.post(
+  '/patient/:patientId/medication-record',
+  verifyToken,
+  verifyAssignedPatientAccess,
+  validationMiddleware(medicationRecordSchema),
+  pharmacistController.updateMedicationRecords
+);
+
+// Tasks
 router.post('/tasks', verifyToken, pharmacistController.createTask);
 router.put('/tasks/:taskId', verifyToken, pharmacistController.updateTask);
 router.delete('/tasks/:taskId', verifyToken, pharmacistController.deleteTask);
-router.post('/tasks/:taskId/approve', verifyToken, pharmacistController.approveTaskReport);
 
-// Care Plan Routes
-router.post('/care-plan/:patientId', verifyToken, pharmacistController.createOrUpdateCarePlan); // Create or Update Care Plan
-router.get('/care-plan/:patientId', verifyToken, pharmacistController.getCarePlan); // Get Care Plan for a Patient
+// Care Plan
+router.post('/care-plan/:patientId', verifyToken, pharmacistController.createOrUpdateCarePlan);
+router.get('/care-plan/:patientId', verifyToken, pharmacistController.getCarePlan);
 
-// Health Records Routes
-router.get('/patient/:patientId/health-records', verifyToken, pharmacistController.getHealthRecords);
-router.post('/patient/:patientId/health-record', verifyToken, pharmacistController.updateHealthRecords);
-router.post('/vital-signs/:patientId/approve', verifyToken, pharmacistController.approveVitalSigns);
-
-// Laboratory Test Records Routes
-router.get('/patient/:patientId/lab-records', verifyToken, pharmacistController.getLabTestRecords);
-router.post('/patient/:patientId/lab-record', verifyToken, pharmacistController.updateLabTestRecords);
-
-// Medication Records Routes
-router.get('/patient/:patientId/medication-records', verifyToken, pharmacistController.getMedicationRecords);
-router.post('/patient/:patientId/medication-record', verifyToken, pharmacistController.updateMedicationRecords);
-
-// Reports and Daily Records Routes
+// Reports
 router.get('/reports', verifyToken, pharmacistController.getDailyReports);
-router.get('/patient/:patientId/report', verifyToken, pharmacistController.getPatientReport);
+router.get(
+  '/patient/:patientId/report',
+  verifyToken,
+  verifyAssignedPatientAccess,
+  pharmacistController.getPatientReport
+);
 
-// Pharmacist and Caretaker Communication Routes (Chat)
-router.post('/chat/:caretakerId', verifyToken, pharmacistController.sendMessageToCaretaker);
-router.get('/chat/:caretakerId/messages', verifyToken, pharmacistController.getChatMessages);
-
-// Feedback for Caretaker
-router.post('/caretaker/:caretakerId/feedback', verifyToken, pharmacistController.submitFeedbackForCaretaker);
-
-// Fetch Assigned Paients API
-router.get('/patients/assigned', verifyToken, pharmacistController.getAssignedPatients);
+// Messaging
+router.post('/message/:caretakerId', verifyToken, pharmacistController.sendMessage);
+router.get('/message/:caretakerId/messages', verifyToken, pharmacistController.getMessages);
 
 module.exports = router;

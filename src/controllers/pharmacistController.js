@@ -3,7 +3,7 @@ const Patient = require('../models/Patient');
 const Caretaker = require('../models/Caretaker');
 const Task = require('../models/Task');
 const Message = require('../models/Message');
-const HealthRecord = require('../models/HealthRecord');
+const NurseObservation = require('../models/NurseObservation');
 const LabTestRecord = require('../models/LabTestRecord');
 const MedicationRecord = require('../models/MedicationRecord');
 const bcrypt = require('bcryptjs');
@@ -55,24 +55,26 @@ exports.registerPharmacist = async (req, res) => {
   }
 };
 
-exports.loginPharmacist =async (req, res) => {
+exports.loginPharmacist = async (req, res) => {
   try {
     const { email, password } = req.body;
-    const pharmacist = await Pharmacist.findOne({ email });
+
+    // Must include password for validation
+    const pharmacist = await Pharmacist.findOne({ email }).select('+password');
 
     if (!pharmacist) {
       return res.status(400).json({ error: 'Pharmacist not found' });
     }
 
-    if (pharmacist.failedLoginAttempts !== null && pharmacist.failedLoginAttempts !== undefined && pharmacist.failedLoginAttempts > 4) {
+    if (pharmacist.failedLoginAttempts !== null && pharmacist.failedLoginAttempts > 4) {
       return res.status(400).json({ error: 'Your account has been flagged and locked. Please reset your password' });
     }
 
     const isValidPassword = await bcrypt.compare(password, pharmacist.password);
     if (!isValidPassword) {
-      pharmacist.failedLoginAttempts = (pharmacist.failedLoginAttempts !== null && pharmacist.failedLoginAttempts !== undefined) ? pharmacist.failedLoginAttempts + 1 : 1;
+      pharmacist.failedLoginAttempts = (pharmacist.failedLoginAttempts || 0) + 1;
       await pharmacist.save();
-      return res.status(400).json({ error: 'Incorrect email and password combination'});
+      return res.status(400).json({ error: 'Incorrect email and password combination' });
     }
 
     pharmacist.failedLoginAttempts = 0;
@@ -82,19 +84,28 @@ exports.loginPharmacist =async (req, res) => {
       return res.status(400).json({ error: 'Pharmacist account is not approved by admin' });
     }
 
-    const token = jwt.sign({ _id: pharmacist._id, email: pharmacist.email }, process.env.JWT_SECRET, { expiresIn: '1h' });
-    res.status(200).json({ message: 'Login successful', token, pharmacist });
+    // Exclude password from response
+    const { _id, name, email: pharmacistEmail, ahpra, role } = pharmacist;
+    const token = jwt.sign({ _id, email: pharmacistEmail }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+    res.status(200).json({
+      message: 'Login successful',
+      token,
+      pharmacist: { _id, name, email: pharmacistEmail, ahpra, role }
+    });
   } catch (error) {
     res.status(500).json({ error: 'Error during login', details: error.message });
   }
 };
 
+
 exports.getAssignedPatients = async (req, res) => {
   try {
-    const pharmaicst = await Pharmacist.findById(req.user._id).populate('assignedPatients');
+    const pharmacist = await Pharmacist.findById(req.user._id).populate('assignedPatients');
     if (!pharmacist) {
       return res.status(404).json({ error: 'Pharmacist not found' });
     }
+
     res.status(200).json(pharmacist.assignedPatients);
   } catch (error) {
     res.status(500).json({ error: 'Error fetching patients', details: error.message });
@@ -138,7 +149,9 @@ exports.createTask = async (req, res) => {
       dueDate,
       priority,
       caretaker: caretakerId,
-      patient: patientId
+      patient: patientId,
+      nurse: req.user._id,
+      pharmacist: req.user._id
     });
 
     await task.save();
@@ -168,16 +181,6 @@ exports.deleteTask = async (req, res) => {
   }
 }
 
-exports.getPharmacistProfile = async (req, res) => {
-  try {
-    const pharmacist = await Pharmacist.findById(req.user._id);
-    if (!pharmacist) return res.status(404).json({ message: 'Pharmacist not found' });
-    res.json(pharmacist);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-}
-
 exports.getPatientDetails = async (req, res) => {
   try {
     const patient = await Patient.findById(req.params.patientId);
@@ -188,37 +191,15 @@ exports.getPatientDetails = async (req, res) => {
   }
 }
 
-exports.getCaretakerDetails = async (req, res) => {
+exports.getObservations = async (req, res) => {
   try {
-    const caretaker = await Caretaker.findById(req.params.caretakerId);
-    if (!caretaker) return res.status(404).json({ message: 'Caretaker not found' });
-    res.json(caretaker);
+    const { patientId } = req.params;
+    const observations = await NurseObservation.find({ patient: patientId });
+    res.status(200).json(observations);
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: 'Error fetching observations', details: error.message });
   }
-}
-
-exports.getHealthRecords = async (req, res) => {
-  try {
-    const healthRecords = await HealthRecord.find({ patientId: req.params.patientId });
-    res.json(healthRecords);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-}
-
-exports.updateHealthRecords = async (req, res) => {
-  try {
-    const healthRecord = await HealthRecord.findOneAndUpdate(
-      { patientId: req.params.patientId },
-      { $push: { records: req.body.vitals } },
-      { new: true }
-    );
-    res.json(healthRecord);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-}
+};
 
 exports.getLabTestRecords = async (req, res) => {
   try {
@@ -231,21 +212,27 @@ exports.getLabTestRecords = async (req, res) => {
 
 exports.updateLabTestRecords = async (req, res) => {
   try {
-    const labTestRecord = await LabTestRecord.findOneAndUpdate(
-      { patientId: req.params.patientId },
-      { $push: { records: req.body.vitals } },
-      { new: true }
+    const { labTestRecord } = req.body;
+    if (!labTestRecord || typeof labTestRecord !== 'object') {
+      return res.status(400).json({ error: 'Invalid or missing labTestRecord object.' });
+    }
+
+    const record = await LabTestRecord.findOneAndUpdate(
+      { patient: req.params.patientId },
+      { $push: { records: labTestRecord } },
+      { upsert: true, new: true }
     );
-    res.json(labTestRecord);
+
+    res.status(200).json(record);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
-}
+};
 
 exports.getMedicationRecords = async (req, res) => {
   try {
     const medicationRecords = await MedicationRecord.find({ patientId: req.params.patientId });
-    res.json(medicationRecords);
+    res.status(200).json(medicationRecords);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -253,16 +240,27 @@ exports.getMedicationRecords = async (req, res) => {
 
 exports.updateMedicationRecords = async (req, res) => {
   try {
-    const medicationRecord = await MedicationRecord.findOneAndUpdate(
-      { patientId: req.params.patientId },
-      { $push: { records: req.body.vitals } },
-      { new: true }
+    const { medicationRecord } = req.body;
+    if (!medicationRecord || !medicationRecord.drugName || !medicationRecord.dose || !medicationRecord.frequency || !medicationRecord.duration || !medicationRecord.indication) {
+      return res.status(400).json({ error: 'Missing required medication fields.' });
+    }
+
+    medicationRecord.pharmacist = {
+      id: req.user._id,
+      signedAt: new Date()
+    };
+
+    const record = await MedicationRecord.findOneAndUpdate(
+      { patient: req.params.patientId },
+      { $push: { records: medicationRecord } },
+      { upsert: true, new: true }
     );
-    res.json(medicationRecord);
+
+    res.status(200).json(record);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
-}
+};
 
 exports.getDailyReports = async (req, res) => {
   try {
@@ -272,56 +270,6 @@ exports.getDailyReports = async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 }
-
-exports.approveTaskReport = async (req, res) => {
-  try {
-    const { taskId } = req.params;
-    const task = await Task.findById(taskId);
-
-    if (!task) {
-      return res.status(404).json({ error: 'Task not found' });
-    }
-
-    task.status = 'approved';
-    await task.save();
-    res.status(200).json({ message: 'Task approved successfully', task });
-  } catch (error) {
-    res.status(500).json({ error: 'Error approving task', details: error.message });
-  }
-};
-
-exports.getPatientHealthRecords = async (req, res) => {
-  try {
-    const { patientId } = req.params;
-
-    const healthRecords = await HealthRecord.find({ patient: patientId });
-    res.status(200).json(healthRecords);
-  } catch (error) {
-    res.status(500).json({ error: 'Error fetching health records', details: error.message });
-  }
-};
-
-exports.getPatientLabTestRecords = async (req, res) => {
-  try {
-    const { patientId } = req.params;
-
-    const labTestRecords = await LabTestRecord.find({ patient: patientId });
-    res.status(200).json(labTestRecords);
-  } catch (error) {
-    res.status(500).json({ error: 'Error fetching laboratory test records', details: error.message });
-  }
-};
-
-exports.getPatientMedicationRecords = async (req, res) => {
-  try {
-    const { patientId } = req.params;
-
-    const medicationRecord = await MedicationRecord.find({ patient: patientId });
-    res.status(200).json(medicationRecord);
-  } catch (error) {
-    res.status(500).json({ error: 'Error fetching medication records', details: error.message });
-  }
-};
 
 exports.updateProfile = async (req, res) => {
   try {
@@ -346,24 +294,6 @@ exports.updateProfile = async (req, res) => {
   }
 };
 
-exports.approveVitalSigns = async (req, res) => {
-  try {
-    const { patientId } = req.params;
-
-    const healthRecord = await HealthRecord.findOne({ patient: patientId, status: 'pending' });
-
-    if (!healthRecord) {
-      return res.status(404).json({ error: 'No pending vital signs found' });
-    }
-
-    healthRecord.status = 'approved';
-    await healthRecord.save();
-    res.status(200).json({ message: 'Vital signs approved successfully', healthRecord });
-  } catch (error) {
-    res.status(500).json({ error: 'Error approving vital signs', details: error.message });
-  }
-};
-
 exports.getPatientReport = async (req, res) => {
   try {
     const { patientId } = req.params;
@@ -373,23 +303,22 @@ exports.getPatientReport = async (req, res) => {
       return res.status(404).json({ error: 'Pharmacist not found' });
     }
 
-    const isPatientAssigned = pharmacist.assignedPatients.some(patient => patient._id.toString() === patientId);
+    const isPatientAssigned = pharmacist.assignedPatients.some(p => p._id.toString() === patientId);
     if (!isPatientAssigned) {
       return res.status(403).json({ error: 'You are not assigned to this patient' });
     }
 
-    const report = await HealthRecord.find({ patient: patientId });
-    if (!report) {
-      return res.status(404).json({ error: 'No report available for this patient' });
-    }
+    const observations = await NurseObservation.find({ patient: patientId });
+    const labs = await LabTestRecord.find({ patient: patientId });
+    const medications = await MedicationRecord.find({ patientId });
 
-    res.status(200).json(report);
+    res.status(200).json({ observations, labs, medications });
   } catch (error) {
-    res.status(500).json({ error: 'Error fetching patient report', details: error.message });
+    res.status(500).json({ error: 'Error compiling patient report', details: error.message });
   }
 };
 
-exports.sendMessageToCaretaker = async (req, res) => {
+exports.sendMessage = async (req, res) => {
   try {
     const { caretakerId } = req.params;
     const { message } = req.body;
@@ -415,7 +344,7 @@ exports.sendMessageToCaretaker = async (req, res) => {
   }
 };
 
-exports.getChatMessages = async (req, res) => {
+exports.getMessages = async (req, res) => {
   try {
     const { caretakerId } = req.params;
 
@@ -459,61 +388,6 @@ exports.getCaretakerProfile = async (req, res) => {
   }
 };
 
-exports.submitFeedbackForCaretaker = async (req, res) => {
-  try {
-    const { caretakerId } = req.params;
-    const { feedback, rating } = req.body;
-
-    const caretaker = await Caretaker.findById(caretakerId);
-    if (!caretaker) {
-      return res.status(404).json({ error: 'Caretaker not found' });
-    }
-
-    // Save feedback and rating in caretaker's profile
-    caretaker.feedback.push({ feedback, rating, pharmacistId: req.user._id });
-    await caretaker.save();
-
-    res.status(200).json({ message: 'Feedback submitted successfully' });
-  } catch (error) {
-    res.status(500).json({ error: 'Error submitting feedback', details: error.message });
-  }
-};
-
-exports.sendMessage = async (req, res) => {
-  try {
-    const { caretakerId } = req.params;
-    const { message } = req.body;
-
-    const chat = new Chat({
-      senderId: req.user._id,
-      receiverId: caretakerId,
-      message,
-      sentAt: Date.now(),
-    });
-
-    await chat.save();
-    res.status(200).json({ message: 'Message sent successfully', chat });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-}
-
-exports.getMessages = async (req, res) => {
-  try {
-    const { caretakerId } = req.params;
-    const messages = await Chat.find({
-      $or: [
-        { senderId: req.user._id, receiverId: caretakerId },
-        { senderId: caretakerId, receiverId: req.user._id },
-      ],
-    }).sort({ sentAt: 1 });
-
-    res.status(200).json(messages);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-}
-
 exports.createOrUpdateCarePlan = async (req, res) => {
   try {
     const { patientId } = req.params;
@@ -552,26 +426,5 @@ exports.getCarePlan = async (req, res) => {
     res.status(200).json(carePlan);
   } catch (error) {
     res.status(500).json({ error: 'Error fetching care plan', details: error.message });
-  }
-};
-
-exports.getAssignedPatients = async (req, res) => {
-  try {
-    const { role, _id } = req.user;
-
-    const query = {};
-    if (role === 'pharmacist') {
-      query.assignedPharmacist =_id;
-    } else if (role === 'caretaker') {
-      query.assignedCaretaker = _id;
-    } else {
-      return res.status(403).json({ message: 'Unauthorized role' });
-    }
-
-    const patients = await Patient.find(query);
-
-    res.status(200).json(patients);
-  } catch (error) {
-    res.status(500).json({ message: 'Error fetching assigned patients', details: error.message });
   }
 };

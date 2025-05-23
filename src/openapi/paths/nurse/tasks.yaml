@@ -1,0 +1,101 @@
+post:
+  summary: Create a task for a caretaker
+  tags:
+    - Tasks
+  security:
+    - bearerAuth: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - description
+            - dueDate
+            - priority
+            - caretakerId
+            - patientId
+          properties:
+            description:
+              type: string
+            dueDate:
+              type: string
+              format: date
+            priority:
+              type: string
+              enum: [low, medium, high]
+            caretakerId:
+              type: string
+            patientId:
+              type: string
+  responses:
+    '201':
+      description: Task created successfully
+    '400':
+      description: Error creating task
+
+put:
+  summary: Update a task for a caretaker
+  tags:
+    - Tasks
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: taskId
+      in: path
+      required: true
+      description: The unique identifier of the task to be updated.
+      schema:
+        type: string
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - description
+            - dueDate
+            - priority
+            - caretakerId
+            - patientId
+          properties:
+            description:
+              type: string
+            dueDate:
+              type: string
+              format: date
+            priority:
+              type: string
+              enum: [low, medium, high]
+            caretakerId:
+              type: string
+            patientId:
+              type: string
+  responses:
+    '200':
+      description: Task updated successfully
+    '400':
+      description: Error updating task
+
+delete:
+  summary: Delete a task for a caretaker
+  tags:
+    - Tasks
+  security:
+    - bearerAuth: []
+  parameters:
+    - name: taskId
+      in: path
+      required: true
+      description: The unique identifier of the task to be deleted.
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Task deleted successfully
+    '400':
+      description: Invalid task ID or error deleting task
+    '404':
+      description: Task not found

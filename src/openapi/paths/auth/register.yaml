@@ -1,0 +1,29 @@
+post:
+  summary: Register a new user
+  tags:
+    - Auth
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - fullname
+            - email
+            - password
+            - role
+          properties:
+            fullname:
+              type: string
+            email:
+              type: string
+            password:
+              type: string
+            role:
+              type: string
+  responses:
+    '201':
+      description: User registered successfully
+    '400':
+      description: Registration unsuccessful. Could be due to missing fields or invalid email/password.

@@ -1,0 +1,36 @@
+paths:
+  /api/v1/nurse/caretaker/{caretakerId}/feedback:
+    post:
+      summary: Provide feedback and rating for caretaker
+      tags:
+        - Nurse
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: caretakerId
+          in: path
+          required: true
+          description: The ID of the caretaker.
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - feedback
+                - rating
+              properties:
+                feedback:
+                  type: string
+                rating:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+      responses:
+        '200':
+          description: Feedback submitted successfully
+        '400':
+          description: Error submitting feedback

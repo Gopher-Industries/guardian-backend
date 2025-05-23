@@ -1,0 +1,24 @@
+get:
+  summary: Get incident reports for a patient
+  tags:
+    - IncidentReport
+  security:
+    - bearerAuth: []
+  parameters:
+    - in: path
+      name: patientId
+      required: true
+      schema:
+        type: string
+      description: ID of the patient
+  responses:
+    '200':
+      description: List of incident reports
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/IncidentReport'
+    '500':
+      description: Error retrieving incidents

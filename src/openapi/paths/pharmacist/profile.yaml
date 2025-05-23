@@ -1,0 +1,38 @@
+/api/v1/pharmacist/profile:
+  get:
+    summary: Get pharmacist profile
+    tags:
+      - Pharmacist
+    security:
+      - bearerAuth: []
+    responses:
+      '200':
+        description: Pharmacist profile fetched successfully
+      '400':
+        description: Error fetching pharmacist profile
+
+  put:
+    summary: Get pharmacist profile
+    tags:
+      - Pharmacist
+    security:
+      - bearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - name
+              - password
+            properties:
+              name:
+                type: string
+              password:
+                type: string
+    responses:
+      '200':
+        description: Profile updated successfully
+      '400':
+        description: Error updating profile

@@ -1,0 +1,25 @@
+post:
+  summary: Verifies OTP sent to user email
+  tags:
+    - Auth
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - email
+            - otp
+          properties:
+            email:
+              type: string
+            otp:
+              type: string
+  responses:
+    '200':
+      description: OTP verified successfully.
+    '400':
+      description: Bad request. Email and OTP are required or invalid/expired OTP.
+    '500':
+      description: Internal server error. Error processing the request.
