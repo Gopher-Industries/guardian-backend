@@ -1,5 +1,7 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const RevisionSchema = require('./embedded/RevisionSchema');
+const ReviewerSignatureSchema = require('./embedded/ReviewerSignature');
 
 const CaretakerSchema = new mongoose.Schema({
   name: { type: String, required: true },
@@ -9,7 +11,9 @@ const CaretakerSchema = new mongoose.Schema({
   assignedPatients: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Patient' }], // Assigned patients
   role: { type: String, default: 'caretaker', immutable: true },  // Make role immutable means it can not be changed
   lastPasswordChange: { type: Date, default: Date.now },
-  failedLoginAttempts: { type: Number, default: 0 }
+  failedLoginAttempts: { type: Number, default: 0 },
+  signedBy: { type: ReviewerSignatureSchema, required: true, immutable: true },
+  revisionHistory: [RevisionSchema]
 }, {
   timestamps: true, // Automatically handles createdAt and updatedAt
 });

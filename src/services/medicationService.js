@@ -1,3 +1,4 @@
+
 const MedicationRecord = require('../models/MedicationRecord');
 
 async function submitOrUpdateMedication(patientId, body, user) {
@@ -22,7 +23,7 @@ async function submitOrUpdateMedication(patientId, body, user) {
     medRecord = new MedicationRecord({
       patient: patientId,
       allergies,
-      records,
+      records: [],
       reviewerSignature: reviewer,
       revisionHistory: [{
         updatedBy: { id: user._id, name: user.name, role: user.role },
@@ -32,7 +33,6 @@ async function submitOrUpdateMedication(patientId, body, user) {
     });
   } else {
     medRecord.allergies = allergies;
-    medRecord.records = records;
     medRecord.reviewerSignature = reviewer;
     medRecord.revisionHistory.push({
       updatedBy: { id: user._id, name: user.name, role: user.role },
@@ -41,12 +41,25 @@ async function submitOrUpdateMedication(patientId, body, user) {
     });
   }
 
+  for (const entry of records) {
+    const signedEntry = {
+      ...entry,
+      signedBy: reviewer,
+      revisionHistory: [{
+        updatedBy: { id: user._id, name: user.name, role: user.role },
+        updatedAt: new Date(),
+        changes: 'New entry'
+      }]
+    };
+    medRecord.records.push(signedEntry);
+  }
+
   await medRecord.save();
   return medRecord;
 }
 
 async function getMedicationRecord(patientId) {
-  const record = await MedicationRecord.findOne({ patient: patientId });
+  const record = await MedicationRecord.findOne({ patient: patientId, isDeleted: false });
   if (!record) {
     throw new Error('No medication record found for this patient');
   }

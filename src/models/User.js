@@ -1,14 +1,20 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const Email = require('./embedded/EmailSchema');
+const Text = require('./embedded/TextSchema');
+const RevisionSchema = require('./embedded/RevisionSchema');
+const ReviewerSignatureSchema = require('./embedded/ReviewerSignature');
 
 const UserSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
+  name: { type: Text, required: true },
+  email: { type: Email, required: true, unique: true },
   password_hash: { type: String, required: true, select: false },
   role: { type: mongoose.Schema.Types.ObjectId, ref: 'Role' },
   patient: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient', required: false }, // links Users with Patient data, but allows non-patient users
   lastPasswordChange: { type: Date, default: Date.now },
-  failedLoginAttempts: { type: Number, default: 0 }
+  failedLoginAttempts: { type: Number, default: 0 },
+  signedBy: { type: ReviewerSignatureSchema, required: true, immutable: true },
+  revisionHistory: [RevisionSchema]
 }, {
   timestamps: true, // Automatically handles createdAt and updatedAt
 });

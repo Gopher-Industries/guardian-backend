@@ -1,12 +1,15 @@
 const mongoose = require('mongoose');
+const Number = require('./embedded/NumericSchema');
+const Text = require('./embedded/TextSchema');
 const ReviewerSignatureSchema = require('./embedded/ReviewerSignature');
+const RevisionSchema = require('./embedded/RevisionSchema');
 
 const LabTestRecordSchema = new mongoose.Schema({
   patient: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient', required: true },
   nurse: { type: mongoose.Schema.Types.ObjectId, ref: 'Nurse'},
   pharmacist: { type: mongoose.Schema.Types.ObjectId, ref: 'Pharmacist'},
   tests: {
-    oxygenSaturation: { type: Number },
+    oxygenSaturation: { type: Number, },
     potassium: { type: Number },
     sodium: { type: Number },
     calcium: { type: Number },
@@ -38,12 +41,13 @@ const LabTestRecordSchema = new mongoose.Schema({
     tsh: { type: Number },
     crp: { type: Number },
     esr: { type: Number },
-    microbialCulture: { type: String },
-    microbialSensitivity: { type:  String },
-    microbialResistance: { type:  String }
+    microbialCulture: { type: Text },
+    microbialSensitivity: { type:  Text },
+    microbialResistance: { type:  Text }
   },
-  notes: { type: String },
-  signedBy: { ReviewerSignatureSchema, immutable: true }
+  notes: { type: Text },
+  signedBy: { type: ReviewerSignatureSchema, required: true, immutable: true },
+  revisionHistory: [RevisionSchema]
 }, { timestamps: true });
 
 module.exports = mongoose.model('LabTestRecord', LabTestRecordSchema);

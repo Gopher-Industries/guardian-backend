@@ -1,30 +1,8 @@
-function buildReviewerSignature(user) {
-  validateReviewerRole(user.role, ['nurse', 'pharmacist']);
-
+function buildAuditSignature(user) {
   return {
     id: user._id,
     name: user.name,
-    signedAt: new Date(),
-    signedByModel: capitalize(user.role)
-  };
-}
-
-function buildNurseSignature(user) {
-  validateReviewerRole(user.role, ['nurse']);
-
-  return {
-    id: user._id,
-    name: user.name,
-    signedAt: new Date()
-  };
-}
-
-function buildPharmacistSignature(user) {
-  validateReviewerRole(user.role, ['pharmacist']);
-
-  return {
-    id: user._id,
-    name: user.name,
+    role: user.role,
     signedAt: new Date()
   };
 }
@@ -41,8 +19,6 @@ function capitalize(str) {
 }
 
 module.exports = {
-  buildReviewerSignature,
-  buildNurseSignature,
-  buildPharmacistSignature,
+  buildAuditSignature,
   validateReviewerRole
 };
