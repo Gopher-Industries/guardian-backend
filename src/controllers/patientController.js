@@ -173,7 +173,7 @@ exports.assignNurseToPatient = async (req, res) => {
 exports.getAssignedPatients = async (req, res) => {
   try {
     // Get user from the DB and populate their role
-    const user = await User.findById(req.body.userId).populate('role');
+    const user = await User.findById(req.user._id).populate('role');
     if (!user || !user.role || !user.role.name) {
       return res.status(403).json({ message: 'Invalid or missing user role' });
     }
