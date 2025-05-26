@@ -49,7 +49,7 @@ exports.addPatient = async (req, res) => {
     if (!fullname || !dateOfBirth || !gender) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
-    
+
     const newPatient = new Patient({
       fullname,
       dateOfBirth,
@@ -245,7 +245,7 @@ exports.getAssignedPatients = async (req, res) => {
  */
 exports.logEntry = async (req, res) => {
   try {
-    const nurseId = req.user.id;
+    const nurseId = req.user._id;
     const { patientId, activityType, comment, timestamp } = req.body;
 
     const newActivity = new Activity({
@@ -260,6 +260,44 @@ exports.logEntry = async (req, res) => {
     res.status(201).json({ message: 'Activity logged successfully', activity: newActivity });
   } catch (error) {
     res.status(400).json({ message: 'Error logging activity', details: error.message });
+  }
+};
+
+/**
+ * @swagger
+ * /api/v1/patients/activities:
+ *   get:
+ *     summary: Fetch activities for a patients
+ *     tags: [EntryReport]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of patient activities
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/EntryReport'
+ *       403:
+ *         description: Unauthorized role
+ *       500:
+ *         description: Error fetching patient activities
+ */
+exports.getPatientActivities = async (req, res) => {
+  try {
+    const { patientId } = req.query;
+    if (!patientId) {
+      return res.status(400).json({ message: 'Missing patientId in query' });
+    }
+
+    const activities = await EntryReport.find({ patient: patientId })
+      .populate('nurse', 'fullname');
+
+    res.status(200).json(activities);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching patient activities', details: error.message });
   }
 };
 

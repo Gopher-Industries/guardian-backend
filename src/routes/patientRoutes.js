@@ -10,7 +10,8 @@ router.post('/assign-nurse', verifyToken, verifyRole(['caretaker']), patientCont
 router.get('/assigned-patients', verifyToken, patientController.getAssignedPatients);
 router.get('/', verifyToken, patientController.getPatientDetails);
 
-router.post('/entryreport', verifyToken, patientController.logEntry);
+router.post('/entryreport', verifyToken, verifyRole(['nurse']), patientController.logEntry);
+router.get('/activities', verifyToken, patientController.getPatientActivities);
 router.delete('/entryreport/{entryId}', verifyToken, patientController.deleteEntry);
 
 module.exports = router;
