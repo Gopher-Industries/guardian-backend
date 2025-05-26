@@ -21,13 +21,15 @@ const EntryReport = require('../models/EntryReport');
  *             type: object
  *             required:
  *               - fullname
- *               - age
+ *               - dateOfBirth
  *               - gender
  *             properties:
  *               fullname:
  *                 type: string
- *               age:
- *                 type: number
+ *               dateOfBirth:
+ *                 type: String
+ *                 format: date
+ *                 example: '1980-01-01'
  *               gender:
  *                 type: string
  *               profilePhoto:
@@ -42,8 +44,12 @@ const EntryReport = require('../models/EntryReport');
 exports.addPatient = async (req, res) => {
   try {
     const { fullname, dateOfBirth, gender } = req.body;
-    const caretakerId = req.user._id; // From token
+    const caretakerId = req.user._id; // Extracted from the token middleware
 
+    if (!fullname || !dateOfBirth || !gender) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+    
     const newPatient = new Patient({
       fullname,
       dateOfBirth,
