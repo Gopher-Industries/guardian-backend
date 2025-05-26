@@ -295,7 +295,14 @@ exports.getPatientActivities = async (req, res) => {
     const activities = await EntryReport.find({ patient: patientId })
       .populate('nurse', 'fullname');
 
-    res.status(200).json(activities);
+    // Map nurse field to just the fullname string
+    const formattedActivities = activities.map(activity => {
+      const obj = activity.toObject();
+      obj.nurse = obj.nurse ? obj.nurse.fullname : null;
+      return obj;
+    });
+
+    res.status(200).json(formattedActivities);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching patient activities', details: error.message });
   }
