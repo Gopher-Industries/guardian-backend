@@ -3,7 +3,7 @@ const User = require('./User');
 
 const PatientSchema = new mongoose.Schema({
   fullname: { type: String, required: true },
-  age: { type: Number, required: true },
+  dateOfBirth: { type: Date, required: true },
   gender: { type: String, enum: ['male', 'female'], required: true },
 
   profilePhoto: { type: String }, // Filename or full URL depending on storage strategy

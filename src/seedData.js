@@ -66,7 +66,7 @@ const seedData = async () => {
     // Create patients
     const patient1 = await Patient.create({
       fullname: 'Elderly Patient One',
-      age: 78,
+      dateOfBirth: new Date('1978-01-15'),
       gender: 'male',
       caretaker: caretaker1._id,
       assignedNurses: [nurse1._id],
@@ -75,7 +75,7 @@ const seedData = async () => {
 
     const patient2 = await Patient.create({
       fullname: 'Elderly Patient Two',
-      age: 83,
+      dateOfBirth: new Date('1983-05-22'),
       gender: 'female',
       caretaker: caretaker2._id,
       assignedNurses: [nurse1._id, nurse2._id],

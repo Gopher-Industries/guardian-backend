@@ -41,19 +41,19 @@ const EntryReport = require('../models/EntryReport');
  */
 exports.addPatient = async (req, res) => {
   try {
-    const { fullname, age, gender } = req.body;
+    const { fullname, dateOfBirth, gender } = req.body;
     const caretakerId = req.user._id; // From token
 
     const newPatient = new Patient({
       fullname,
-      age,
+      dateOfBirth,
       gender,
       caretaker: caretakerId,
       profilePhoto: req.file?.filename
     });
 
     await newPatient.save();
-    res.status(201).json({ message: 'Patient added successfully', patient: newPatient });
+    res.status(201).json({ message: 'Patient added successfully', patient: { ...newPatient.toObject(), age: calculateAge(newPatient.dateOfBirth) } });
   } catch (err) {
     res.status(400).json({ message: 'Error adding your patient', details: err.message });
   }
@@ -91,7 +91,14 @@ exports.getPatientDetails = async (req, res) => {
       .populate('assignedNurses', 'fullname email');
 
     if (!patient) return res.status(404).json({ message: 'Patient not found' });
-    res.json(patient);
+
+    const patientObj = patient.toObject(); // Convert Mongoose document to plain object
+
+    if (patientObj.dateOfBirth) {
+      patientObj.age = calculateAge(patientObj.dateOfBirth); // Dynamically add age
+    }
+
+    res.json(patientObj);
   } catch (error) {
     res.status(400).json({ message: 'Error fetching patient information', details: error.message });
   }
@@ -279,4 +286,17 @@ exports.deleteEntry = async (req, res) => {
   } catch (error) {
     res.status(400).json({ message: 'Error deleting entry', details: error.message });
   }
+};
+
+const calculateAge = dob => {
+  const today = new Date();
+  const birthDate = new Date(dob);
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const m = today.getMonth() - birthDate.getMonth();
+
+  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+
+  return age;
 };
