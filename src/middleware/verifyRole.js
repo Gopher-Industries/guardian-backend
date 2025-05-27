@@ -1,4 +1,4 @@
-const Role = require('../models/Role');
+const User = require('../models/User');
 
 // Middleware to verify if the user has the required role
 const verifyRole = (roles) => async (req, res, next) => {
