@@ -15,6 +15,7 @@ const verifyRole = (roles) => async (req, res, next) => {
 
     next();
   } catch (error) {
+    console.error('Error verifying user role:', error);
     res.status(500).json({ message: 'Failed to check user role' });
   }
 };
