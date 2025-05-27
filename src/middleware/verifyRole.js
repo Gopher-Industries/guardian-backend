@@ -6,7 +6,8 @@ const verifyRole = (roles) => async (req, res, next) => {
     const userRole = await Role.findOne({ user_id: req.user._id });
     
     if (!userRole || !roles.includes(userRole.role_name)) {
-      return res.status(403).json({ message: 'Access denied. Insufficient permissions.' });
+      // return res.status(403).json({ message: 'Access denied. Insufficient permissions.' });
+      return res.status(403).json({ message: 'Access denied. Insufficient ' + roles + ' permissions. your role is ' + userRole.role_name });
     }
 
     next();
