@@ -248,7 +248,7 @@ exports.logEntry = async (req, res) => {
     const nurseId = req.user._id;
     const { patientId, activityType, comment, timestamp } = req.body;
 
-    const newActivity = new Activity({
+    const newActivity = new EntryReport({
       nurse: nurseId,
       patient: patientId,
       activityType,
