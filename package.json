@@ -30,9 +30,12 @@
     "ws": "^8.17.0"
   },
   "scripts": {
-    "start": "nodemon src/server.js",
-    "dev": "nodemon src/app.js",
-    "test": "NODE_ENV=test mocha 'src/test/**/*.cjs' --recursive --exit"
+  "start": "nodemon src/server.js",
+  "dev": "nodemon src/app.js",
+  "test": "NODE_ENV=test mocha 'src/test/**/*.cjs' --recursive --exit",
+  "find-orphans": "node scripts/find-unlinked-patients.js",
+  "fix-orphans": "node scripts/fix-patient-relationships.js",
+  "seed-patients": "node scripts/seed-patients.js"
   },
   "devDependencies": {
     "@types/socket.io": "^3.0.2",
