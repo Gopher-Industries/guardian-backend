@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Role = require('../models/Role');
+const { log: audit } = require('../utils/audit');
 
 const { OTP, generateOTP } = require('../models/OTP');
 const { sendPasswordResetEmail, sendPinCodeVerificationEmail } = require('../utils/mailer');
@@ -135,9 +136,28 @@ exports.registerUser = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const user = await User.findOne({ email: req.body.email });
-    if (!user) return res.status(400).json({ error: 'User not found' });
+    if (!user) {
+      // AUDIT: unknown email login attempt
+      audit(req, {
+        category: 'auth',
+        action: 'login_failed',
+        severity: 'low',
+        meta: { email: req.body.email, reason: 'user_not_found' },
+      });
+      return res.status(400).json({ error: 'User not found' });
+    }
 
     if (user.failedLoginAttempts !== null && user.failedLoginAttempts !== undefined && user.failedLoginAttempts > 4) {
+      // AUDIT: locked account
+      audit(req, {
+        category: 'auth',
+        action: 'login_locked',
+        actor: user._id,
+        severity: 'high',
+        targetModel: 'User',
+        targetId: String(user._id),
+        meta: { reason: 'failed_login_threshold' },
+      });
       return res.status(400).json({ error: 'Your account has been flagged and locked. Please reset your password' });
     }
 
@@ -145,6 +165,17 @@ exports.login = async (req, res) => {
     if (!isValidPassword) {
       user.failedLoginAttempts = (user.failedLoginAttempts !== null && user.failedLoginAttempts !== undefined) ? user.failedLoginAttempts + 1 : 1;
       await user.save();
+
+      // AUDIT: bad password
+      audit(req, {
+        category: 'auth',
+        action: 'login_failed',
+        actor: user._id,
+        severity: user.failedLoginAttempts > 3 ? 'high' : 'low',
+        targetModel: 'User',
+        targetId: String(user._id),
+        meta: { reason: 'bad_password', attempts: user.failedLoginAttempts },
+      });
       return res.status(400).json({ error: 'Incorrect email and password combination' });
     }
 
@@ -182,6 +213,16 @@ exports.login = async (req, res) => {
     if (daysRemaining <= 5) {
       response.passwordExpiryReminder = `Your password will expire in ${daysRemaining} days. Please change it soon.`;
     }
+
+    // AUDIT: successful login
+    audit(req, {
+      category: 'auth',
+      action: 'login_success',
+      actor: user._id,
+      severity: 'info',
+      targetModel: 'User',
+      targetId: String(user._id),
+    });
 
     res.status(200).json(response);
   } catch (error) {

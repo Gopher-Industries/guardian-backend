@@ -151,6 +151,7 @@ const patientRoutes = require('./routes/patientRoutes');
 const wifiCSIRoutes = require('./routes/wifiCSI');
 const activityRecognitionRoutes = require('./routes/activityRecognition');
 const alertsRoutes = require('./routes/alerts');
+const auditLogsRoutes = require('./routes/auditLogs');
 
 app.use('/api/v1/auth', userRoutes);
 app.use('/api/v1/caretaker', caretakerRoutes);
@@ -159,6 +160,7 @@ app.use('/api/v1/patients', patientRoutes);
 app.use('/api/v1/wifi-csi', wifiCSIRoutes);
 app.use('/api/v1/activity-recognition', activityRecognitionRoutes);
 app.use('/api/v1/alerts', alertsRoutes);
+app.use('/api/v1/admin', auditLogsRoutes);
 
 app.use(
   '/swaggerDocs',
