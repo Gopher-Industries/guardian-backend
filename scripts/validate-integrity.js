@@ -1,4 +1,4 @@
-require('dotenv').config({ path: '../.env.local' });
+require('dotenv').config({ path: '../.env' });
 const mongoose = require('mongoose');
 const ValidationService = require('../src/utils/validation');
 
@@ -10,9 +10,9 @@ async function main() {
     console.log('Connected to database');
 
     console.log('\n=== Database Integrity Validation ===');
-    
+
     const validation = await ValidationService.validateDatabaseIntegrity();
-    
+
     console.log('\nValidation Results:');
     console.log(`   Total Issues: ${validation.summary.total}`);
     console.log(`   Critical: ${validation.summary.critical}`);
@@ -27,40 +27,51 @@ async function main() {
 
       console.log('\nOrphan Record Analysis:');
       const orphans = await ValidationService.findOrphanRecords();
-      
+
       if (orphans.users.length > 0) {
         console.log(`   Users without valid roles: ${orphans.users.length}`);
-        orphans.users.forEach(user => {
-          console.log(`      - ${user.fullname} (${user.email}) - Role: ${user.role?.name || 'None'}`);
+        orphans.users.forEach((user) => {
+          console.log(
+            `      - ${user.fullname} (${user.email}) - Role: ${
+              user.role?.name || 'None'
+            }`
+          );
         });
       }
 
       if (orphans.patients.length > 0) {
-        console.log(`   Patients without proper caregivers: ${orphans.patients.length}`);
-        orphans.patients.forEach(patient => {
+        console.log(
+          `   Patients without proper caregivers: ${orphans.patients.length}`
+        );
+        orphans.patients.forEach((patient) => {
           console.log(`      - ${patient.fullname} (ID: ${patient._id})`);
         });
       }
 
       if (orphans.reports.length > 0) {
-        console.log(`   Reports with invalid references: ${orphans.reports.length}`);
+        console.log(
+          `   Reports with invalid references: ${orphans.reports.length}`
+        );
       }
 
       console.log('\nRecommendations:');
       console.log('   - Run: node seed-database.js to fix missing data');
-      console.log('   - Run: node validate-integrity.js --cleanup to remove orphan records');
+      console.log(
+        '   - Run: node validate-integrity.js --cleanup to remove orphan records'
+      );
       console.log('   - Review and manually fix data integrity issues');
-
     } else {
       console.log('\nSUCCESS: Database integrity validation passed');
-      console.log('All records have proper relationships and no orphan records found');
+      console.log(
+        'All records have proper relationships and no orphan records found'
+      );
     }
 
     // Handle cleanup option
     const args = process.argv.slice(2);
     if (args.includes('--cleanup')) {
       console.log('\n=== Orphan Record Cleanup ===');
-      
+
       if (args.includes('--dry-run') || !args.includes('--confirm')) {
         console.log('Running in DRY RUN mode (no changes will be made)');
         const cleanup = await ValidationService.cleanupOrphanRecords(true);
@@ -78,7 +89,6 @@ async function main() {
         console.log(`   Reports: ${cleanup.cleaned.reports}`);
       }
     }
-
   } catch (error) {
     console.error('Validation failed:', error.message);
     process.exit(1);
