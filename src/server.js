@@ -27,6 +27,7 @@ const apiLimiter = rateLimit({
     });
   }
 });
+
 app.use('/api', apiLimiter);
 
 // Swagger / OpenAPI
@@ -49,6 +50,7 @@ app.use('/api/v1/users', require('./routes/userRoutes'));
 app.use('/api/v1/patients', require('./routes/patientRoutes'));
 app.use('/api/v1/credentials', require('./routes/credentialRoutes'));
 app.use('/api/v1/wifi-csi', require('./routes/wifiCSI'));
+app.use('/api/v1/patient-logs', require('./routes/patientLogRoutes'));
 
 // Landing
 app.get('/', (_req, res) => {
