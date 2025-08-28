@@ -26,7 +26,7 @@ AdminSchema.pre('save', async function (next) {
   next();
 });
 
-// Optional helper, mirrors your User model’s compare
+// Optional helper
 AdminSchema.methods.comparePassword = function (plain) {
   return bcrypt.compare(plain, this.password);
 };
