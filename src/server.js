@@ -7,6 +7,7 @@ const multer = require('multer');
 
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
+const riskRoutes = require('./routes/risk');
 
 const app = express();
 
@@ -159,6 +160,7 @@ app.use('/api/v1/patients', patientRoutes);
 app.use('/api/v1/wifi-csi', wifiCSIRoutes);
 app.use('/api/v1/activity-recognition', activityRecognitionRoutes);
 app.use('/api/v1/alerts', alertsRoutes);
+app.use('/api/v1', riskRoutes);
 
 app.use(
   '/swaggerDocs',
