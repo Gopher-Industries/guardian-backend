@@ -204,32 +204,70 @@ app.get('/redoc', (req, res) => {
     </html>
   `);
 });
-app.get('/swagger.json', (_req, res) => res.json(openapi));
 
-// Routes
-app.use('/api/v1/admin', require('./routes/adminRoutes'));
-app.use('/api/v1/users', require('./routes/userRoutes'));
-app.use('/api/v1/patients', require('./routes/patientRoutes'));
-app.use('/api/v1/credentials', require('./routes/credentialRoutes'));
-app.use('/api/v1/wifi-csi', require('./routes/wifiCSI'));
-app.use('/api/v1/caretaker', require('./routes/caretakerRoutes'));
-
-// Landing
-app.get('/', (_req, res) => {
-  res.type('html').send(`<!doctype html><html><head>
-    <meta charset="utf-8"/><title>Guardian API</title>
-    <style>body{font-family:sans-serif;margin:40px}</style>
-  </head><body>
-    <h1>Welcome to Guardian API</h1>
-    <p>See <a href="/swaggerDocs">Swagger UI</a> or <a href="/redoc">ReDoc</a>.</p>
-  </body></html>`);
+app.get('/openapi.json', (req, res) => {
+  res.sendFile(path.join(__dirname, 'openapi.json'));
 });
 
-// 404 + errors
-app.use(notFound);
-app.use(errorHandler);
+app.get('/', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta http-equiv="X-UA-Compatible" content="ie=edge">
+      <title>Guardian API Documentation</title>
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          height: 100vh;
+          background-color: #f4f4f4;
+        }
+        .container {
+          text-align: center;
+        }
+        h1 {
+          color: #333;
+        }
+        .button-container {
+          margin-top: 20px;
+        }
+        .button {
+          background-color: #4CAF50; /* Green */
+          border: none;
+          color: white;
+          padding: 15px 32px;
+          text-align: center;
+          text-decoration: none;
+          display: inline-block;
+          font-size: 16px;
+          margin: 10px;
+          cursor: pointer;
+          border-radius: 8px;
+          transition: background-color 0.3s ease;
+        }
+        .button:hover {
+          background-color: #45a049;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1>Welcome to Guardian API. Read Our docs</h1>
+        <div class="button-container">
+          <a href="/swaggerDocs" class="button">Swagger UI Docs</a>
+          <a href="/redoc" class="button">Redoc Docs</a>
+        </div>
+      </div>
+    </body>
+    </html>
+  `);
+});
 
-// Start
 const PORT = process.env.PORT || 3000;
 
 if (process.env.NODE_ENV !== 'test') {
