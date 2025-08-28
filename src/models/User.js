@@ -28,6 +28,8 @@ const UserSchema = new Schema({
   failedLoginAttempts:{ type: Number, default: 0 },
   created_at:         { type: Date, default: Date.now },
   updated_at:         { type: Date, default: Date.now }
+
+  
 });
 
 UserSchema.index({ organization: 1 });
