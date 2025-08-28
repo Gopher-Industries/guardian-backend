@@ -59,22 +59,35 @@ guardian-backend/
 │
 ├── config/               # Configuration files (MongoDB connection)
 │   └── db.js
+├── controllers/
+│   ├── organizationController.js
+│   └── patientController.js
+├── middleware/
+│   ├── verifyToken.js
+│   ├── verifyRole.js
+│   └── context.js        # adds req.ctx { me, roleName, orgId, isOrgMember }
 ├── models/               # MongoDB schemas (Mongoose models)
 │   ├── User.js
+│   ├── Organization.js
+│   ├── Patient.js
+│   ├── EntryReport.js
 │   ├── UserRole.js
 │   ├── WifiCSI.js
 │   ├── ActivityRecognition.js
 │   ├── Alert.js
 │   └── Notification.js
 ├── routes/               # API route handlers
-│   ├── auth.js           # Authentication routes (register, login, protected routes)
-│   ├── user.js           # User routes (protected by JWT)
-│   ├── wifiCSI.js        # Wi-Fi CSI routes (protected by JWT)
-│   ├── activityRecognition.js # Activity recognition routes (protected by JWT)
-│   └── alerts.js         # Alerts routes (protected by JWT)
+│   ├── organizationRoutes.js
+│   ├── patientRoutes.js
+│   ├── auth.js
+│   ├── user.js
+│   ├── wifiCSI.js
+│   ├── activityRecognition.js
+│   └── alerts.js
 ├── .env                  # Environment variables
 ├── server.js             # Main server file
 └── package.json          # Dependencies and scripts
+
 ```
 
 ### API Endpoints
@@ -88,6 +101,25 @@ guardian-backend/
 #### User Management
 
 - **GET** `/api/users` - Get all users (requires JWT token)
+
+#### Organization & Roster Management (Admin)
+- **POST** `/api/v1/orgs/create` — Create an organization (caller becomes org admin & member)
+- **POST** `/api/v1/orgs/add-member` — Add nurse/caretaker to org (approve + activate)
+- **PATCH** `/api/v1/orgs/member-status` — Toggle isApproved / isActive
+- **POST** `/api/v1/orgs/remove-member` — Remove member from org
+- **GET** `/api/v1/orgs/me` — Org summary (admin/nurses/caretakers)
+- **POST** `/api/v1/orgs/patients/register` — Create org patient (requires nurseId + caretakerId from same org, approved & active)
+
+#### Patients (Org & Freelance)
+- **POST** `/api/v1/patients/register` — Create freelance patient (caller nurse/caretaker; organization:null; optional freelance counterpart)
+- **POST** `/api/v1/patients/assign-nurse` — Assign nurse (org: admin-only; freelance: creator/assignees)
+- **POST** `/api/v1/patients/assign-caretaker` — Assign caretaker (same rules as above)
+- **GET** `/api/v1/patients/org` — Patients in my org (admin: full; nurse/caretaker: roster view)
+- **GET** `/api/v1/patients/assigned-patients` — Patients assigned to me (by role)
+- **GET** `/api/v1/patients/:patientId` — Patient details (access enforced by org/assignment)
+- **POST** `/api/v1/patients/entryreport` — Log activity (nurse or org admin)
+- **GET** `/api/v1/patients/activities?patientId=` — Patient activities
+- **DELETE** `/api/v1/patients/entryreport/:entryId` — Delete entry (org admin or author nurse)
 
 #### Wi-Fi CSI Data Management
 
@@ -103,6 +135,15 @@ guardian-backend/
 
 - **POST** `/api/alerts` - Create a new alert (requires JWT token)
 - **GET** `/api/alerts` - Get all alerts (requires JWT token)
+
+### Modes & Access Rules (Summary)
+**Organization Mode**
+- Only org admins can create patients and assign exactly one nurse + one caretaker (same org, approved & active).
+- Org staff can view within org; non-admins must be assigned (or creator).
+  
+**Freelance Mode**
+- Nurses/Caretakers can create patients with organization:null.
+- Assignments allowed among freelance users (no org membership).
 
 ### Authentication
 
@@ -154,3 +195,16 @@ Blocks requests from script-based tools such as curl, wget, or custom scripts by
 - **Updated Project Structure**: Included the new `auth.js` route and the integration of JWT in the `user.js`, `wifiCSI.js`, `activityRecognition.js`, and `alerts.js` routes.
 - **Detailed API Endpoints**: Provided information on how to use the authentication endpoints and access protected routes.
 - **Environment Variables**: Added the `JWT_SECRET` key to the list of environment variables.
+- Org Management: New controller/routes (/api/v1/orgs/*) for org create, add/remove members, approve/activate, org summary.
+- Patients (Org & Freelance):
+- Freelance register: /api/v1/patients/register (nurse/caretaker).
+- Org register (admin-only): /api/v1/orgs/patients/register.
+- Assignments: /api/v1/patients/assign-nurse, /api/v1/patients/assign-caretaker.
+- Lists/Details: /api/v1/patients/org, /api/v1/patients/assigned-patients, /:patientId.
+- RBAC Context: Added context middleware (req.ctx: me, roleName, orgId, isOrgMember) and enforced access rules.
+- Activity Logs: Entry reports create/list/delete with role & assignment checks.
+- Models:
+- User (org, approvals, assignedPatients, secure hashing).
+- Patient (uuid, org links, single nurse/caretaker, photo).
+- Organization (admin, nurses, caretakers, patients).
+- Wiring & Docs: Routes added in server.js, uploads served, rate limiting kept, Swagger/ReDoc updated.
