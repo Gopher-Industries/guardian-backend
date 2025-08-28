@@ -1,9 +1,12 @@
-
-
-```markdown
+````markdown
 # Guardian System Management API
 
 The Guardian System Management API provides functionalities for managing user data
+
+## Documentation
+
+- [Database Relationship Model](docs/RELATIONSHIP_MODEL.md) - Detailed documentation of entity relationships, constraints, and business rules
+
 ## Getting Started
 
 These instructions will help you get a copy of the project up and running on your local machine for development and testing purposes.
@@ -21,17 +24,22 @@ These instructions will help you get a copy of the project up and running on you
    ```bash
    git clone https://github.com/Gopher-Industries/guardian-backend.git
    ```
+````
 
 2. Navigate into the project directory:
+
    ```bash
    cd guardian-backend
    ```
 
 3. Set up environment variables by creating a `.env` file in the project root, or simply rename the `.env.sample` file and remove the `.sample` extension and skip this step:
+
    ```bash
    touch .env
    ```
+
    Add the following environment variables to the `.env` file:
+
    ```plaintext
    BASE_URL=http://localhost:3000
    MONGODB_URL=mongodb://localhost:27017/guardian
@@ -41,11 +49,13 @@ These instructions will help you get a copy of the project up and running on you
    ```
 
 4. You might need to install the `dotenv` package:
+
    ```bash
    npm install dotenv
    ```
 
 5. Start the application with Docker:
+
    ```bash
    docker-compose up --build
    ```
@@ -59,9 +69,13 @@ guardian-backend/
 │
 ├── config/               # Configuration files (MongoDB connection)
 │   └── db.js
+├── docs/                 # Documentation
+│   └── RELATIONSHIP_MODEL.md # Database relationship documentation
 ├── models/               # MongoDB schemas (Mongoose models)
-│   ├── User.js
-│   ├── UserRole.js
+│   ├── User.js           # User model with role relationships
+│   ├── Role.js           # Role definitions (admin, nurse, caretaker)
+│   ├── Patient.js        # Patient model with caregiver relationships
+│   ├── EntryReport.js    # Activity reports linked to patients/nurses
 │   ├── WifiCSI.js
 │   ├── ActivityRecognition.js
 │   ├── Alert.js
@@ -127,6 +141,7 @@ To test the API, use Postman or similar API testing tools.
 - `JWT_SECRET`: The secret key used to sign JWT tokens.
 
 ### Security Features
+
 Rate Limiter:
 
 Protects the API by limiting the number of requests per IP address within a given time window.
@@ -145,7 +160,6 @@ Blocks requests from script-based tools such as curl, wget, or custom scripts by
 - **JWT** - JSON Web Token for secure authentication
 - **Docker** - Containerization for the application
 
-
 ```
 
 ### Summary of Updates:
@@ -154,3 +168,4 @@ Blocks requests from script-based tools such as curl, wget, or custom scripts by
 - **Updated Project Structure**: Included the new `auth.js` route and the integration of JWT in the `user.js`, `wifiCSI.js`, `activityRecognition.js`, and `alerts.js` routes.
 - **Detailed API Endpoints**: Provided information on how to use the authentication endpoints and access protected routes.
 - **Environment Variables**: Added the `JWT_SECRET` key to the list of environment variables.
+```
