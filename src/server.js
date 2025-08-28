@@ -17,7 +17,7 @@ const storage = multer.diskStorage({
   filename: (req, file, cb) => {
     const uniqueName = `${Date.now()}-${file.originalname}`;
     cb(null, uniqueName);
-  }
+  },
 });
 
 exports.upload = multer({ storage });
@@ -49,15 +49,22 @@ const blockScriptRequests = (req, res, next) => {
     'sec-fetch-site': /same-origin|cross-site/,
     'sec-fetch-mode': /navigate|cors/,
     'sec-fetch-dest': /document|iframe/,
-    'referer': /http(s)?:\/\//,
-    'accept': /text\/html|application\/json|\*\/\*/,
-    'cookie': /.*/, // At least one cookie (adjust based on your app)
+    referer: /http(s)?:\/\//,
+    accept: /text\/html|application\/json|\*\/\*/,
+    cookie: /.*/, // At least one cookie (adjust based on your app)
   };
 
   // Block disallowed User-Agents
-  if (!userAgent || disallowedUserAgents.some(ua => normalizedUserAgent.includes(ua))) {
+  if (
+    !userAgent ||
+    disallowedUserAgents.some((ua) => normalizedUserAgent.includes(ua))
+  ) {
     console.log('Blocked Request - Disallowed User-Agent Detected');
-    return res.status(403).json({ error: 'Forbidden: CLI or script-based requests are not allowed.' });
+    return res
+      .status(403)
+      .json({
+        error: 'Forbidden: CLI or script-based requests are not allowed.',
+      });
   }
 
   // Check for browser-specific headers
@@ -65,7 +72,10 @@ const blockScriptRequests = (req, res, next) => {
     const headerValue = req.headers[header];
 
     // Skip validation for optional headers if they are missing
-    if (['sec-fetch-site', 'sec-fetch-mode', 'sec-fetch-dest'].includes(header) && !headerValue) {
+    if (
+      ['sec-fetch-site', 'sec-fetch-mode', 'sec-fetch-dest'].includes(header) &&
+      !headerValue
+    ) {
       continue; // Allow requests without these optional headers
     }
 
@@ -76,23 +86,26 @@ const blockScriptRequests = (req, res, next) => {
 
     if (!headerValue || !pattern.test(headerValue)) {
       console.log(`Blocked Request - Missing or Invalid Header: ${header}`);
-      return res.status(403).json({ error: `Forbidden: Missing or invalid ${header} header.` });
+      return res
+        .status(403)
+        .json({ error: `Forbidden: Missing or invalid ${header} header.` });
     }
   }
 
   // Additional validation: Block requests missing cookies (optional)
   if (!req.headers['cookie']) {
     console.log('Blocked Request - Missing Cookie Header');
-    return res.status(403).json({ error: 'Forbidden: Missing browser-specific cookie header.' });
+    return res
+      .status(403)
+      .json({ error: 'Forbidden: Missing browser-specific cookie header.' });
   }
 
   next(); // Allow legitimate requests
 };
 
-// Apply middleware globally to all endpoints 
+// Apply middleware globally to all endpoints
 // TODO: Need to test this middleware with requests from browsers, postman, and the application
 // app.use(blockScriptRequests);
-
 
 const rateLimit = require('express-rate-limit');
 const limiter = rateLimit({
@@ -107,7 +120,6 @@ const limiter = rateLimit({
 
 app.use(limiter);
 
-
 // Swagger Setup
 const swaggerOptions = {
   definition: {
@@ -115,8 +127,8 @@ const swaggerOptions = {
     info: {
       title: 'Guardian API',
       version: '1.0.0',
-      description: 'API documentation with Swagger UI and Redoc'
-    }
+      description: 'API documentation with Swagger UI and Redoc',
+    },
   },
   components: {
     securitySchemes: {
@@ -132,7 +144,7 @@ const swaggerOptions = {
       bearerAuth: [], // Apply globally to all endpoints
     },
   ],
-  apis: ['./src/routes/*.js', './src/routes/**/*.js', './src/controllers/*.js'],  // Add the controllers path here
+  apis: ['./src/routes/*.js', './src/routes/**/*.js', './src/controllers/*.js'], // Add the controllers path here
 };
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
@@ -169,8 +181,8 @@ app.use(
       'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.1/swagger-ui.min.css',
     customJs: [
       'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.1/swagger-ui-bundle.min.js',
-      'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.1/swagger-ui-standalone-preset.min.js'
-    ]
+      'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.1/swagger-ui-standalone-preset.min.js',
+    ],
   })
 );
 
