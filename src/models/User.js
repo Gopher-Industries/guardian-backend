@@ -1,17 +1,40 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
-const UserSchema = new mongoose.Schema({
-  fullname: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
+const { Schema, Types: { ObjectId } } = mongoose;
+
+const UserSchema = new Schema({
+  uuid: { type: String, default: () => require('uuid').v4(), unique: true, index: true },
+
+  fullname: { type: String, required: true, trim: true },
+  email:    { type: String, required: true, unique: true, index: true },
   password_hash: { type: String, required: true },
-  role: { type: mongoose.Schema.Types.ObjectId, ref: 'Role' },
-  assignedPatients: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Patient' }], // Assigned patients
+
+  role: { type: ObjectId, ref: 'Role', required: false },
+
+  // org membership (null = freelance)
+  organization: { type: ObjectId, ref: 'Organization', default: null },
+
+  // approvals (for nurse/caretaker)
+  isApproved: { type: Boolean, default: false },
+  isActive: { type: Boolean, default: true },
+
+  age: { type: Number, default: null },
+  qualifications: { type: String, default: '' },
+
+  assignedPatients: [{ type: ObjectId, ref: 'Patient' }],
+
   lastPasswordChange: { type: Date, default: Date.now },
-  failedLoginAttempts: { type: Number, default: 0 },
-  created_at: { type: Date, default: Date.now },
-  updated_at: { type: Date, default: Date.now }
+  failedLoginAttempts:{ type: Number, default: 0 },
+  created_at:         { type: Date, default: Date.now },
+  updated_at:         { type: Date, default: Date.now }
 });
+
+UserSchema.index({ organization: 1 });
+
+UserSchema.methods.comparePassword = async function (plain) {
+  return bcrypt.compare(plain, this.password_hash);
+};
 
 UserSchema.pre('save', async function (next) {
   this.updated_at = Date.now();
@@ -22,7 +45,4 @@ UserSchema.pre('save', async function (next) {
   next();
 });
 
-// Create the User model from the schema
-const User = mongoose.model('User', UserSchema);
-
-module.exports = User;
+module.exports = mongoose.model('User', UserSchema);

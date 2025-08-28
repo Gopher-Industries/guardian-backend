@@ -4,7 +4,6 @@ const Task = require('../models/Task');
 const CarePlan = require('../models/CarePlan');
 const SupportTicket = require('../models/SupportTicket');
 const Task = require('../models/Task');
-const { log: audit } = require('../utils/audit');
 
 /**
  * @swagger
@@ -292,17 +291,6 @@ exports.createTask = async (req, res) => {
     const newTask = new Task({ title, description, patient: patientId, dueDate, assignedTo });
     await newTask.save();
 
-    // AUDIT: task created
-    audit(req, {
-      category: 'task',
-      action: 'task_created',
-      actor: req.user?._id || null,
-      severity: 'info',
-      targetModel: 'Task',
-      targetId: String(newTask._id),
-      meta: { patientId, assignedTo },
-    });
-
     res.status(201).json({ message: 'Task created successfully', task: newTask });
   } catch (error) {
     res.status(500).json({ message: 'Error creating task', details: error.message });
@@ -366,17 +354,6 @@ exports.updateTask = async (req, res) => {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    // AUDIT: task updated (record changed keys only)
-    audit(req, {
-      category: 'task',
-      action: 'task_updated',
-      actor: req.user?._id || null,
-      severity: 'info',
-      targetModel: 'Task',
-      targetId: String(taskId),
-      meta: { changed: Object.keys(updateData || {}) },
-    });
-
     res.status(200).json({ message: 'Task updated successfully', task: updatedTask });
   } catch (error) {
     res.status(500).json({ message: 'Error updating task', details: error.message });
@@ -420,16 +397,6 @@ exports.deleteTask = async (req, res) => {
     if (!deletedTask) {
       return res.status(404).json({ message: 'Task not found' });
     }
-
-    // AUDIT: task deleted
-    audit(req, {
-      category: 'task',
-      action: 'task_deleted',
-      actor: req.user?._id || null,
-      severity: 'low',
-      targetModel: 'Task',
-      targetId: String(taskId),
-    });
 
     res.status(200).json({ message: 'Task deleted successfully' });
   } catch (error) {

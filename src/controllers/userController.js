@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Role = require('../models/Role');
+const Organization = require('../models/Organization');
 const { log: audit } = require('../utils/audit');
 
 const { OTP, generateOTP } = require('../models/OTP');
@@ -54,7 +55,12 @@ exports.registerUser = async (req, res) => {
       if (!userRole) {
         return res.status(400).json({ error: role + ' is an invalid role' });
       }
-    }
+    }else {
+      userRole = await Role.findOne({ name: 'nurse' });
+      if (!userRole) {
+      return res.status(500).json({ error: "Default role 'nurse' is not seeded" });
+  }
+}
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
@@ -195,7 +201,11 @@ exports.login = async (req, res) => {
     const daysSinceLastChange = Math.floor(timeDifference / (1000 * 60 * 60 * 24));
     const daysRemaining = 90 - daysSinceLastChange;
 
-    const userRole = await Role.findOne({ _id: user.role });
+    const userRole = user.role ? await Role.findOne({ _id: user.role }) : null;
+    const safeRoleName = (userRole && userRole.name) ? userRole.name : 'nurse';
+    const orgSummary = user.organization
+      ? await Organization.findById(user.organization).select('_id name')
+      : null;
 
     const userResponse = {
       id: user._id,
@@ -204,8 +214,9 @@ exports.login = async (req, res) => {
       lastPasswordChange: user.lastPasswordChange,
       created_at: user.created_at,
       updated_at: user.updated_at,
-      role: userRole.name,
-      twoFactorRequired: userRole.name.toLowerCase() !== 'nurse' // Add twoFactorRequired field
+      role: safeRoleName,
+      twoFactorRequired: safeRoleName.toLowerCase() !== 'nurse', // Add twoFactorRequired field
+      organization: orgSummary // { _id, name } or null (freelance)
     };
 
     const response = { user: userResponse, token };

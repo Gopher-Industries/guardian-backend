@@ -51,7 +51,7 @@ const blockScriptRequests = (req, res, next) => {
     'sec-fetch-dest': /document|iframe/,
     'referer': /http(s)?:\/\//,
     'accept': /text\/html|application\/json|\*\/\*/,
-    'cookie': /.*/, // At least one cookie (adjust based on your app)
+    'cookie': /.*/, 
   };
 
   // Block disallowed User-Agents
@@ -107,7 +107,6 @@ const limiter = rateLimit({
 
 app.use(limiter);
 
-
 // Swagger Setup
 const swaggerOptions = {
   definition: {
@@ -116,23 +115,23 @@ const swaggerOptions = {
       title: 'Guardian API',
       version: '1.0.0',
       description: 'API documentation with Swagger UI and Redoc'
-    }
-  },
-  components: {
-    securitySchemes: {
-      bearerAuth: {
-        type: 'http',
-        scheme: 'bearer',
-        bearerFormat: 'JWT',
+    },
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+        },
       },
     },
+    security: [
+      {
+        bearerAuth: [], // Apply globally to all endpoints
+      },
+    ],
   },
-  security: [
-    {
-      bearerAuth: [], // Apply globally to all endpoints
-    },
-  ],
-  apis: ['./src/routes/*.js', './src/routes/**/*.js', './src/controllers/*.js'],  // Add the controllers path here
+  apis: ['./src/routes/*.js', './src/routes/**/*.js', './src/controllers/*.js'],
 };
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
@@ -152,7 +151,11 @@ const wifiCSIRoutes = require('./routes/wifiCSI');
 const activityRecognitionRoutes = require('./routes/activityRecognition');
 const alertsRoutes = require('./routes/alerts');
 const auditLogsRoutes = require('./routes/auditLogs');
+const organizationRoutes = require('./routes/organizationRoutes');
+app.use('/api/v1/orgs', organizationRoutes);
+// const adminRoutes = require('./routes/admin');
 
+// app.use('/api/v1/admin', admin);
 app.use('/api/v1/auth', userRoutes);
 app.use('/api/v1/caretaker', caretakerRoutes);
 app.use('/api/v1/nurse', nurseRoutes);

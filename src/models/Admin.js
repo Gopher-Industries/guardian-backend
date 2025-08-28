@@ -2,17 +2,21 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 const AdminSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  role: { type: String, default: 'admin', immutable: true },  // Make role immutable means it can not be changed
-  lastPasswordChange: { type: Date, default: Date.now },
-  failedLoginAttempts: { type: Number, default: 0 },
-  created_at: { type: Date, default: Date.now },
-  updated_at: { type: Date, default: Date.now }
+  name:   { type: String, required: true, trim: true },
+  email:  { type: String, required: true, unique: true, index: true },
+  password: { type: String, required: true },           // hashed in pre-save
+  role:   { type: String, default: 'admin', immutable: true },
+
+  // ⬇ NEW: tie this admin to an organization (dashboard scope)
+  organization: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true },
+
+  lastPasswordChange:   { type: Date, default: Date.now },
+  failedLoginAttempts:  { type: Number, default: 0 },
+  created_at:           { type: Date, default: Date.now },
+  updated_at:           { type: Date, default: Date.now }
 });
 
-// Hash the password before saving
+// Hash before save
 AdminSchema.pre('save', async function (next) {
   this.updated_at = Date.now();
   if (!this.isModified('password')) return next();
@@ -22,6 +26,9 @@ AdminSchema.pre('save', async function (next) {
   next();
 });
 
-const Admin = mongoose.model('Admin', AdminSchema);
+// Optional helper, mirrors your User model’s compare
+AdminSchema.methods.comparePassword = function (plain) {
+  return bcrypt.compare(plain, this.password);
+};
 
-module.exports = Admin;
+module.exports = mongoose.model('Admin', AdminSchema);
