@@ -1,0 +1,1201 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Guardian API",
+    "version": "1.0.0"
+  },
+  "components": {
+    "schemas": {}
+  },
+  "paths": {
+    "/api/v1/admin/patient-overview/{patientId}": {
+      "get": {
+        "summary": "Fetch detailed patient overview",
+        "tags": [
+          "Admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "patientId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID of the patient"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detailed patient overview",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "patient": {
+                      "$ref": "#/components/schemas/Patient"
+                    },
+                    "healthRecords": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/HealthRecord"
+                      }
+                    },
+                    "carePlan": {
+                      "$ref": "#/components/schemas/CarePlan"
+                    },
+                    "tasks": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Task"
+                      }
+                    },
+                    "taskCompletionRate": {
+                      "type": "number",
+                      "description": "Percentage of completed tasks"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Patient not found"
+          },
+          "500": {
+            "description": "Error fetching patient overview"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/support-ticket": {
+      "post": {
+        "summary": "Create a support ticket",
+        "tags": [
+          "Admin"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "subject",
+                  "description"
+                ],
+                "properties": {
+                  "subject": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string",
+                    "default": "open"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Support ticket created successfully"
+          },
+          "500": {
+            "description": "Error creating support ticket"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/support-tickets": {
+      "get": {
+        "summary": "Fetch all support tickets",
+        "tags": [
+          "Admin"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter tickets by status (e.g., open, closed)"
+          },
+          {
+            "in": "query",
+            "name": "userId",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter tickets by user ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of support tickets",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SupportTicket"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error fetching support tickets"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/support-ticket/{ticketId}": {
+      "put": {
+        "summary": "Update a support ticket",
+        "tags": [
+          "Admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticketId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID of the support ticket to be updated"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "description": "New status of the support ticket (e.g., open, closed)"
+                  },
+                  "adminResponse": {
+                    "type": "string",
+                    "description": "Response or comments from the admin"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Support ticket updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "ticket": {
+                      "$ref": "#/components/schemas/SupportTicket"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Support ticket not found"
+          },
+          "500": {
+            "description": "Error updating support ticket"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/tasks": {
+      "post": {
+        "summary": "Create a new task",
+        "tags": [
+          "Admin"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "title",
+                  "description",
+                  "patientId",
+                  "dueDate",
+                  "assignedTo"
+                ],
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "patientId": {
+                    "type": "string",
+                    "description": "ID of the patient to whom the task is assigned"
+                  },
+                  "dueDate": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "assignedTo": {
+                    "type": "string",
+                    "description": "ID of the user (caretaker or nurse) assigned to the task"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Task created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "task": {
+                      "$ref": "#/components/schemas/Task"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error creating task"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/tasks/{taskId}": {
+      "put": {
+        "summary": "Update a task",
+        "tags": [
+          "Admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "taskId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID of the task to update"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "dueDate": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "assignedTo": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Task updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "task": {
+                      "$ref": "#/components/schemas/Task"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Task not found"
+          },
+          "500": {
+            "description": "Error updating task"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a task",
+        "tags": [
+          "Admin"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "taskId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID of the task to delete"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Task deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Task not found"
+          },
+          "500": {
+            "description": "Error deleting task"
+          }
+        }
+      }
+    },
+    "/api/v1/caretaker/profile": {
+      "get": {
+        "summary": "View caretaker profile by ID or email",
+        "tags": [
+          "Caretaker"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "caretakerId",
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the caretaker"
+          },
+          {
+            "in": "query",
+            "name": "email",
+            "schema": {
+              "type": "string"
+            },
+            "description": "The email of the caretaker"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Caretaker profile fetched successfully"
+          },
+          "404": {
+            "description": "Caretaker not found"
+          },
+          "500": {
+            "description": "Error fetching caretaker profile"
+          }
+        }
+      }
+    },
+    "/api/v1/patient/{patientId}/health-records": {
+      "get": {
+        "summary": "Fetch health records of a patient",
+        "tags": [
+          "Patient"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "patientId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the patient"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Health records"
+          },
+          "400": {
+            "description": "Error fetching health records"
+          },
+          "404": {
+            "description": "Patient not found"
+          }
+        }
+      }
+    },
+    "/api/v1/patient/{patientId}/health-record": {
+      "post": {
+        "summary": "Update health records of a patient",
+        "tags": [
+          "Patient"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "patientId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the patient"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "vitals": {
+                    "type": "object",
+                    "properties": {
+                      "bloodPressure": {
+                        "type": "string"
+                      },
+                      "temperature": {
+                        "type": "string"
+                      },
+                      "heartRate": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Health records updated successfully"
+          },
+          "400": {
+            "description": "Error updating health records"
+          }
+        }
+      }
+    },
+    "/api/v1/patient/{patientId}/report": {
+      "get": {
+        "summary": "Get the report for a patient assigned to nurse",
+        "tags": [
+          "Patient"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "patientId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the patient"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Report fetched successfully"
+          },
+          "400": {
+            "description": "Error fetching patient report"
+          },
+          "404": {
+            "description": "Patient not found or no report available"
+          }
+        }
+      }
+    },
+    "/api/v1/nurse/profile": {
+      "get": {
+        "summary": "View nurse profile by ID or email",
+        "tags": [
+          "Nurse"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "nurseId",
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the nurse"
+          },
+          {
+            "in": "query",
+            "name": "email",
+            "schema": {
+              "type": "string"
+            },
+            "description": "The email of the nurse"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Nurse profile fetched successfully"
+          },
+          "404": {
+            "description": "Nurse not found"
+          },
+          "500": {
+            "description": "Error fetching nurse profile"
+          }
+        }
+      }
+    },
+    "/api/v1/patients/add": {
+      "post": {
+        "summary": "Add a new patient with profile photo",
+        "tags": [
+          "Patient"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "consumes": [
+          "multipart/form-data"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "fullname",
+                  "dateOfBirth",
+                  "gender"
+                ],
+                "properties": {
+                  "fullname": {
+                    "type": "string"
+                  },
+                  "dateOfBirth": {
+                    "type": "String",
+                    "format": "date",
+                    "example": "1980-01-01"
+                  },
+                  "gender": {
+                    "type": "string"
+                  },
+                  "profilePhoto": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Patient added successfully"
+          },
+          "400": {
+            "description": "Error adding patient"
+          }
+        }
+      }
+    },
+    "/api/v1/patient/{patientId}": {
+      "get": {
+        "summary": "Fetch patient details",
+        "tags": [
+          "Patient"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "patientId"
+                ],
+                "properties": {
+                  "patientId": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Patient details"
+          },
+          "400": {
+            "description": "Error fetching patient details"
+          },
+          "404": {
+            "description": "Patient not found"
+          }
+        }
+      }
+    },
+    "/api/v1/patients/assign-nurse": {
+      "post": {
+        "summary": "Assign a nurse to a patient",
+        "tags": [
+          "Patient"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "nurseId",
+                  "patientId"
+                ],
+                "properties": {
+                  "nurseId": {
+                    "type": "string"
+                  },
+                  "patientId": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Nurse assigned successfully"
+          },
+          "404": {
+            "description": "Invalid nurse or patient ID"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/api/v1/patients/assigned-patients": {
+      "get": {
+        "summary": "Fetch assigned patients for a nurse or caretaker",
+        "tags": [
+          "Patient"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of assigned patients",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Patient"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Unauthorized role"
+          },
+          "500": {
+            "description": "Error fetching assigned patients"
+          }
+        }
+      }
+    },
+    "/api/v1/patients/entryreport": {
+      "post": {
+        "summary": "Nurse logs a patient activity",
+        "tags": [
+          "EntryReport"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "patientId",
+                  "activityType",
+                  "description"
+                ],
+                "properties": {
+                  "patientId": {
+                    "type": "string"
+                  },
+                  "activityType": {
+                    "type": "string",
+                    "example": "eating"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "timestamp": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2024-05-01T14:00:00Z"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Activity logged successfully"
+          },
+          "400": {
+            "description": "Error logging activity"
+          }
+        }
+      }
+    },
+    "/api/v1/patients/activities": {
+      "get": {
+        "summary": "Fetch activities for a patients",
+        "tags": [
+          "EntryReport"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of patient activities",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EntryReport"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Unauthorized role"
+          },
+          "500": {
+            "description": "Error fetching patient activities"
+          }
+        }
+      }
+    },
+    "/api/v1/patients/entryreport/{entryId}": {
+      "delete": {
+        "summary": "Delete an entry report",
+        "tags": [
+          "EntryReport"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entryId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the entry to delete"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Entry deleted successfully"
+          },
+          "400": {
+            "description": "Error deleting entry"
+          },
+          "404": {
+            "description": "Entry not found"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/register": {
+      "post": {
+        "summary": "Register a new user",
+        "description": "Registers a new user with the provided fullname, email, and password.",
+        "tags": [
+          "Authentication"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "fullname": {
+                    "type": "string",
+                    "example": "John Doe"
+                  },
+                  "email": {
+                    "type": "string",
+                    "example": "johndoe@example.com"
+                  },
+                  "password": {
+                    "type": "string",
+                    "example": "Password123"
+                  },
+                  "role": {
+                    "type": "string",
+                    "example": "nurse"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User registered successfully."
+          },
+          "400": {
+            "description": "Bad request. Could be due to missing fields or an invalid email/password."
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "summary": "Log in a user",
+        "description": "Authenticates a user with the provided email and password.",
+        "tags": [
+          "Authentication"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "example": "johndoe@example.com"
+                  },
+                  "password": {
+                    "type": "string",
+                    "example": "Password123"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful login with JWT token and user information."
+          },
+          "400": {
+            "description": "Bad request. Incorrect email/password combination or account locked."
+          }
+        }
+      }
+    },
+    "/api/v1/auth/send-pin": {
+      "post": {
+        "summary": "Send OTP for email verification",
+        "description": "Generates an OTP and sends it to the user's email for verification.",
+        "tags": [
+          "Authentication"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "example": "johndoe@example.com"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP sent to your email address."
+          },
+          "400": {
+            "description": "Bad request. Email is required."
+          },
+          "500": {
+            "description": "Internal server error. Error processing the request."
+          }
+        }
+      }
+    },
+    "/api/v1/auth/verify-pin": {
+      "post": {
+        "summary": "Verify OTP",
+        "description": "Verifies the OTP sent to the user's email address.",
+        "tags": [
+          "Authentication"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "example": "johndoe@example.com"
+                  },
+                  "otp": {
+                    "type": "string",
+                    "example": 123456
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP verified successfully."
+          },
+          "400": {
+            "description": "Bad request. Email and OTP are required or invalid/expired OTP."
+          },
+          "500": {
+            "description": "Internal server error. Error processing the request."
+          }
+        }
+      }
+    },
+    "/api/v1/auth/change-password": {
+      "post": {
+        "summary": "Change a user's password",
+        "description": "Allows a user to change their password by providing the old and new passwords.",
+        "tags": [
+          "Authentication"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "oldPassword": {
+                    "type": "string",
+                    "example": "OldPassword123"
+                  },
+                  "newPassword": {
+                    "type": "string",
+                    "example": "NewPassword123"
+                  },
+                  "confirmPassword": {
+                    "type": "string",
+                    "example": "NewPassword123"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password changed successfully."
+          },
+          "400": {
+            "description": "Bad request. Incorrect old password or new passwords don't match."
+          }
+        }
+      }
+    },
+    "/api/v1/auth/reset-password-request": {
+      "post": {
+        "summary": "Request a password reset",
+        "description": "Sends a password reset link to the user's email.",
+        "tags": [
+          "Authentication"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "example": "johndoe@example.com"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password reset link sent to the user's email."
+          },
+          "404": {
+            "description": "User not found."
+          }
+        }
+      }
+    },
+    "/api/v1/auth/reset-password": {
+      "get": {
+        "summary": "Render password reset page",
+        "description": "Renders a page for resetting the password using a valid reset token.",
+        "tags": [
+          "Authentication"
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": true,
+            "description": "JWT reset token",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Renders the password reset page."
+          },
+          "400": {
+            "description": "Invalid or expired token."
+          }
+        }
+      },
+      "post": {
+        "summary": "Reset password",
+        "description": "Resets the user's password using the reset token.",
+        "tags": [
+          "Authentication"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "example": "JWT_TOKEN_HERE"
+                  },
+                  "newPassword": {
+                    "type": "string",
+                    "example": "NewPassword123"
+                  },
+                  "confirmPassword": {
+                    "type": "string",
+                    "example": "NewPassword123"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password has been updated successfully."
+          },
+          "400": {
+            "description": "Invalid or expired token, or passwords don't match."
+          }
+        }
+      }
+    }
+  },
+  "tags": []
+}
