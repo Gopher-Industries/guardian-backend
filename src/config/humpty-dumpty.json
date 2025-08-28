@@ -1,0 +1,38 @@
+{
+    "items": [
+      { "key": "ageGroup", "label": "Age", "options": { "<3": 4, "3-7": 3, "8-12": 2, "13+": 1 } },
+      { "key": "gender", "label": "Gender", "options": { "male": 2, "female": 1 } },
+      {
+        "key": "diagnosis", "label": "Diagnosis",
+        "options": {
+          "neurological": 4,
+          "oxygenation-alteration": 3,
+          "psych-behavioral": 2,
+          "other": 1
+        }
+      },
+      {
+        "key": "cognition", "label": "Cognitive Impairment",
+        "options": {
+          "not-aware-of-limitations": 3,
+          "forgets-limitations": 2,
+          "oriented-to-ability": 1
+        }
+      },
+      {
+        "key": "environment", "label": "Environmental Factors",
+        "options": {
+          "history-of-fall": 4,
+          "multiple-environmental-risks": 3,
+          "single-environmental-risk": 2,
+          "none": 1
+        }
+      },
+      {
+        "key": "surgerySedation", "label": "Response to Surgery/Anesthesia/Sedation",
+        "options": { "within-24h": 3, "within-48h": 2, ">48h-or-none": 1 }
+      }
+    ],
+    "thresholds": { "high": 12 }
+  }
+  
