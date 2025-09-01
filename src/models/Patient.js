@@ -1,44 +1,74 @@
 const mongoose = require('mongoose');
+const { v4: uuidv4 } = require('uuid');
 const User = require('./User');
 
-const PatientSchema = new mongoose.Schema({
-  fullname: { type: String, required: true },
-  dateOfBirth: { type: Date, required: true },
-  gender: { type: String, enum: ['male', 'female'], required: true },
+const { Schema, Types: { ObjectId } } = mongoose;
 
-  profilePhoto: { type: String }, // Filename or full URL depending on storage strategy
+const PatientSchema = new Schema({
+  uuid: { type: String, default: uuidv4, unique: true, index: true },
 
-  caretaker: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // Single caretaker assigned
+  fullname:    { type: String, required: true, trim: true },
+  dateOfBirth: { type: Date,   required: true },
+  gender:      { type: String, enum: ['M', 'F', 'other', 'male', 'female'], required: true },
 
-  assignedNurses: [
-    { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
-  ],
+  // Organization tenant (null => freelance)
+  organization: { type: ObjectId, ref: 'Organization', default: null },
 
-  healthConditions: [{ type: String }], // Optional: List of chronic conditions, allergies, etc.
+  // Assignments (single)
+  assignedNurse:     { type: ObjectId, ref: 'User', default: null },
+  assignedCaretaker: { type: ObjectId, ref: 'User', default: null },
+
+  // Optional
+  profilePhoto:   { type: String, default: null },
+  dateOfAdmitting:{ type: Date, default: null },
+  description:    { type: String, default: null },
+
+  // Audit
+  createdBy: { type: ObjectId, ref: 'User', required: true },
 
   created_at: { type: Date, default: Date.now },
   updated_at: { type: Date, default: Date.now }
 });
 
+PatientSchema.index({ organization: 1 });
+PatientSchema.index({ assignedNurse: 1 });
+PatientSchema.index({ assignedCaretaker: 1 });
+PatientSchema.index({ fullname: 'text' });
+PatientSchema.index({ organization: 1, created_at: -1 });
+
+// Back-compat: expose organizationName virtually
+PatientSchema.virtual('organizationName').get(function () {
+  return this.populated('organization') && this.organization
+    ? this.organization.name
+    : null;
+});
+
+PatientSchema.set('toObject', { virtuals: true });
+PatientSchema.set('toJSON', { virtuals: true });
+
 PatientSchema.pre('save', async function (next) {
   try {
-    // Validate each assigned nurse has the role 'nurse'
-    if (this.assignedNurses && this.assignedNurses.length > 0) {
-      const nurses = await User.find({ _id: { $in: this.assignedNurses } }).populate('role');
+    this.updated_at = Date.now();
 
-      const invalidUsers = nurses.filter(u => !u.role || u.role.name !== 'nurse');
-      if (invalidUsers.length > 0) {
-        return next(new Error('All assigned nurses must have the role "nurse".'));
+    const checks = [];
+    if (this.assignedNurse)     checks.push({ id: this.assignedNurse,     expected: 'nurse' });
+    if (this.assignedCaretaker) checks.push({ id: this.assignedCaretaker, expected: 'caretaker' });
+
+    if (checks.length) {
+      const users = await User.find({ _id: { $in: checks.map(c => c.id) } }).populate('role');
+      for (const c of checks) {
+        const u = users.find(x => String(x._id) === String(c.id));
+        const roleName = u?.role?.name?.toLowerCase();
+        if (!roleName || roleName !== c.expected) {
+          return next(new Error(`Assigned ${c.expected} must be a user with role "${c.expected}".`));
+        }
       }
     }
 
-    this.updated_at = Date.now();
     next();
   } catch (err) {
     next(err);
   }
 });
 
-const Patient = mongoose.model('Patient', PatientSchema);
-
-module.exports = Patient;
+module.exports = mongoose.model('Patient', PatientSchema);
