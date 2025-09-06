@@ -104,22 +104,22 @@ const swaggerOptions = {
       title: 'Guardian API',
       version: '1.0.0',
       description: 'API documentation with Swagger UI and Redoc'
-    }
-  },
-  components: {
-    securitySchemes: {
-      bearerAuth: {
-        type: 'http',
-        scheme: 'bearer',
-        bearerFormat: 'JWT',
+    },
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+        },
       },
     },
+    security: [
+      {
+        bearerAuth: [], // Apply globally to all endpoints
+      },
+    ],
   },
-  security: [
-    {
-      bearerAuth: [],
-    },
-  ],
   apis: ['./src/routes/*.js', './src/routes/**/*.js', './src/controllers/*.js'],
 };
 
