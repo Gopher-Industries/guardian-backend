@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const UserRole = require('../models/UserRole');
+const Role = require('../models/Role');
 const User = require('../models/User');
 const verifyToken = require('../middleware/verifyToken');
 const verifyRole = require('../middleware/verifyRole');
@@ -21,33 +21,37 @@ router.post('/admin/approve-nurse/:nurseId', verifyToken, verifyRole(['admin']),
 
 // Route to get all nurses (admin-only)
 router.get('/nurses', verifyToken, verifyRole(['admin']), async (req, res) => {
-    try {
-      // Find all nurses by looking up the UserRole model
-      const nurseRoles = await UserRole.find({ role_name: 'nurse' });
-      
-      // Extract the user IDs of all nurses
-      const nurseIds = nurseRoles.map(role => role.user_id);
-  
-      // Find all nurse user details using their IDs
-      const nurses = await User.find({ _id: { $in: nurseIds } });
-  
-      res.status(200).json(nurses);
-    } catch (error) {
-      res.status(400).json({ error: error.message });
+  try {
+    // Get Role _id for "nurse"
+    const nurseRole = await Role.findOne({ name: 'nurse' }).lean();
+    if (!nurseRole) {
+      return res.status(500).json({ error: 'Role "nurse" not found' });
     }
-  });
+
+    // Find all users whose role matches the nurse Role _id
+    const nurses = await User.find({ role: nurseRole._id })
+      .select('fullname email role created_at updated_at')
+      .lean();
+
+    res.status(200).json(nurses);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
 
   // Route to get all caretakers (admin-only)
-router.get('/caretakers', verifyToken, verifyRole(['admin']), async (req, res) => {
+  router.get('/caretakers', verifyToken, verifyRole(['admin']), async (req, res) => {
     try {
-      // Find all caretakers by looking up the UserRole model
-      const caretakerRoles = await UserRole.find({ role_name: 'caretaker' });
+      // Get Role _id for "caretaker"
+      const caretakerRole = await Role.findOne({ name: 'caretaker' }).lean();
+      if (!caretakerRole) {
+        return res.status(500).json({ error: 'Role "caretaker" not found' });
+      }
   
-      // Extract the user IDs of all caretakers
-      const caretakerIds = caretakerRoles.map(role => role.user_id);
-  
-      // Find all caretaker user details using their IDs
-      const caretakers = await User.find({ _id: { $in: caretakerIds } });
+      // Find all users whose role matches the caretaker Role _id
+      const caretakers = await User.find({ role: caretakerRole._id })
+        .select('fullname email role created_at updated_at')
+        .lean();
   
       res.status(200).json(caretakers);
     } catch (error) {

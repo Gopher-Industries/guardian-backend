@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const UserRole = require('../models/UserRole');
+// const UserRole = require('../models/UserRole');
 const User = require('../models/User');
 const verifyToken = require('../middleware/verifyToken');  // Optional: use this to require authentication
 
@@ -8,18 +8,17 @@ const verifyToken = require('../middleware/verifyToken');  // Optional: use this
 router.get('/user-roles', verifyToken, async (req, res) => {
   try {
     // Find all users
-    const users = await User.find();
+    const users = await User.find().populate('role', 'name');
 
     // For each user, find their roles and attach them to the user object
-    const usersWithRoles = await Promise.all(users.map(async user => {
-      const roles = await UserRole.find({ user_id: user._id });
+    const usersWithRoles = users.map(user => {
       return {
         _id: user._id,
         username: user.username,
         email: user.email,
-        roles: roles.map(role => role.role_name)  // Extract role names
+        roles: user.role ? [user.role.name] : []  // Extract role names
       };
-    }));
+    });
 
     res.status(200).json(usersWithRoles);
   } catch (error) {

@@ -2,8 +2,7 @@ const Patient = require('../models/Patient');
 const HealthRecord = require('../models/HealthRecord');
 const Task = require('../models/Task');
 const CarePlan = require('../models/CarePlan');
-const SupportTicket = require('../models/SupportTicket');
-const Task = require('../models/Task');
+//const SupportTicket = require('../models/SupportTicket');
 const notifyRules = require('../services/notifyRules');
 
 /**
