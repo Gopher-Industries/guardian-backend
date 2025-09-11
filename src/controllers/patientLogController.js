@@ -1,5 +1,12 @@
 // controllers/patientLogController.js
 const PatientLog = require('../models/PatientLog');
+const Patient = require('../models/Patient');
+
+async function isNurseAssignedToPatient(nurseId, patientId) {
+  const patient = await Patient.findById(patientId).select('assignedNurses');
+  if (!patient) return false;
+  return patient.assignedNurses.some(n => n.equals(nurseId));
+}
 
 /**
  * @swagger
@@ -62,6 +69,11 @@ exports.createLog = async (req, res) => {
       return res.status(400).json({ error: 'Title, description, and patient ID are required.' });
     }
 
+    const allowed = await isNurseAssignedToPatient(req.user._id, patient);
+    if (!allowed && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'You are not assigned to this patient.' });
+    }
+
     const newLog = await PatientLog.create({
       title,
       description,
@@ -74,6 +86,7 @@ exports.createLog = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 /**
  * @swagger
@@ -131,6 +144,12 @@ exports.createLog = async (req, res) => {
 exports.getLogsByPatient = async (req, res) => {
   try {
     const { patientId } = req.params;
+
+    const allowed = await isNurseAssignedToPatient(req.user._id, patientId);
+    if (!allowed && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'You are not assigned to this patient.' });
+    }
+
     const logs = await PatientLog.find({ patient: patientId })
       .populate('createdBy', 'fullname role')
       .sort({ createdAt: -1 });
@@ -140,6 +159,7 @@ exports.getLogsByPatient = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 /**
  * @swagger
@@ -184,12 +204,22 @@ exports.deleteLog = async (req, res) => {
 
     if (!log) return res.status(404).json({ error: 'Log not found' });
 
-    if (!log.createdBy.equals(req.user._id) && req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Permission denied' });
+    if (req.user.role === 'admin') {
+      await PatientLog.findByIdAndDelete(id);
+      return res.status(200).json({ message: 'Log deleted successfully' });
     }
 
-    await PatientLog.findByIdAndDelete(id);
-    res.status(200).json({ message: 'Log deleted successfully' });
+    if (log.createdBy.equals(req.user._id)) {
+      const allowed = await isNurseAssignedToPatient(req.user._id, log.patient);
+      if (!allowed) {
+        return res.status(403).json({ error: 'You are not assigned to this patient.' });
+      }
+
+      await PatientLog.findByIdAndDelete(id);
+      return res.status(200).json({ message: 'Log deleted successfully' });
+    }
+
+    return res.status(403).json({ error: 'Permission denied' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
