@@ -207,6 +207,76 @@
           "500": { "description": "Error fetching user profile" }
         }
       }
+    },
+    "/api/v1/admin/bootstrap": {
+      "post": {
+        "summary": "Bootstrap the first organization and admin user",
+        "tags": ["Admin"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AdminBootstrapRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string", "example": "Admin and org bootstrapped" },
+                    "admin": { "$ref": "#/components/schemas/AdminSafe" }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Problem" }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Problem" }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -249,6 +319,57 @@
           "fullname": { "type": "string" },
           "email": { "type": "string" },
           "role": { "type": "string" }
+        }
+      },
+      "AdminBootstrapRequest": {
+        "type": "object",
+        "required": ["orgName", "fullName", "email", "password"],
+        "properties": {
+          "orgName": { "type": "string", "example": "Gopher Industries" },
+          "fullName": { "type": "string", "example": "Alex Admin" },
+          "email": { "type": "string", "format": "email", "example": "alex.admin@example.test" },
+          "password": { "type": "string", "format": "password", "minLength": 8, "example": "Admin#1234" }
+        }
+      },
+      "AdminSafe": {
+        "type": "object",
+        "description": "Admin user without sensitive fields",
+        "properties": {
+          "_id": { "type": "string", "example": "68a2e98a605bf088aff263ce" },
+          "fullName": { "type": "string", "example": "Alex Admin" },
+          "email": { "type": "string", "format": "email", "example": "alex.admin@example.test" },
+          "role": { "type": "string", "enum": ["admin", "nurse", "caretaker", "patient"], "example": "admin" },
+          "org": { "type": "string", "example": "68a2e98a605bf088aff263c8" },
+          "isApproved": { "type": "boolean", "example": true }
+        }
+      },
+      "Problem": {
+        "type": "object",
+        "required": ["status", "title"],
+        "properties": {
+          "type": { "type": "string", "format": "uri", "example": "about:blank" },
+          "title": { "type": "string", "example": "Unauthorized" },
+          "status": { "type": "integer", "example": 401 },
+          "detail": { "type": "string", "example": "Missing or invalid credentials." },
+          "instance": { "type": "string", "example": "/api/v1/admin/bootstrap" }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "required": ["message"],
+        "properties": {
+          "code": { "type": "string", "example": "E_CONFLICT" },
+          "message": { "type": "string", "example": "Admin already bootstrapped." },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "field": { "type": "string", "example": "email" },
+                "message": { "type": "string", "example": "Email already in use." }
+              }
+            }
+          }
         }
       }
     }
