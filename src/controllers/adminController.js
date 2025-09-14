@@ -455,6 +455,7 @@ const User = require('../models/User');
  * Strong password policy and safe response (no password hash).
  * POST /api/v1/admin/users
  */
+
 /**
  * @swagger
  * /api/v1/admin/users:
@@ -602,6 +603,7 @@ exports.createAdminUser = async (req, res) => {
  *               $ref: '#/components/schemas/Error'
  */
 
+
 exports.getAdminById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -674,6 +676,7 @@ exports.getAdminById = async (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
+
 
 exports.listAdmins = async (req, res) => {
   try {

@@ -10,7 +10,7 @@ const User = require('../models/User');
  * /api/v1/admin/bootstrap:
  *   post:
  *     summary: Bootstrap the first admin
- *     description: Creates the initial admin account **only if no admin users exist**. Requires `X-Install-Token` header. Response excludes password fields.
+ *     description: Creates the initial admin account only if no admin users exist. Requires X-Install-Token header.
  *     tags: [Admin]
  *     parameters:
  *       - in: header
@@ -57,7 +57,7 @@ const User = require('../models/User');
  *             schema:
  *               $ref: '#/components/schemas/Error'
  *       422:
- *         description: Validation error (missing fields or weak password)
+ *         description: Validation error
  *         content:
  *           application/json:
  *             schema:
@@ -69,6 +69,7 @@ const User = require('../models/User');
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
+
 
 exports.bootstrapAdmin = async (req, res) => {
   try {
@@ -141,3 +142,66 @@ exports.bootstrapAdmin = async (req, res) => {
     return res.status(500).json({ error: 'Bootstrap failed' });
   }
 };
+
+/**
+ * @swagger
+ * components:
+ *   securitySchemes:
+ *     bearerAuth:
+ *       type: http
+ *       scheme: bearer
+ *       bearerFormat: JWT
+ *   schemas:
+ *     AdminBootstrapRequest:
+ *       type: object
+ *       required: [fullname, email, password]
+ *       properties:
+ *         fullname: { type: string, example: Alex Admin }
+ *         email:    { type: string, format: email, example: alex.admin@example.test }
+ *         password: { type: string, minLength: 12, example: Temp#Passw0rd! }
+ *     AdminCreateRequest:
+ *       type: object
+ *       required: [fullname, email, password]
+ *       properties:
+ *         fullname: { type: string, example: Dana Ops }
+ *         email:    { type: string, format: email, example: dana.ops@gopher-industries.example }
+ *         password: { type: string, minLength: 12, example: Very$tr0ng!Pass }
+ *         org:      { type: string, nullable: true, description: Optional organization id }
+ *     AdminSafe:
+ *       type: object
+ *       properties:
+ *         _id:                 { type: string, example: 68c3bf17f54e8b99709e277f }
+ *         fullname:            { type: string, example: Dana Ops }
+ *         email:               { type: string, format: email, example: dana.ops@gopher-industries.example }
+ *         role:                { type: string, example: admin }
+ *         failedLoginAttempts: { type: integer, example: 0 }
+ *         lastPasswordChange:  { type: string, format: date-time }
+ *         created_at:          { type: string, format: date-time }
+ *         updated_at:          { type: string, format: date-time }
+ *     AdminListResponse:
+ *       type: object
+ *       properties:
+ *         items:
+ *           type: array
+ *           items: { $ref: '#/components/schemas/AdminSafe' }
+ *         nextCursor:
+ *           type: string
+ *           nullable: true
+ *           example: 68c3bf17f54e8b99709e277f
+ *         limit:
+ *           type: integer
+ *           example: 20
+ *     Error:
+ *       type: object
+ *       properties:
+ *         error: { type: string, example: Validation error }
+ *     Problem:
+ *       type: object
+ *       properties:
+ *         type:     { type: string, example: about:blank }
+ *         title:    { type: string, example: Bootstrap disabled (admins exist) }
+ *         status:   { type: integer, example: 403 }
+ *         detail:   { type: string, example: Bootstrap disabled (admins exist) }
+ *         instance: { type: string, example: /api/v1/admin/bootstrap }
+ */
+
