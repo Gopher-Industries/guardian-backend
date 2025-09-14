@@ -455,6 +455,54 @@ const User = require('../models/User');
  * Strong password policy and safe response (no password hash).
  * POST /api/v1/admin/users
  */
+/**
+ * @swagger
+ * /api/v1/admin/users:
+ *   post:
+ *     summary: Create a new admin user
+ *     description: Creates a new admin with a strong password policy. Response excludes password fields.
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/AdminCreateRequest'
+ *     responses:
+ *       201:
+ *         description: Admin created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Admin created
+ *                 admin:
+ *                   $ref: '#/components/schemas/AdminSafe'
+ *       409:
+ *         description: Email already exists
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       422:
+ *         description: Validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+
 exports.createAdminUser = async (req, res) => {
   try {
     const { fullname, email, password, org } = req.body || {};
@@ -513,6 +561,47 @@ exports.createAdminUser = async (req, res) => {
  * Get an admin by id (admin-only).
  * GET /api/v1/admin/users/:id
  */
+
+/**
+ * @swagger
+ * /api/v1/admin/users/{id}:
+ *   get:
+ *     summary: Get an admin by id
+ *     description: Returns a single admin. Response excludes password fields.
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: MongoDB ObjectId of the admin
+ *     responses:
+ *       200:
+ *         description: Admin found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 admin:
+ *                   $ref: '#/components/schemas/AdminSafe'
+ *       400:
+ *         description: Invalid id
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+
 exports.getAdminById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -541,6 +630,51 @@ exports.getAdminById = async (req, res) => {
  * List admins with basic pagination (admin-only).
  * GET /api/v1/admin/users?limit=20&after=<id>
  */
+
+/**
+ * @swagger
+ * /api/v1/admin/users:
+ *   get:
+ *     summary: List admin users
+ *     description: Cursor-style pagination using the last returned id as nextCursor.
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 20
+ *         description: Page size
+ *       - in: query
+ *         name: after
+ *         schema:
+ *           type: string
+ *         description: Return items with id greater than this cursor
+ *     responses:
+ *       200:
+ *         description: Admin list
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AdminListResponse'
+ *       400:
+ *         description: Invalid cursor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+
 exports.listAdmins = async (req, res) => {
   try {
     const limit = Math.min(Math.max(parseInt(req.query.limit || '20', 10), 1), 100);

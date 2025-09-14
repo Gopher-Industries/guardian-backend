@@ -4,6 +4,72 @@ const User = require('../models/User');
 
 // POST /api/v1/admin/bootstrap
 // Only allowed when there are NO admin users and header X-Install-Token matches INSTALL_TOKEN
+
+/**
+ * @swagger
+ * /api/v1/admin/bootstrap:
+ *   post:
+ *     summary: Bootstrap the first admin
+ *     description: Creates the initial admin account **only if no admin users exist**. Requires `X-Install-Token` header. Response excludes password fields.
+ *     tags: [Admin]
+ *     parameters:
+ *       - in: header
+ *         name: X-Install-Token
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: "One-time install token"
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/AdminBootstrapRequest'
+ *     responses:
+ *       201:
+ *         description: Bootstrap admin created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Bootstrap admin created. Share credentials out-of-band and rotate on first login.
+ *                 admin:
+ *                   $ref: '#/components/schemas/AdminSafe'
+ *       401:
+ *         description: Invalid or missing X-Install-Token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
+ *       403:
+ *         description: Bootstrap disabled (admins already exist)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
+ *       409:
+ *         description: Email already exists
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       422:
+ *         description: Validation error (missing fields or weak password)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+
 exports.bootstrapAdmin = async (req, res) => {
   try {
     // Check if any admin user exists
