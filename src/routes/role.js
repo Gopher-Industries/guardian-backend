@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const UserRole = require('../models/UserRole');
+const Role = require('../models/Role');
 const User = require('../models/User');
 
 // Route to assign a role to a user
@@ -15,18 +15,18 @@ router.post('/assign-role', async (req, res) => {
     }
 
     // Check if the user already has a role assigned
-    const existingRole = await UserRole.findOne({ user_id: userId });
-    if (existingRole) {
+    if (user.role) {
       return res.status(400).json({ message: 'Role already assigned to this user' });
     }
 
-    // Assign the role to the user by creating an entry in the UserRole model
-    const userRole = new UserRole({
-      user_id: userId,
-      role_name: role  // Assign the role provided (e.g., 'admin', 'nurse', 'caretaker')
-    });
+    // Assign the role to the user 
+    const roleDoc = await Role.findOne({ name: role.toLowerCase() });
+    if (!roleDoc) {
+      return res.status(400).json({ error: role + ' is an invalid role' });
+    }
 
-    await userRole.save();
+    user.role = roleDoc._id;
+    await user.save();
 
     res.status(201).json({ message: `Role '${role}' assigned to user ${userId}` });
   } catch (error) {

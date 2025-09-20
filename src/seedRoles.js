@@ -1,7 +1,7 @@
 const Role = require('./models/Role');
 
 const seedRoles = async () => {
-  const roles = ['admin', 'nurse', 'caretaker'];
+  const roles = ['admin', 'nurse', 'caretaker', 'doctor'];
 
   try {
     // Loop through the predefined roles

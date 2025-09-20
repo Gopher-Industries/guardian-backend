@@ -74,6 +74,234 @@ exports.addPatient = async (req, res) => {
 
 /**
  * @swagger
+ * /api/v1/patients:
+ *   get:
+ *     summary: Get all patients (excluding soft-deleted by default)
+ *     tags: [Patient]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, minimum: 1, default: 1 }
+ *         description: Page number (1-indexed)
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+ *         description: Page size (max 100)
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
+ *         description: Case-insensitive match on fullname
+ *       - in: query
+ *         name: gender
+ *         schema: { type: string, enum: [male, female, other] }
+ *         description: Filter by gender
+ *       - in: query
+ *         name: caretakerId
+ *         schema: { type: string }
+ *         description: Filter by caretaker ObjectId
+ *       - in: query
+ *         name: includeDeleted
+ *         schema: { type: boolean, default: false }
+ *         description: Include soft-deleted records if true
+ *       - in: query
+ *         name: sort
+ *         schema: { type: string, default: "-created_at" }
+ *         description: Mongoose-style sort (e.g. "-created_at", "fullname")
+ *     responses:
+ *       200:
+ *         description: Paged list of patients
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 page: { type: integer }
+ *                 limit: { type: integer }
+ *                 total: { type: integer }
+ *                 totalPages: { type: integer }
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Patient'
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Server error
+ */
+exports.getAllPatients = async (req, res) => {
+  try {
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
+    const skip = (page - 1) * limit;
+
+    const { search, gender, caretakerId, includeDeleted, sort = '-created_at' } = req.query;
+
+    const filter = {};
+    // Soft-delete handling
+    if (!(String(includeDeleted).toLowerCase() === 'true')) {
+      filter.isDeleted = { $ne: true };
+    }
+
+    if (search) {
+      filter.fullname = { $regex: search, $options: 'i' };
+    }
+    if (gender) {
+      filter.gender = gender;
+    }
+    if (caretakerId) {
+      filter.caretaker = caretakerId;
+    }
+
+    const [total, patients] = await Promise.all([
+      Patient.countDocuments(filter),
+      Patient.find(filter)
+        .populate('caretaker', 'fullname email')
+        .populate('assignedNurses', 'fullname email')
+        .sort(sort)
+        .skip(skip)
+        .limit(limit)
+    ]);
+
+    // Add computed age to each item (non-destructive)
+    const data = patients.map(p => {
+      const obj = p.toObject();
+      if (obj.dateOfBirth) obj.age = calculateAge(obj.dateOfBirth);
+      return obj;
+    });
+
+    return res.status(200).json({
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+      data
+    });
+  } catch (err) {
+    return res.status(500).json({ message: 'Error fetching patients', details: err.message });
+  }
+};
+
+
+/**
+ * @swagger
+ * /api/v1/patients/{patientId}:
+ *   put:
+ *     summary: Update patient details
+ *     description: Update one or more fields of an existing patient. Accepts JSON or multipart/form-data when uploading a new profile photo.
+ *     tags: [Patient]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: patientId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: MongoDB ObjectId of the patient
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               fullname: { type: string }
+ *               dateOfBirth:
+ *                 type: string
+ *                 format: date
+ *                 example: '1980-01-01'
+ *               gender: { type: string }
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               fullname: { type: string }
+ *               dateOfBirth:
+ *                 type: string
+ *                 format: date
+ *                 example: '1980-01-01'
+ *               gender: { type: string }
+ *               profilePhoto:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Patient updated successfully
+ *       400:
+ *         description: Invalid patient id or bad input
+ *       404:
+ *         description: Patient not found
+ *       410:
+ *         description: Patient is deleted and cannot be updated
+ *       500:
+ *         description: Server error
+ */
+exports.updatePatient = async (req, res) => {
+  try {
+    const { patientId } = req.params;
+
+    // Load existing (and not soft-deleted) patient
+    let patient;
+    try {
+      patient = await Patient.findById(patientId);
+    } catch (e) {
+      if (e.name === 'CastError') {
+        return res.status(400).json({ message: 'Invalid patient id' });
+      }
+      throw e;
+    }
+
+    if (!patient) {
+      return res.status(404).json({ message: 'Patient not found' });
+    }
+    if (patient.isDeleted) {
+      return res.status(410).json({ message: 'Patient is deleted and cannot be updated' });
+    }
+
+    // Accept JSON or multipart/form-data; profilePhoto may come via req.file
+    const { fullname, dateOfBirth, gender } = req.body;
+
+    if (typeof fullname !== 'undefined' && fullname !== patient.fullname) {
+      patient.fullname = fullname;
+    }
+    if (typeof gender !== 'undefined' && gender !== patient.gender) {
+      patient.gender = gender;
+    }
+
+    if (typeof dateOfBirth !== 'undefined') {
+      const d = new Date(dateOfBirth);
+      if (isNaN(d.getTime())) {
+        return res.status(400).json({ message: 'Invalid dateOfBirth; expected YYYY-MM-DD' });
+      }
+      patient.dateOfBirth = d;
+    }
+
+    if (req.file && req.file.filename) {
+      patient.profilePhoto = req.file.filename;
+      // (Optional) TODO: remove older photo file from storage if needed
+    }
+
+    // Track updater (optional)
+    if (req.user && req.user._id) {
+      patient.updatedBy = req.user._id;
+    }
+
+    await patient.save();
+
+    const obj = patient.toObject();
+    if (obj.dateOfBirth) {
+      obj.age = calculateAge(obj.dateOfBirth);
+    }
+
+    return res.status(200).json({ message: 'Patient updated successfully', patient: obj });
+  } catch (err) {
+    return res.status(500).json({ message: 'Error updating patient', details: err.message });
+  }
+};
+/**
+ * @swagger
  * /api/v1/patients/{patientId}:
  *   delete:
  *     summary: Soft delete a patient
@@ -142,46 +370,56 @@ exports.deletePatient = async (req, res) => {
 
 /**
  * @swagger
- * /api/v1/patient/{patientId}:
+ * /api/v1/patients/{patientId}:
  *   get:
- *     summary: Fetch patient details
+ *     summary: Fetch patient details by ID
  *     tags: [Patient]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - patientId
- *             properties:
- *               patientId:
- *                 type: string
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: patientId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: MongoDB ObjectId of the patient
  *     responses:
  *       200:
  *         description: Patient details
  *       404:
  *         description: Patient not found
  *       400:
- *         description: Error fetching patient details
+ *         description: Invalid patient id or error fetching details
  */
 exports.getPatientDetails = async (req, res) => {
   try {
-    const patient = await Patient.findById(req.body.patientId)
-      .populate('caretaker', 'fullname email')
-      .populate('assignedNurses', 'fullname email');
+    const { patientId } = req.params;
 
-    if (!patient) return res.status(404).json({ message: 'Patient not found' });
-
-    const patientObj = patient.toObject(); // Convert Mongoose document to plain object
-
-    if (patientObj.dateOfBirth) {
-      patientObj.age = calculateAge(patientObj.dateOfBirth); // Dynamically add age
+    let patient;
+    try {
+      patient = await Patient.findOne({ _id: patientId, isDeleted: { $ne: true } })
+        .populate('caretaker', 'fullname email')
+        .populate('assignedNurses', 'fullname email');
+    } catch (e) {
+      if (e.name === 'CastError') {
+        return res.status(400).json({ message: 'Invalid patient id' });
+      }
+      throw e;
     }
 
-    res.json(patientObj);
+    if (!patient) {
+      return res.status(404).json({ message: 'Patient not found' });
+    }
+
+    const patientObj = patient.toObject();
+
+    if (patientObj.dateOfBirth) {
+      patientObj.age = calculateAge(patientObj.dateOfBirth);
+    }
+
+    return res.json(patientObj);
   } catch (error) {
-    res.status(400).json({ message: 'Error fetching patient information', details: error.message });
+    return res.status(400).json({ message: 'Error fetching patient information', details: error.message });
   }
 };
 

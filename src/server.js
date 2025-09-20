@@ -103,25 +103,26 @@ const swaggerOptions = {
     info: {
       title: 'Guardian API',
       version: '1.0.0',
-      description: 'API documentation with Swagger UI and Redoc'
-    }
-  },
-  components: {
-    securitySchemes: {
-      bearerAuth: {
-        type: 'http',
-        scheme: 'bearer',
-        bearerFormat: 'JWT',
+      description: 'API documentation with Swagger UI and Redoc',
+    },
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+        },
       },
     },
+    security: [
+      {
+        bearerAuth: [],
+      },
+    ],
   },
-  security: [
-    {
-      bearerAuth: [],
-    },
-  ],
   apis: ['./src/routes/*.js', './src/routes/**/*.js', './src/controllers/*.js'],
 };
+
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
@@ -142,7 +143,12 @@ const notificationRoutes = require('./routes/notifications');
 const patientLogRoutes = require('./routes/patientLogRoutes');
 const medicationReminder = require('./routes/medicationReminderRoutes');
 const scheduler = require('./services/reminderScheduler');
-
+const doctorRoutes = require('./routes/doctor');
+const adminRoutes = require('./routes/admin');
+const adminPatientRoutes = require('./routes/adminPatientRoutes');
+const adminStaffRoutes = require('./routes/adminStaffRoutes');
+const orgRoutes = require('./routes/orgRoutes');
+const prescriptionRoutes = require('./routes/prescriptionRoutes');
 
 app.use('/api/v1/auth', userRoutes);
 app.use('/api/v1/caretaker', caretakerRoutes);
@@ -153,11 +159,16 @@ app.use('/api/v1/activity-recognition', activityRecognitionRoutes);
 app.use('/api/v1/alerts', alertsRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/patient-logs', patientLogRoutes);
+
 scheduler.start();
 
 app.use('/api/v1/reminders', medicationReminder);
-
-
+app.use('/api/v1/doctors', doctorRoutes);
+app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/prescriptions', prescriptionRoutes);
+app.use('/api/v1/admin', adminStaffRoutes);
+app.use('/api/v1/admin', adminPatientRoutes);
+app.use('/api/v1/orgs', orgRoutes);
 
 app.use(
   '/swaggerDocs',

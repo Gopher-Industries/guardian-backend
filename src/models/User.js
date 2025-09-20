@@ -7,6 +7,7 @@ const UserSchema = new mongoose.Schema({
   password_hash: { type: String, required: true },
   role: { type: mongoose.Schema.Types.ObjectId, ref: 'Role' },
   assignedPatients: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Patient' }], // Assigned patients
+  organization: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', index: true },
   lastPasswordChange: { type: Date, default: Date.now },
   failedLoginAttempts: { type: Number, default: 0 },
   created_at: { type: Date, default: Date.now },
