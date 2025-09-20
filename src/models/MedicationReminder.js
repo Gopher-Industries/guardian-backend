@@ -1,32 +1,76 @@
 // src/models/MedicationReminder.js
+// Medication reminder model that ALWAYS stores: patientLog (EntryReport), patient, and createdBy (User).
+
 const mongoose = require('mongoose');
 
-// Sub-schema for scheduling details
-const scheduleSchema = new mongoose.Schema({
-  type: { type: String, enum: ['one_time', 'recurring'], required: true }, // Reminder type
-  at: Date,                // One-time reminder datetime
-  timesOfDay: [String],    // Array of times e.g. ["08:00", "20:00"]
-  daysOfWeek: [Number],    // 0=Sunday, 6=Saturday
-  timezone: { type: String, default: 'Australia/Melbourne' } // Timezone for scheduling
-}, { _id: false });
+const scheduleSchema = new mongoose.Schema(
+  {
+    // 'one_time' executes once at 'at' (ISO date)
+    // 'recurring' executes on specified days/times using 'timezone'
+    type: { type: String, enum: ['one_time', 'recurring'], required: true },
+    at: { type: Date },                  // required for one_time
+    timesOfDay: [{ type: String }],      // e.g. ["08:00","20:00"] (24h)
+    daysOfWeek: [{ type: Number }],      // 0..6 (Sun..Sat). If omitted -> every day
+    timezone: { type: String, default: 'Australia/Melbourne' }
+  },
+  { _id: false }
+);
 
-// Main schema for medication reminder
-const reminderSchema = new mongoose.Schema({
-  patient: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient', required: true, index: true },
-  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  medicationName: { type: String, required: true }, // Name of medication
-  dosage: String,                                   // Dosage information
-  instructions: String,                             // Instructions for intake
-  startDate: { type: Date, required: true },        // Start of the schedule
-  endDate: Date,                                    // Optional end date
-  schedule: { type: scheduleSchema, required: true },
-  notifyChannels: [{ type: String, enum: ['in_app','sms','email','push'], default: 'in_app' }],
-  lastTriggeredAt: Date,    // Last time the reminder was triggered
-  nextRunAt: Date,          // Next scheduled trigger time
-  active: { type: Boolean, default: true }
-}, { timestamps: true });
+const reminderSchema = new mongoose.Schema(
+  {
+    // REQUIRED linkage as you requested:
+    entryReport: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'PatientLog',
+      required: true,
+      index: true
+    },
+    patient: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Patient',
+      required: true,
+      index: true
+    },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+      index: true
+    },
 
-// Index for efficient scheduler queries
+    medicationName: { type: String, required: true },
+    dosage: { type: String },
+    instructions: { type: String },
+    startDate: { type: Date, required: true },
+    endDate: { type: Date },
+
+    schedule: { type: scheduleSchema, required: true },
+    notifyChannels: [{
+      type: String,
+      enum: ['in_app', 'email', 'sms', 'push'],
+      default: 'in_app'
+    }],
+
+    lastTriggeredAt: { type: Date, default: null },
+    nextRunAt: { type: Date, default: null },
+    active: { type: Boolean, default: true }
+  },
+  { timestamps: true }
+);
+
+// Efficient scans for scheduler and nurse filters
 reminderSchema.index({ active: 1, nextRunAt: 1 });
+reminderSchema.index({ createdBy: 1 });
+
+// Data consistency: ensure patient matches the patient in the bound log
+reminderSchema.pre('validate', async function () {
+  const Reminder = this;
+  const PatientLog = require('./PatientLog'); // lazy require to avoid cycles
+  const log = await PatientLog.findById(Reminder.entryReport).select('patient');
+  if (!log) throw new Error('Patient log (entryReport) not found');
+  if (String(log.patient) !== String(Reminder.patient)) {
+    throw new Error('patient does not match the patient in the bound patient log');
+  }
+});
 
 module.exports = mongoose.model('MedicationReminder', reminderSchema);

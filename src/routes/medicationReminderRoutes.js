@@ -1,25 +1,29 @@
 // src/routes/medicationReminderRoutes.js
 const router = require('express').Router();
 const verifyToken = require('../middleware/verifyToken');
-const checkUserRole = require('./checkUserRole');
+const verifyRole = require('../middleware/verifyRole');
 const c = require('../controllers/medicationReminderController');
 
-// Create reminder
-router.post('/', verifyToken, checkUserRole(['nurse','caretaker','admin']), c.createReminder);
+// Create from a patient log (strict binding of entryReport + patient + createdBy)
+router.post('/from-log/:logId', verifyToken, verifyRole(['nurse','caretaker','admin']), c.createFromLog);
 
-// Get all reminders (or by patient)
-router.get('/', verifyToken, checkUserRole(['nurse','caretaker','admin','patient']), c.getReminders);
+// Create by payload (entryReportId + patientId required)
+router.post('/', verifyToken, verifyRole(['nurse','caretaker','admin']), c.createReminder);
 
-// Get reminder by ID
-router.get('/:id', verifyToken, checkUserRole(['nurse','caretaker','admin','patient']), c.getReminderById);
+// List my reminders by status (createdBy = me)
+router.get('/my', verifyToken, verifyRole(['nurse','caretaker','admin']), c.listMyReminders);
 
-// Update reminder
-router.patch('/:id', verifyToken, checkUserRole(['nurse','caretaker','admin']), c.updateReminder);
+// Optional: global view with status filter can restrict to admin only
+router.get('/', verifyToken, verifyRole(['admin']), c.getReminders);
 
-// Delete reminder
-router.delete('/:id', verifyToken, checkUserRole(['nurse','caretaker','admin']), c.deleteReminder);
+// Read / Update / Delete
+router.get('/:id', verifyToken, verifyRole(['nurse','caretaker','admin']), c.getReminderById);
 
-// Trigger reminder manually
-router.post('/:id/trigger', verifyToken, checkUserRole(['nurse','caretaker','admin']), c.triggerNow);
+router.patch('/:id', verifyToken, verifyRole(['nurse','caretaker','admin']), c.updateReminder);
+
+router.delete('/:id', verifyToken, verifyRole(['nurse','caretaker','admin']), c.deleteReminder);
+
+// Manual trigger ("Send Now")
+router.post('/:id/trigger', verifyToken, verifyRole(['nurse','caretaker','admin']), c.triggerNow);
 
 module.exports = router;
