@@ -141,6 +141,8 @@ const activityRecognitionRoutes = require('./routes/activityRecognition');
 const alertsRoutes = require('./routes/alerts');
 const notificationRoutes = require('./routes/notifications');
 const patientLogRoutes = require('./routes/patientLogRoutes');
+const medicationReminder = require('./routes/medicationReminderRoutes');
+const scheduler = require('./services/reminderScheduler');
 const doctorRoutes = require('./routes/doctor');
 const adminRoutes = require('./routes/admin');
 const adminPatientRoutes = require('./routes/adminPatientRoutes');
@@ -157,6 +159,10 @@ app.use('/api/v1/activity-recognition', activityRecognitionRoutes);
 app.use('/api/v1/alerts', alertsRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/patient-logs', patientLogRoutes);
+
+scheduler.start();
+
+app.use('/api/v1/reminders', medicationReminder);
 app.use('/api/v1/doctors', doctorRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/prescriptions', prescriptionRoutes);
