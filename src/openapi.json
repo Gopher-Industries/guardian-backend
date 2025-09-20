@@ -1,214 +1,14 @@
 {
-  "openapi": "3.0.0",
+  "openapi": "3.0.3",
   "info": {
-    "title": "Guardian API",
-    "version": "1.0.0",
-    "description": "API documentation for the Guardian Monitoring App"
+    "title": "Guardian Monitor API",
+    "version": "1.0.0"
   },
-  "paths": {
-    "/api/v1/auth/register": {
-      "post": {
-        "summary": "Register a new user",
-        "tags": ["Authentication"],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": ["fullname", "email", "password", "role"],
-                "properties": {
-                  "fullname": { "type": "string" },
-                  "email": { "type": "string" },
-                  "password": { "type": "string" },
-                  "role": { "type": "string" }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": { "description": "User registered successfully" },
-          "400": { "description": "Bad request" }
-        }
-      }
-    },
-    "/api/v1/auth/login": {
-      "post": {
-        "summary": "Log in a user",
-        "tags": ["Authentication"],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": ["email", "password"],
-                "properties": {
-                  "email": { "type": "string" },
-                  "password": { "type": "string" }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": { "description": "Login successful" },
-          "400": { "description": "Invalid credentials" }
-        }
-      }
-    },
-    "/api/v1/admin/support-ticket": {
-      "post": {
-        "summary": "Create a support ticket",
-        "tags": ["Admin"],
-        "security": [{ "bearerAuth": [] }],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": ["subject", "description"],
-                "properties": {
-                  "subject": { "type": "string" },
-                  "description": { "type": "string" },
-                  "status": { "type": "string", "default": "open" }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": { "description": "Support ticket created successfully" },
-          "500": { "description": "Error creating support ticket" }
-        }
-      }
-    },
-    "/api/v1/admin/tasks": {
-      "post": {
-        "summary": "Create a new task",
-        "tags": ["Admin"],
-        "security": [{ "bearerAuth": [] }],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": ["title", "description", "patientId", "dueDate"],
-                "properties": {
-                  "title": { "type": "string" },
-                  "description": { "type": "string" },
-                  "patientId": { "type": "string" },
-                  "dueDate": { "type": "string", "format": "date" },
-                  "assignedTo": { "type": "string" }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": { "description": "Task created successfully" },
-          "500": { "description": "Error creating task" }
-        }
-      }
-    },
-    "/api/v1/caretaker/assigned-patients": {
-      "get": {
-        "summary": "Fetch patients assigned to a caretaker",
-        "tags": ["Caretaker"],
-        "security": [{ "bearerAuth": [] }],
-        "responses": {
-          "200": {
-            "description": "List of assigned patients",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": { "$ref": "#/components/schemas/Patient" }
-                }
-              }
-            }
-          },
-          "403": { "description": "Unauthorized role" },
-          "500": { "description": "Error fetching assigned patients" }
-        }
-      }
-    },
-    "/api/v1/health-records/{patientId}": {
-      "get": {
-        "summary": "Fetch health records for a patient",
-        "tags": ["HealthRecord"],
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [
-          {
-            "name": "patientId",
-            "in": "path",
-            "required": true,
-            "schema": { "type": "string" },
-            "description": "The ID of the patient"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Health records retrieved successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": { "$ref": "#/components/schemas/HealthRecord" }
-                }
-              }
-            }
-          },
-          "404": { "description": "Patient not found" },
-          "500": { "description": "Error fetching health records" }
-        }
-      }
-    },
-    "/api/v1/nurse/assigned-patients": {
-      "get": {
-        "summary": "Fetch patients assigned to a nurse",
-        "tags": ["Nurse"],
-        "security": [{ "bearerAuth": [] }],
-        "responses": {
-          "200": {
-            "description": "List of assigned patients",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": { "$ref": "#/components/schemas/Patient" }
-                }
-              }
-            }
-          },
-          "403": { "description": "Unauthorized role" },
-          "500": { "description": "Error fetching assigned patients" }
-        }
-      }
-    },
-    "/api/v1/user/profile": {
-      "get": {
-        "summary": "Fetch user profile",
-        "tags": ["User"],
-        "security": [{ "bearerAuth": [] }],
-        "responses": {
-          "200": {
-            "description": "User profile retrieved successfully",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/User" }
-              }
-            }
-          },
-          "401": { "description": "Unauthorized" },
-          "500": { "description": "Error fetching user profile" }
-        }
-      }
+  "servers": [
+    {
+      "url": "http://localhost:3000"
     }
-  },
+  ],
   "components": {
     "securitySchemes": {
       "bearerAuth": {
@@ -218,39 +18,461 @@
       }
     },
     "schemas": {
-      "Patient": {
+      "AdminBootstrapRequest": {
         "type": "object",
+        "required": [
+          "fullname",
+          "email",
+          "password"
+        ],
         "properties": {
-          "id": { "type": "string" },
-          "fullname": { "type": "string" },
-          "age": { "type": "integer" },
-          "gender": { "type": "string" },
-          "caretaker": { "type": "string" },
-          "assignedNurses": {
-            "type": "array",
-            "items": { "type": "string" }
+          "fullname": {
+            "type": "string",
+            "example": "Alex Admin"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "alex.admin@example.test"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 12,
+            "example": "Temp#Passw0rd!"
           }
         }
       },
-      "HealthRecord": {
+      "AdminCreateRequest": {
         "type": "object",
+        "required": [
+          "fullname",
+          "email",
+          "password"
+        ],
         "properties": {
-          "id": { "type": "string" },
-          "patientId": { "type": "string" },
-          "recordType": { "type": "string" },
-          "description": { "type": "string" },
-          "createdAt": { "type": "string", "format": "date-time" }
+          "fullname": {
+            "type": "string",
+            "example": "Dana Ops"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "dana.ops@gopher-industries.example"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 12,
+            "example": "Very$tr0ng!Pass"
+          },
+          "org": {
+            "type": "string",
+            "nullable": true,
+            "description": "Optional organization id"
+          }
         }
       },
-      "User": {
+      "AdminSafe": {
         "type": "object",
         "properties": {
-          "id": { "type": "string" },
-          "fullname": { "type": "string" },
-          "email": { "type": "string" },
-          "role": { "type": "string" }
+          "_id": {
+            "type": "string",
+            "example": "68c3bf17f54e8b99709e277f"
+          },
+          "fullname": {
+            "type": "string",
+            "example": "Dana Ops"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "dana.ops@gopher-industries.example"
+          },
+          "role": {
+            "type": "string",
+            "example": "admin"
+          },
+          "failedLoginAttempts": {
+            "type": "integer",
+            "example": 0
+          },
+          "lastPasswordChange": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AdminListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminSafe"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true,
+            "example": "68c3bf17f54e8b99709e277f"
+          },
+          "limit": {
+            "type": "integer",
+            "example": 20
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "example": "Validation error"
+          }
+        }
+      },
+      "Problem": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "example": "about:blank"
+          },
+          "title": {
+            "type": "string",
+            "example": "Bootstrap disabled (admins exist)"
+          },
+          "status": {
+            "type": "integer",
+            "example": 403
+          },
+          "detail": {
+            "type": "string",
+            "example": "Bootstrap disabled (admins exist)"
+          },
+          "instance": {
+            "type": "string",
+            "example": "/api/v1/admin/bootstrap"
+          }
         }
       }
     }
-  }
+  },
+  "paths": {
+    "/api/v1/admin/bootstrap": {
+      "post": {
+        "summary": "Bootstrap the first admin",
+        "description": "Creates the initial admin account only if no admin users exist. Requires X-Install-Token header.",
+        "tags": [
+          "Admin"
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Install-Token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "One-time install token"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminBootstrapRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Bootstrap admin created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Bootstrap admin created. Share credentials out-of-band and rotate on first login."
+                    },
+                    "admin": {
+                      "$ref": "#/components/schemas/AdminSafe"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid or missing X-Install-Token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Bootstrap disabled (admins already exist)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Email already exists",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/users": {
+      "post": {
+        "summary": "Create a new admin user",
+        "description": "Creates a new admin with a strong password policy. Response excludes password fields.",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Admin created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Admin created"
+                    },
+                    "admin": {
+                      "$ref": "#/components/schemas/AdminSafe"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Email already exists",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "List admin users",
+        "description": "Cursor-style pagination using the last returned id as nextCursor.",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "description": "Page size"
+          },
+          {
+            "in": "query",
+            "name": "after",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Return items with id greater than this cursor"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Admin list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid cursor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/users/{id}": {
+      "get": {
+        "summary": "Get an admin by id",
+        "description": "Returns a single admin. Response excludes password fields.",
+        "tags": [
+          "Admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "MongoDB ObjectId of the admin"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Admin found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "admin": {
+                      "$ref": "#/components/schemas/AdminSafe"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Admin"
+    }
+  ]
 }

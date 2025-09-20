@@ -40,5 +40,9 @@
     "chai": "^4.4.1",
     "chai-http": "^4.4.0",
     "mocha": "^10.7.3"
-  }
+  },
+  "description": "```markdown\r # Guardian System Management API",
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
 }

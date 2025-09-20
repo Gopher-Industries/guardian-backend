@@ -5,8 +5,13 @@ const User = require('../models/User');
 const verifyToken = require('../middleware/verifyToken');
 const verifyRole = require('../middleware/verifyRole');
 const adminController = require('../controllers/adminController');
+const bootstrapController = require('../controllers/bootstrapController');
 
-
+// Admin bootstrap & user management
+router.post('/bootstrap', bootstrapController.bootstrapAdmin);
+router.post('/users', verifyToken, verifyRole(['admin']), adminController.createAdminUser);
+router.get('/users/:id', verifyToken, verifyRole(['admin']), adminController.getAdminById);
+router.get('/users', verifyToken, verifyRole(['admin']), adminController.listAdmins);
 
 // Example route protected by role (only admins can access)
 router.post('/admin/approve-nurse/:nurseId', verifyToken, verifyRole(['admin']), async (req, res) => {
