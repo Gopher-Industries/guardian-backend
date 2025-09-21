@@ -1,6 +1,6 @@
 'use strict';
 
-const mongoose = require('mongoose'); 
+const mongoose = require('mongoose');
 const User = require('../models/User');
 const Role = require('../models/Role');
 const { ensureUserWithRole } = require('../services/userService');
@@ -13,7 +13,6 @@ const { findAdminOrg, addUserToOrgStaff, removeUserFromOrgStaff } = require('../
  *     description: Admin — manage org staff (nurses/doctors)
  */
 
-/* ---------------------------------------------------------------------- */
 /**
  * @swagger
  * /api/v1/admin/staff:
@@ -60,39 +59,6 @@ const { findAdminOrg, addUserToOrgStaff, removeUserFromOrgStaff } = require('../
  *     responses:
  *       200:
  *         description: Paginated staff list
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required: [staff, pagination]
- *               properties:
- *                 staff:
- *                   type: array
- *                   items:
- *                     type: object
- *                     required: [_id, fullname, email]
- *                     properties:
- *                       _id: { type: string, example: "66ef5c2a9f3a1d0012ab34cd" }
- *                       fullname: { type: string, example: "Ava Patel" }
- *                       email: { type: string, example: "ava@example.com" }
- *                       role:
- *                         type: object
- *                         properties:
- *                           _id: { type: string, example: "66ef5c2a9f3a1d0012ab34aa" }
- *                           name: { type: string, example: "nurse" }
- *                       organization:
- *                         type: object
- *                         properties:
- *                           _id: { type: string, example: "66ef5c2a9f3a1d0012ab34bb" }
- *                           name: { type: string, example: "Guardian Health Org" }
- *                 pagination:
- *                   type: object
- *                   required: [total, page, pages, limit]
- *                   properties:
- *                     total: { type: integer, example: 42 }
- *                     page: { type: integer, example: 1 }
- *                     pages: { type: integer, example: 5 }
- *                     limit: { type: integer, example: 10 }
  *       404:
  *         description: Organization not found for admin
  */
@@ -146,13 +112,12 @@ exports.listStaff = async (req, res) => {
   }
 };
 
-/* ---------------------------------------------------------------------- */
 /**
  * @swagger
  * /api/v1/admin/staff:
  *   post:
  *     summary: Add a nurse/doctor into the org staff
- *     description: The target user **must already exist** with role nurse or doctor.
+ *     description: The target user must already exist with role nurse or doctor.
  *     tags: [Admin - Staff]
  *     security:
  *       - bearerAuth: []
@@ -169,62 +134,47 @@ exports.listStaff = async (req, res) => {
  *         application/json:
  *           schema:
  *             type: object
- *             required: [userId]
+ *             required: [fullname, email]
  *             properties:
- *               userId:
+ *               fullname:
  *                 type: string
- *                 description: ID of the user (must be nurse or doctor)
- *                 example: "66ef5c2a9f3a1d0012ab34dd"
+ *               email:
+ *                 type: string
+ *                 description: Case-insensitive exact match
  *     responses:
  *       200:
  *         description: Staff member successfully added
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required: [message, organization]
- *               properties:
- *                 message: { type: string, example: "Staff member added" }
- *                 organization:
- *                   type: object
- *                   properties:
- *                     _id: { type: string, example: "66ef5c2a9f3a1d0012ab34bb" }
- *                     name: { type: string, example: "Guardian Health Org" }
- *                     active: { type: boolean, example: true }
- *                     staff:
- *                       type: array
- *                       description: Array of user IDs in staff
- *                       items: { type: string }
  *       400:
  *         description: Invalid role or payload
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required: [message]
- *               properties:
- *                 message: { type: string, example: "User must have role nurse or doctor" }
  *       404:
  *         description: Org or user not found
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required: [message]
- *               properties:
- *                 message: { type: string, example: "Organization not found for admin" }
  */
 exports.addStaff = async (req, res) => {
   try {
     const { orgId } = req.query;
-    const { userId } = req.body;
+    const { fullname, email } = req.body || {};
 
     const org = await findAdminOrg(req.user._id, orgId);
     if (!org) return res.status(404).json({ message: 'Organization not found for admin' });
 
-    // validate: only nurse or doctor allowed
-    const nurse = await ensureUserWithRole(userId, 'nurse');
-    const doctor = nurse ? null : await ensureUserWithRole(userId, 'doctor');
+    if (!fullname || !email) {
+      return res.status(400).json({ message: 'fullname and email are required' });
+    }
+
+    const emailInput = String(email).trim();
+    const nameInput = String(fullname).trim();
+
+    const found = await User.findOne({ email: emailInput })
+      .collation({ locale: 'en', strength: 2 });
+    if (!found) return res.status(404).json({ message: 'User not found' });
+
+    const norm = (s) => String(s || '').trim().replace(/\s+/g, ' ').toLowerCase();
+    if (norm(found.fullname) !== norm(nameInput)) {
+      return res.status(400).json({ message: 'fullname does not match the user' });
+    }
+
+    const nurse = await ensureUserWithRole(found._id, 'nurse');
+    const doctor = nurse ? null : await ensureUserWithRole(found._id, 'doctor');
     const user = nurse || doctor;
 
     if (!user) {
@@ -232,14 +182,12 @@ exports.addStaff = async (req, res) => {
     }
 
     const updatedOrg = await addUserToOrgStaff(org._id, user._id);
-
     res.status(200).json({ message: 'Staff member added', organization: updatedOrg });
   } catch (err) {
     res.status(500).json({ message: 'Error adding staff', details: err.message });
   }
 };
 
-/* ---------------------------------------------------------------------- */
 /**
  * @swagger
  * /api/v1/admin/staff/{id}/deactivate:
@@ -264,31 +212,8 @@ exports.addStaff = async (req, res) => {
  *     responses:
  *       200:
  *         description: Staff member removed
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required: [message, organization]
- *               properties:
- *                 message: { type: string, example: "Staff member removed" }
- *                 organization:
- *                   type: object
- *                   properties:
- *                     _id: { type: string, example: "66ef5c2a9f3a1d0012ab34bb" }
- *                     name: { type: string, example: "Guardian Health Org" }
- *                     active: { type: boolean, example: true }
- *                     staff:
- *                       type: array
- *                       items: { type: string }
  *       404:
  *         description: Org or user not found
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required: [message]
- *               properties:
- *                 message: { type: string, example: "User not found" }
  */
 exports.deactivateStaff = async (req, res) => {
   try {

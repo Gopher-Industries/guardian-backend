@@ -1,6 +1,7 @@
 'use strict';
 
 const mongoose = require('mongoose');
+const User = require('../models/User');
 const Patient = require('../models/Patient');
 const HealthRecord = require('../models/HealthRecord');
 const Task = require('../models/Task');
@@ -20,25 +21,18 @@ const {
   findAdminOrg,
   linkCaretakerToOrgIfFreelance,
   isUserInOrg,
-  toId, // helper that extracts object id safely
+  toId,
 } = require('../services/orgService');
 
-/* --------------------------- helpers --------------------------- */
 const toObjectId = (val) => {
   const id = toId(val);
   if (!id) return undefined;
   return new mongoose.Types.ObjectId(String(id));
 };
 
-/**
- * Make sure a staff user (nurse/doctor) actually belongs to the org.
- * If not bound yet, but present in org.staff, then we auto-link them.
- * Else, we reject it.
- */
 async function ensureStaffBoundToOrg(userDoc, orgDoc) {
   if (!userDoc || !orgDoc) return { ok: false, reason: 'missing' };
   if (assertSameOrg(orgDoc, userDoc)) return { ok: true };
-
   if (isUserInOrg(userDoc, orgDoc) || isUserInOrg({ _id: userDoc._id }, orgDoc)) {
     const User = require('../models/User');
     await User.updateOne({ _id: userDoc._id }, { $set: { organization: toObjectId(orgDoc._id) } });
@@ -47,6 +41,8 @@ async function ensureStaffBoundToOrg(userDoc, orgDoc) {
   return { ok: false, reason: 'not_in_staff' };
 }
 
+const norm = (s) => String(s || '').trim().replace(/\s+/g, ' ').toLowerCase();
+
 /**
  * @swagger
  * tags:
@@ -54,15 +50,13 @@ async function ensureStaffBoundToOrg(userDoc, orgDoc) {
  *     description: Admin — manage patients scoped to an organization
  */
 
-/* ---------------------------------------------------------------------- */
 /**
  * @swagger
  * /api/v1/admin/patients:
  *   post:
  *     tags: [AdminPatients]
  *     summary: Create a new patient under caretaker’s org
- *     description: >
- *       Creates a patient record. The **organization** is inferred from the caretaker (or from the admin's org if the caretaker is freelance).
+ *     description: Organization is inferred from the caretaker (or from the admin's org if the caretaker is freelance).
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -82,104 +76,30 @@ async function ensureStaffBoundToOrg(userDoc, orgDoc) {
  *               - fullname
  *               - gender
  *               - dateOfBirth
- *               - caretakerId
+ *               - caretakerEmail
+ *               - caretakerFullname
  *             properties:
- *               fullname:
- *                 type: string
- *                 minLength: 1
- *                 example: John Doe
- *               gender:
- *                 type: string
- *                 enum: [male, female, other]
- *                 example: male
- *               dateOfBirth:
- *                 type: string
- *                 format: date
- *                 example: 1980-05-17
- *               caretakerId:
- *                 type: string
- *                 description: User ID of the caretaker (Mongo ObjectId)
- *                 example: 66ef5b7d9f3a1d0012ab34aa
- *               nurseId:
- *                 type: string
- *                 nullable: true
- *                 description: Optional nurse to assign (Mongo ObjectId)
- *               doctorId:
- *                 type: string
- *                 nullable: true
- *                 description: Optional doctor to assign (Mongo ObjectId)
- *               image:
- *                 type: string
- *                 nullable: true
- *                 description: URL of profile photo
- *               dateOfAdmitting:
- *                 type: string
- *                 format: date
- *                 nullable: true
- *               description:
- *                 type: string
- *                 nullable: true
- *                 default: ""
+ *               fullname: { type: string, example: "John Doe" }
+ *               gender: { type: string, enum: [male, female, other], example: male }
+ *               dateOfBirth: { type: string, format: date, example: "1980-05-17" }
+ *               caretakerEmail: { type: string, example: "caretaker@example.com" }
+ *               caretakerFullname: { type: string, example: "Jane Smith" }
+ *               nurseEmail: { type: string, nullable: true, example: "nurse+190355@example.com" }
+ *               nurseFullname: { type: string, nullable: true, example: "Nurse 190355" }
+ *               doctorEmail: { type: string, nullable: true, example: "doctor@example.com" }
+ *               doctorFullname: { type: string, nullable: true, example: "Dr Alex Kim" }
+ *               image: { type: string, nullable: true }
+ *               dateOfAdmitting: { type: string, format: date, nullable: true }
+ *               description: { type: string, nullable: true, default: "" }
  *     responses:
  *       201:
  *         description: Patient created successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required: [message, patient]
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Patient created
- *                 patient:
- *                   type: object
- *                   required: [_id, fullname, gender, dateOfBirth, organization, caretaker, isDeleted]
- *                   properties:
- *                     _id: { type: string, example: 66ef5c2a9f3a1d0012ab34cd }
- *                     fullname: { type: string, example: John Doe }
- *                     gender: { type: string, example: male }
- *                     dateOfBirth: { type: string, format: date }
- *                     age: { type: integer, example: 44 }
- *                     organization: { type: string }
- *                     caretaker: { type: string }
- *                     assignedNurses:
- *                       type: array
- *                       items: { type: string }
- *                     assignedDoctor: { type: string, nullable: true }
- *                     profilePhoto: { type: string, nullable: true }
- *                     dateOfAdmitting: { type: string, format: date, nullable: true }
- *                     description: { type: string }
- *                     isDeleted: { type: boolean, example: false }
  *       400:
  *         description: Validation error or bad request
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required: [message]
- *               properties:
- *                 message: { type: string, example: "fullname, gender, dateOfBirth and caretakerId are required" }
- *                 details: { type: string, example: "nurseId must be a nurse" }
  *       404:
  *         description: Organization not found
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required: [message]
- *               properties:
- *                 message: { type: string, example: "Organization not found for admin" }
  *       500:
  *         description: Error creating patient
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required: [message]
- *               properties:
- *                 message: { type: string, example: "Error creating patient" }
- *                 details: { type: string, example: "Database connection failed" }
  */
 exports.createPatient = async (req, res) => {
   try {
@@ -189,54 +109,70 @@ exports.createPatient = async (req, res) => {
 
     const {
       fullname, gender, dateOfBirth,
-      caretakerId, nurseId, doctorId,
+      caretakerEmail, caretakerFullname,
+      nurseEmail, nurseFullname,
+      doctorEmail, doctorFullname,
       image, dateOfAdmitting, description
     } = req.body || {};
 
-    if (!fullname || !gender || !dateOfBirth || !caretakerId) {
-      return res.status(400).json({ message: 'fullname, gender, dateOfBirth and caretakerId are required' });
+    if (!fullname || !gender || !dateOfBirth || !caretakerEmail || !caretakerFullname) {
+      return res.status(400).json({ message: 'fullname, gender, dateOfBirth, caretakerEmail and caretakerFullname are required' });
     }
 
-    // caretaker must be valid and have role caretaker
-    const caretaker = await ensureUserWithRole(toId(caretakerId), 'caretaker');
-    if (!caretaker) return res.status(400).json({ message: 'caretakerId must be a caretaker' });
+    const caretakerFound = await User.findOne({ email: String(caretakerEmail).trim() })
+      .collation({ locale: 'en', strength: 2 });
+    if (!caretakerFound) return res.status(400).json({ message: 'Caretaker not found by email' });
+    if (norm(caretakerFound.fullname) !== norm(caretakerFullname)) {
+      return res.status(400).json({ message: 'Caretaker fullname does not match' });
+    }
+    const caretaker = await ensureUserWithRole(caretakerFound._id, 'caretaker');
+    if (!caretaker) return res.status(400).json({ message: 'caretaker must have role caretaker' });
 
-    // org is taken from caretaker only (never trust client input)
     let orgId = caretaker.organization;
     if (!orgId) {
       const adminOrg = await findAdminOrg(req.user._id, req.query.orgId);
       if (!adminOrg) return res.status(404).json({ message: 'Organization not found for admin' });
-
-      const User = require('../models/User');
       await User.updateOne({ _id: caretaker._id }, { $set: { organization: adminOrg._id } });
       orgId = adminOrg._id;
     }
+    const orgFull = await findAdminOrg(req.user._id, orgId);
 
-    // validate nurse if provided
     let nurse = null;
-    if (nurseId) {
-      const nd = await ensureUserWithRole(toId(nurseId), 'nurse');
-      if (!nd) return res.status(400).json({ message: 'nurseId must be a nurse' });
-
-      const orgFull = await findAdminOrg(req.user._id, orgId);
+    if (nurseEmail || nurseFullname) {
+      if (!nurseEmail || !nurseFullname) {
+        return res.status(400).json({ message: 'nurseEmail and nurseFullname are both required when assigning a nurse' });
+      }
+      const nurseFound = await User.findOne({ email: String(nurseEmail).trim() })
+        .collation({ locale: 'en', strength: 2 });
+      if (!nurseFound) return res.status(400).json({ message: 'Nurse not found by email' });
+      if (norm(nurseFound.fullname) !== norm(nurseFullname)) {
+        return res.status(400).json({ message: 'Nurse fullname does not match' });
+      }
+      const nd = await ensureUserWithRole(nurseFound._id, 'nurse');
+      if (!nd) return res.status(400).json({ message: 'nurseEmail must belong to a nurse' });
       const ensured = await ensureStaffBoundToOrg(nd, orgFull);
-      if (!ensured.ok) return res.status(400).json({ message: 'nurseId must be a nurse in this org' });
+      if (!ensured.ok) return res.status(400).json({ message: 'nurse must be part of this organization staff' });
       nurse = nd;
     }
 
-    // validate doctor if provided
     let doctor = null;
-    if (doctorId) {
-      const dd = await ensureUserWithRole(toId(doctorId), 'doctor');
-      if (!dd) return res.status(400).json({ message: 'doctorId must be a doctor' });
-
-      const orgFull = await findAdminOrg(req.user._id, orgId);
+    if (doctorEmail || doctorFullname) {
+      if (!doctorEmail || !doctorFullname) {
+        return res.status(400).json({ message: 'doctorEmail and doctorFullname are both required when assigning a doctor' });
+      }
+      const doctorFound = await User.findOne({ email: String(doctorEmail).trim() })
+        .collation({ locale: 'en', strength: 2 });
+      if (!doctorFound) return res.status(400).json({ message: 'Doctor not found by email' });
+      if (norm(doctorFound.fullname) !== norm(doctorFullname)) {
+        return res.status(400).json({ message: 'Doctor fullname does not match' });
+      }
+      const dd = await ensureUserWithRole(doctorFound._id, 'doctor');
+      if (!dd) return res.status(400).json({ message: 'doctorEmail must belong to a doctor' });
       const ensured = await ensureStaffBoundToOrg(dd, orgFull);
-      if (!ensured.ok) return res.status(400).json({ message: 'doctorId must be a doctor in this org' });
+      if (!ensured.ok) return res.status(400).json({ message: 'doctor must be part of this organization staff' });
       doctor = dd;
     }
 
-    // finally create patient
     const patient = await Patient.create({
       fullname,
       dateOfBirth: new Date(dateOfBirth),
@@ -251,7 +187,6 @@ exports.createPatient = async (req, res) => {
       isDeleted: false
     });
 
-    // maintain reverse links
     await addAssignedPatient(caretaker._id, patient._id);
     if (nurse) await addAssignedPatient(nurse._id, patient._id);
     if (doctor) await addAssignedPatient(doctor._id, patient._id);
@@ -265,15 +200,13 @@ exports.createPatient = async (req, res) => {
   }
 };
 
-/* ---------------------------------------------------------------------- */
 /**
  * @swagger
  * /api/v1/admin/patients/{id}/reassign:
  *   put:
  *     tags: [AdminPatients]
  *     summary: Reassign caretaker, nurse, or doctor for a patient
- *     description: >
- *       Add/replace patient assignments. **At least one** of `nurseId`, `doctorId`, or `caretakerId` must be provided.
+ *     description: Add/replace patient assignments. At least one of `nurseId`, `doctorId`, or `caretakerId` must be provided.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -300,56 +233,12 @@ exports.createPatient = async (req, res) => {
  *               - required: [doctorId]
  *               - required: [caretakerId]
  *             properties:
- *               nurseId:
- *                 type: string
- *                 nullable: true
- *                 description: Nurse to (add) assign
- *               caretakerId:
- *                 type: string
- *                 nullable: true
- *                 description: Caretaker to (re)assign
- *               doctorId:
- *                 type: string
- *                 nullable: true
- *                 description: Doctor to (re)assign
+ *               nurseId: { type: string, nullable: true }
+ *               caretakerId: { type: string, nullable: true }
+ *               doctorId: { type: string, nullable: true }
  *     responses:
  *       200:
  *         description: Assignment updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required: [message, patient]
- *               properties:
- *                 message: { type: string, example: Assignments updated }
- *                 patient:
- *                   type: object
- *                   properties:
- *                     _id: { type: string }
- *                     fullname: { type: string }
- *                     age: { type: integer }
- *                     caretaker:
- *                       type: object
- *                       nullable: true
- *                       properties:
- *                         _id: { type: string }
- *                         fullname: { type: string }
- *                         email: { type: string }
- *                     assignedNurses:
- *                       type: array
- *                       items:
- *                         type: object
- *                         properties:
- *                           _id: { type: string }
- *                           fullname: { type: string }
- *                           email: { type: string }
- *                     assignedDoctor:
- *                       type: object
- *                       nullable: true
- *                       properties:
- *                         _id: { type: string }
- *                         fullname: { type: string }
- *                         email: { type: string }
  *       400:
  *         description: Invalid ids or role mismatch
  *       403:
@@ -361,10 +250,17 @@ exports.reassign = async (req, res) => {
   try {
     const { id } = req.params;
     const { orgId } = req.query;
+
+    const pidRaw = toId(id);
+    if (!pidRaw || !mongoose.isValidObjectId(pidRaw)) {
+      return res.status(400).json({ message: 'Invalid patient id' });
+    }
+    const pid = new mongoose.Types.ObjectId(String(pidRaw));
+
     const org = await findAdminOrg(req.user._id, orgId);
     if (!org) return res.status(404).json({ message: 'Organization not found for admin' });
 
-    const patient = await Patient.findById(id);
+    const patient = await Patient.findById(pid);
     if (!patient) return res.status(404).json({ message: 'Patient not found' });
     if (String(patient.organization) !== String(org._id)) {
       return res.status(403).json({ message: 'Patient not under this organization' });
@@ -373,18 +269,16 @@ exports.reassign = async (req, res) => {
     const { nurseId, caretakerId, doctorId } = req.body || {};
     const updates = {};
 
-    // assign nurse
     if (nurseId) {
       const nurse = await ensureUserWithRole(toId(nurseId), 'nurse');
       if (!nurse) return res.status(400).json({ message: 'nurseId must be a nurse' });
       const ensured = await ensureStaffBoundToOrg(nurse, org);
       if (!ensured.ok) return res.status(400).json({ message: 'nurseId must be a nurse in this org' });
 
-      await Patient.updateOne({ _id: id }, { $addToSet: { assignedNurses: toObjectId(nurse._id) } });
-      await addAssignedPatient(nurse._id, patient._id);
+      await Patient.updateOne({ _id: pid }, { $addToSet: { assignedNurses: new mongoose.Types.ObjectId(String(nurse._id)) } });
+      await addAssignedPatient(nurse._id, pid);
     }
 
-    // assign doctor
     if (doctorId) {
       const doctor = await ensureUserWithRole(toId(doctorId), 'doctor');
       if (!doctor) return res.status(400).json({ message: 'doctorId must be a doctor' });
@@ -392,13 +286,12 @@ exports.reassign = async (req, res) => {
       if (!ensured.ok) return res.status(400).json({ message: 'doctorId must be a doctor in this org' });
 
       if (patient.assignedDoctor && String(patient.assignedDoctor) !== String(doctor._id)) {
-        await removeAssignedPatient(patient.assignedDoctor, patient._id);
+        await removeAssignedPatient(patient.assignedDoctor, pid);
       }
-      updates.assignedDoctor = toObjectId(doctor._id);
-      await addAssignedPatient(doctor._id, patient._id);
+      updates.assignedDoctor = new mongoose.Types.ObjectId(String(doctor._id));
+      await addAssignedPatient(doctor._id, pid);
     }
 
-    // assign caretaker
     if (caretakerId) {
       const caretaker = await ensureUserWithRole(toId(caretakerId), 'caretaker');
       if (!caretaker) return res.status(400).json({ message: 'caretakerId must be a caretaker' });
@@ -408,13 +301,13 @@ exports.reassign = async (req, res) => {
         return res.status(400).json({ message: 'Caretaker belongs to another organization' });
       }
       if (patient.caretaker && String(patient.caretaker) !== String(caretaker._id)) {
-        await removeAssignedPatient(patient.caretaker, patient._id);
+        await removeAssignedPatient(patient.caretaker, pid);
       }
-      updates.caretaker = toObjectId(caretaker._id);
-      await addAssignedPatient(caretaker._id, patient._id);
+      updates.caretaker = new mongoose.Types.ObjectId(String(caretaker._id));
+      await addAssignedPatient(caretaker._id, pid);
     }
 
-    const updated = await Patient.findByIdAndUpdate(id, { $set: updates }, { new: true })
+    const updated = await Patient.findByIdAndUpdate(pid, { $set: updates }, { new: true })
       .populate('caretaker', 'fullname email')
       .populate('assignedNurses', 'fullname email')
       .populate('assignedDoctor', 'fullname email');
@@ -426,7 +319,7 @@ exports.reassign = async (req, res) => {
   }
 };
 
-/* ---------------------------------------------------------------------- */
+
 /**
  * @swagger
  * /api/v1/admin/patients:
@@ -466,53 +359,6 @@ exports.reassign = async (req, res) => {
  *     responses:
  *       200:
  *         description: List of patients with pagination
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required: [patients, pagination]
- *               properties:
- *                 patients:
- *                   type: array
- *                   items:
- *                     type: object
- *                     required: [_id, fullname, gender, dateOfBirth]
- *                     properties:
- *                       _id: { type: string }
- *                       fullname: { type: string }
- *                       gender: { type: string }
- *                       dateOfBirth: { type: string, format: date }
- *                       age: { type: integer }
- *                       caretaker:
- *                         type: object
- *                         nullable: true
- *                         properties:
- *                           _id: { type: string }
- *                           fullname: { type: string }
- *                           email: { type: string }
- *                       assignedNurses:
- *                         type: array
- *                         items:
- *                           type: object
- *                           properties:
- *                             _id: { type: string }
- *                             fullname: { type: string }
- *                             email: { type: string }
- *                       assignedDoctor:
- *                         type: object
- *                         nullable: true
- *                         properties:
- *                           _id: { type: string }
- *                           fullname: { type: string }
- *                           email: { type: string }
- *                 pagination:
- *                   type: object
- *                   required: [total, page, pages, limit]
- *                   properties:
- *                     total: { type: integer, example: 42 }
- *                     page: { type: integer, example: 1 }
- *                     pages: { type: integer, example: 5 }
- *                     limit: { type: integer, example: 10 }
  *       404:
  *         description: Org not found
  */
@@ -555,7 +401,6 @@ exports.listPatients = async (req, res) => {
   }
 };
 
-/* ---------------------------------------------------------------------- */
 /**
  * @swagger
  * /api/v1/admin/patients/{id}/overview:
@@ -578,85 +423,6 @@ exports.listPatients = async (req, res) => {
  *     responses:
  *       200:
  *         description: Full patient overview
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required: [patient, healthRecords, carePlan, tasks, logs, taskCompletionRate]
- *               properties:
- *                 patient:
- *                   type: object
- *                   required: [_id, fullname, gender, dateOfBirth]
- *                   properties:
- *                     _id: { type: string }
- *                     fullname: { type: string }
- *                     gender: { type: string }
- *                     dateOfBirth: { type: string, format: date }
- *                     age: { type: integer }
- *                     caretaker:
- *                       type: object
- *                       nullable: true
- *                       properties:
- *                         _id: { type: string }
- *                         fullname: { type: string }
- *                         email: { type: string }
- *                     assignedNurses:
- *                       type: array
- *                       items:
- *                         type: object
- *                         properties:
- *                           _id: { type: string }
- *                           fullname: { type: string }
- *                           email: { type: string }
- *                     assignedDoctor:
- *                       type: object
- *                       nullable: true
- *                       properties:
- *                         _id: { type: string }
- *                         fullname: { type: string }
- *                         email: { type: string }
- *                 healthRecords:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       _id: { type: string }
- *                       patient: { type: string }
- *                       title: { type: string }
- *                       details: { type: string }
- *                       created_at: { type: string, format: date-time }
- *                 carePlan:
- *                   type: object
- *                   nullable: true
- *                   properties:
- *                     _id: { type: string }
- *                     patient: { type: string }
- *                     title: { type: string }
- *                     tasks:
- *                       type: array
- *                       items:
- *                         type: object
- *                 tasks:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       _id: { type: string }
- *                       title: { type: string }
- *                       status: { type: string, example: completed }
- *                 logs:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       _id: { type: string }
- *                       patient: { type: string }
- *                       activityTimestamp: { type: string, format: date-time }
- *                       note: { type: string }
- *                 taskCompletionRate:
- *                   type: number
- *                   format: float
- *                   example: 66.7
  *       403:
  *         description: Patient not under org
  *       404:
@@ -666,10 +432,17 @@ exports.patientOverview = async (req, res) => {
   try {
     const { id } = req.params;
     const { orgId } = req.query;
+
+    const pidRaw = toId(id);
+    if (!pidRaw || !mongoose.isValidObjectId(pidRaw)) {
+      return res.status(400).json({ message: 'Invalid patient id' });
+    }
+    const pid = new mongoose.Types.ObjectId(String(pidRaw));
+
     const org = await findAdminOrg(req.user._id, orgId);
     if (!org) return res.status(404).json({ message: 'Organization not found for admin' });
 
-    const patient = await Patient.findById(id)
+    const patient = await Patient.findById(pid)
       .populate('caretaker', 'fullname email')
       .populate('assignedNurses', 'fullname email')
       .populate('assignedDoctor', 'fullname email');
@@ -680,10 +453,10 @@ exports.patientOverview = async (req, res) => {
     }
 
     const [healthRecords, carePlan, tasks, logs] = await Promise.all([
-      HealthRecord.find({ patient: id }).sort({ created_at: -1 }).lean(),
-      CarePlan.findOne({ patient: id }).populate('tasks').lean(),
-      Task.find({ patient: id }).lean(),
-      EntryReport.find({ patient: id }).sort({ activityTimestamp: -1 }).lean(),
+      HealthRecord.find({ patient: pid }).sort({ created_at: -1 }).lean(),
+      CarePlan.findOne({ patient: pid }).populate('tasks').lean(),
+      Task.find({ patient: pid }).lean(),
+      EntryReport.find({ patient: pid }).sort({ activityTimestamp: -1 }).lean(),
     ]);
 
     const taskCompletionRate = tasks.length
@@ -705,7 +478,6 @@ exports.patientOverview = async (req, res) => {
   }
 };
 
-/* ---------------------------------------------------------------------- */
 /**
  * @swagger
  * /api/v1/admin/patients/{id}:
@@ -728,13 +500,6 @@ exports.patientOverview = async (req, res) => {
  *     responses:
  *       200:
  *         description: Patient deactivated
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required: [message]
- *               properties:
- *                 message: { type: string, example: Patient deactivated }
  *       403:
  *         description: Patient not under org
  *       404:
@@ -744,23 +509,30 @@ exports.deactivatePatient = async (req, res) => {
   try {
     const { id } = req.params;
     const { orgId } = req.query;
+
+    const pidRaw = toId(id);
+    if (!pidRaw || !mongoose.isValidObjectId(pidRaw)) {
+      return res.status(400).json({ message: 'Invalid patient id' });
+    }
+    const pid = new mongoose.Types.ObjectId(String(pidRaw));
+
     const org = await findAdminOrg(req.user._id, orgId);
     if (!org) return res.status(404).json({ message: 'Organization not found for admin' });
 
-    const patient = await Patient.findById(id);
+    const patient = await Patient.findById(pid);
     if (!patient) return res.status(404).json({ message: 'Patient not found' });
     if (String(patient.organization) !== String(org._id)) {
       return res.status(403).json({ message: 'Patient not under this organization' });
     }
 
-    await Patient.findByIdAndUpdate(id, {
+    await Patient.findByIdAndUpdate(pid, {
       $set: { isDeleted: true, deletedAt: new Date(), deletedBy: req.user._id },
     });
 
     await Promise.all([
-      patient.caretaker ? removeAssignedPatient(patient.caretaker, id) : Promise.resolve(),
-      ...(patient.assignedNurses || []).map(nId => removeAssignedPatient(nId, id)),
-      patient.assignedDoctor ? removeAssignedPatient(patient.assignedDoctor, id) : Promise.resolve(),
+      patient.caretaker ? removeAssignedPatient(patient.caretaker, pid) : Promise.resolve(),
+      ...(patient.assignedNurses || []).map(nId => removeAssignedPatient(nId, pid)),
+      patient.assignedDoctor ? removeAssignedPatient(patient.assignedDoctor, pid) : Promise.resolve(),
     ]);
 
     return res.status(200).json({ message: 'Patient deactivated' });
@@ -768,3 +540,4 @@ exports.deactivatePatient = async (req, res) => {
     return res.status(500).json({ message: 'Error deactivating patient', details: err.message });
   }
 };
+
