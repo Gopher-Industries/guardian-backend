@@ -2,6 +2,7 @@
 
 const mongoose = require('mongoose');
 const Patient = require('../models/Patient');
+const { parseStringArray } = require('../utils/arrayUtils');
 const HealthRecord = require('../models/HealthRecord');
 const Task = require('../models/Task');
 const CarePlan = require('../models/CarePlan');
@@ -108,7 +109,7 @@ async function ensureStaffBoundToOrg(userDoc, orgDoc) {
  *                 type: string
  *                 nullable: true
  *                 description: Optional doctor to assign (Mongo ObjectId)
- *               image:
+ *               profilePhoto:
  *                 type: string
  *                 nullable: true
  *                 description: URL of profile photo
@@ -120,6 +121,35 @@ async function ensureStaffBoundToOrg(userDoc, orgDoc) {
  *                 type: string
  *                 nullable: true
  *                 default: ""
+ *               emergencyContactName:
+ *                 type: string
+ *                 nullable: true
+ *               emergencyContactNumber:
+ *                 type: string
+ *                 nullable: true
+ *               nextOfKinName:
+ *                 type: string
+ *                 nullable: true
+ *                 description: Full name of the patient's next of kin
+ *               nextOfKinRelationship:
+ *                 type: string
+ *                 nullable: true
+ *                 enum: [SPOUSE, PARENT, CHILD, SIBLING, GRANDPARENT, GUARDIAN, CARER, FRIEND, OTHER]
+ *                 description: Relationship of the next of kin to the patient
+ *               medicalSummary:
+ *                 type: string
+ *                 nullable: true
+ *               allergies:
+ *                 type: array
+ *                 items: { type: string }
+ *                 nullable: true
+ *               conditions:
+ *                 type: array
+ *                 items: { type: string }
+ *                 nullable: true
+ *               notes:
+ *                 type: string
+ *                 nullable: true
  *     responses:
  *       201:
  *         description: Patient created successfully
@@ -190,7 +220,10 @@ exports.createPatient = async (req, res) => {
     const {
       fullname, gender, dateOfBirth,
       caretakerId, nurseId, doctorId,
-      image, dateOfAdmitting, description
+      profilePhoto, image, dateOfAdmitting, description,
+      emergencyContactName, emergencyContactNumber,
+      nextOfKinName, nextOfKinRelationship, medicalSummary,
+      allergies, conditions, notes
     } = req.body || {};
 
     if (!fullname || !gender || !dateOfBirth || !caretakerId) {
@@ -245,9 +278,17 @@ exports.createPatient = async (req, res) => {
       caretaker: caretaker._id,
       assignedNurses: nurse ? [nurse._id] : [],
       assignedDoctor: doctor ? doctor._id : null,
-      profilePhoto: image || null,
+      profilePhoto: profilePhoto || image || null,
       dateOfAdmitting: dateOfAdmitting ? new Date(dateOfAdmitting) : null,
       description: description || '',
+      emergencyContactName,
+      emergencyContactNumber,
+      nextOfKinName,
+      nextOfKinRelationship,
+      medicalSummary,
+      allergies: parseStringArray(allergies),
+      conditions: parseStringArray(conditions),
+      notes,
       isDeleted: false
     });
 
@@ -480,9 +521,45 @@ exports.reassign = async (req, res) => {
  *                     properties:
  *                       _id: { type: string }
  *                       fullname: { type: string }
- *                       gender: { type: string }
+ *                       gender: { type: string, enum: [M, F, other] }
  *                       dateOfBirth: { type: string, format: date }
  *                       age: { type: integer }
+ *                       profilePhoto: { type: string, nullable: true, description: "URL or filename of the patient's profile photo" }
+ *                       dateOfAdmitting: { type: string, format: date, nullable: true }
+ *                       description: { type: string, description: General notes about the patient }
+ *                       emergencyContactName:
+ *                         type: string
+ *                         nullable: true
+ *                         description: Full name of the emergency contact
+ *                       emergencyContactNumber:
+ *                         type: string
+ *                         nullable: true
+ *                         description: Phone number of the emergency contact
+ *                       nextOfKinName:
+ *                         type: string
+ *                         nullable: true
+ *                         description: Full name of the patient's next of kin
+ *                       nextOfKinRelationship:
+ *                         type: string
+ *                         nullable: true
+ *                         enum: [SPOUSE, PARENT, CHILD, SIBLING, GRANDPARENT, GUARDIAN, CARER, FRIEND, OTHER]
+ *                         description: Relationship of the next of kin to the patient
+ *                       medicalSummary:
+ *                         type: string
+ *                         nullable: true
+ *                         description: Brief summary of the patient's overall medical history and status
+ *                       allergies:
+ *                         type: array
+ *                         items: { type: string }
+ *                         description: List of known allergies (e.g. penicillin, peanuts)
+ *                       conditions:
+ *                         type: array
+ *                         items: { type: string }
+ *                         description: List of diagnosed medical conditions (e.g. Type 2 Diabetes, Hypertension)
+ *                       notes:
+ *                         type: string
+ *                         nullable: true
+ *                         description: Free-text clinical or care notes for the patient
  *                       caretaker:
  *                         type: object
  *                         nullable: true
@@ -590,9 +667,45 @@ exports.listPatients = async (req, res) => {
  *                   properties:
  *                     _id: { type: string }
  *                     fullname: { type: string }
- *                     gender: { type: string }
+ *                     gender: { type: string, enum: [M, F, other] }
  *                     dateOfBirth: { type: string, format: date }
  *                     age: { type: integer }
+ *                     profilePhoto: { type: string, nullable: true, description: "URL or filename of the patient's profile photo" }
+ *                     dateOfAdmitting: { type: string, format: date, nullable: true }
+ *                     description: { type: string, description: General notes about the patient }
+ *                     emergencyContactName:
+ *                       type: string
+ *                       nullable: true
+ *                       description: Full name of the emergency contact
+ *                     emergencyContactNumber:
+ *                       type: string
+ *                       nullable: true
+ *                       description: Phone number of the emergency contact
+ *                     nextOfKinName:
+ *                       type: string
+ *                       nullable: true
+ *                       description: Full name of the patient's next of kin
+ *                     nextOfKinRelationship:
+ *                       type: string
+ *                       nullable: true
+ *                       enum: [SPOUSE, PARENT, CHILD, SIBLING, GRANDPARENT, GUARDIAN, CARER, FRIEND, OTHER]
+ *                       description: Relationship of the next of kin to the patient
+ *                     medicalSummary:
+ *                       type: string
+ *                       nullable: true
+ *                       description: Brief summary of the patient's overall medical history and status
+ *                     allergies:
+ *                       type: array
+ *                       items: { type: string }
+ *                       description: List of known allergies (e.g. penicillin, peanuts)
+ *                     conditions:
+ *                       type: array
+ *                       items: { type: string }
+ *                       description: List of diagnosed medical conditions (e.g. Type 2 Diabetes, Hypertension)
+ *                     notes:
+ *                       type: string
+ *                       nullable: true
+ *                       description: Free-text clinical or care notes for the patient
  *                     caretaker:
  *                       type: object
  *                       nullable: true
