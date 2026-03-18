@@ -302,13 +302,13 @@ exports.createTask = async (req, res) => {
   try {
     const { title, description, patientId, dueDate, assignedTo } = req.body;
 
-    const newTask = new Task({ title, description, patient: patientId, dueDate, assignedTo });
+    const newTask = new Task({ title, description, patient: patientId, dueDate, caretaker: assignedTo });
     await newTask.save();
     Promise.resolve(
       notifyRules.taskCreated({
         taskId: newTask._id,
         patientId,
-        assignedTo: newTask.assignedTo,
+        assignedTo: newTask.caretaker,
         dueDate: newTask.dueDate,
         actorId: req.user?._id
       })
@@ -380,7 +380,7 @@ exports.updateTask = async (req, res) => {
       notifyRules.taskUpdated({
         taskId: updatedTask._id,
         patientId: updatedTask.patient,
-        assignedTo: updatedTask.assignedTo,
+        assignedTo: updatedTask.caretaker,
         status: updatedTask.status,
         dueDate: updatedTask.dueDate,
         actorId: req.user?._id
@@ -434,7 +434,7 @@ exports.deleteTask = async (req, res) => {
       notifyRules.taskDeleted({
         taskId,
         patientId: deletedTask.patient,
-        assignedTo: deletedTask.assignedTo,
+        assignedTo: deletedTask.caretaker,
         actorId: req.user?._id
       })
        ).catch(() => {});

@@ -64,7 +64,8 @@ async function getTaskPatientId(taskId) {
  */
 async function taskCreated({ taskId, patientId, assignedTo, dueDate, actorId }) {
   const title = 'New task assigned';
-  const msgForAssignee = `Task (${taskId}) was created${patientId ? ` for patient (${patientId})` : ''}${
+  const patient = await Patient.findById(patientId).select('fullname').lean()
+  const msgForAssignee = `A new task was created ${patient ? ` for ${patient.fullname}` : ''}${
     dueDate ? `, due ${new Date(dueDate).toDateString()}` : ''
   }.`;
   await safeNotify(assignedTo, title, msgForAssignee);
@@ -80,14 +81,15 @@ async function taskCreated({ taskId, patientId, assignedTo, dueDate, actorId }) 
  */
 async function taskUpdated({ taskId, patientId, assignedTo, status, dueDate, actorId }) {
   const title = 'Task updated';
+  const patient = await Patient.findById(patientId).select('fullname').lean()
   const details = [
-    patientId ? `patient (${patientId})` : null,
+    patientId ? `patient: ${patient.fullname}` : null,
     status ? `status: ${status}` : null,
     dueDate ? `due: ${new Date(dueDate).toDateString()}` : null,
   ]
     .filter(Boolean)
     .join(', ');
-  const msgForAssignee = `Task (${taskId}) was updated${details ? ` (${details})` : ''}.`;
+  const msgForAssignee = `Task (${taskId}) was updated ${details ? ` (${details})` : ''}.`;
 
   await safeNotify(assignedTo, title, msgForAssignee);
 
@@ -102,7 +104,8 @@ async function taskUpdated({ taskId, patientId, assignedTo, status, dueDate, act
  */
 async function taskDeleted({ taskId, patientId, assignedTo, actorId }) {
   const title = 'Task removed';
-  const msgForAssignee = `Task (${taskId}) was deleted${patientId ? ` for patient (${patientId})` : ''}.`;
+  const patient = await Patient.findById(patientId).select('fullname').lean()
+  const msgForAssignee = `Task (${taskId}) was deleted${patient ? ` of ${patient.fullname}` : ''}.`;
   await safeNotify(assignedTo, title, msgForAssignee);
 
   if (actorId && toId(actorId) !== toId(assignedTo)) {
