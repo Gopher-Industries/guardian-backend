@@ -136,6 +136,16 @@ async function patientCreated({ patientId, actorId, caretakerId }) {
   await safeNotify(target, title, msg);
 }
 
+async function prescriptionCreated({ prescriptionId, patientId }) {
+  try {
+    const patient = await Patient.findById(patientId).select('caretaker fullname').lean();
+    if (!patient) return;
+
+    const title = 'New prescription created';
+    const msg = `A new prescription has been created for patient ${patient.fullname}.`;
+    await safeNotify(patient.caretaker, title, msg);
+  } catch (_) {}
+}
 
 module.exports = {
   // Support tickets
@@ -150,4 +160,8 @@ module.exports = {
 
   // Optional utility
   getTaskPatientId,
+
+  // Prescriptions
+  prescriptionCreated,
+
 };
