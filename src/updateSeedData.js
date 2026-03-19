@@ -47,7 +47,7 @@ const updateSeedData = async () => {
     const patient = await Patient.findOne({ fullname });
 
     if (!patient) {
-      console.log(`⚠️  Patient "${fullname}" not found — skipping.`);
+      console.log(`Patient "${fullname}" not found — skipping.`);
       continue;
     }
 
@@ -61,16 +61,16 @@ const updateSeedData = async () => {
     }
 
     if (Object.keys(delta).length === 0) {
-      console.log(`✅ "${fullname}" already up to date — nothing to patch.`);
+      console.log(`"${fullname}" already up to date — nothing to patch.`);
       continue;
     }
 
     await Patient.updateOne({ _id: patient._id }, { $set: delta });
-    console.log(`✅ "${fullname}" patched:`, Object.keys(delta).join(', '));
+    console.log(`"${fullname}" patched:`, Object.keys(delta).join(', '));
     updated++;
   }
 
-  console.log(`🌱 Seed update complete. ${updated} patient(s) patched.`);
+  console.log(`Seed update complete. ${updated} patient(s) patched.`);
 };
 
 module.exports = updateSeedData;
