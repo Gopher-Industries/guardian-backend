@@ -2,6 +2,8 @@ const Patient = require('../models/Patient');
 const HealthRecord = require('../models/HealthRecord');
 const Task = require('../models/Task');
 const CarePlan = require('../models/CarePlan');
+const User = require('../models/User');
+const Role = require('../models/Role');
 //const SupportTicket = require('../models/SupportTicket');
 const notifyRules = require('../services/notifyRules');
 
@@ -442,5 +444,66 @@ exports.deleteTask = async (req, res) => {
     res.status(200).json({ message: 'Task deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Error deleting task', details: error.message });
+  }
+};
+
+// Admin Dashboard Summary API
+
+/**
+ * @swagger
+ * /api/v1/admin/dashboard-summary:
+ *   get:
+ *     summary: Get admin dashboard summary
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Admin dashboard summary
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 totalPatients:
+ *                   type: integer
+ *                 totalActivePatients:
+ *                   type: integer
+ *                 totalStaff:
+ *                   type: integer
+ *                 totalTasks:
+ *                   type: integer
+ *                 completedTasks:
+ *                   type: integer
+ *                 pendingTasks:
+ *                   type: integer
+ *                 taskCompletionRate:
+ *                   type: integer
+ *                   description: Percentage of completed tasks
+ *       500:
+ *         description: Error fetching dashboard summary
+ */
+exports.getDashboardSummary = async (req, res) => {
+  try {
+    const totalPatients = await Patient.countDocuments();
+    const totalActivePatients = await Patient.countDocuments({isDeleted: false});
+    const totalTasks = await Task.countDocuments();
+    const totalStaff = await User.countDocuments({ role: { $in: await Role.find({ name: { $in: ['nurse', 'caretaker', 'Doctor'] } }).distinct('_id') } });
+    const completedTasks = await Task.countDocuments({ status: 'completed' });
+    const pendingTasks = await Task.countDocuments({ status: 'pending' });
+
+    const summary = {
+      totalPatients,
+      totalActivePatients,
+      totalStaff,
+      totalTasks,
+      completedTasks,
+      pendingTasks,
+      taskCompletionRate: totalTasks ? Math.round((completedTasks / totalTasks) * 100) : 0,
+    };
+
+    res.status(200).json(summary);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching dashboard summary', details: error.message });
   }
 };

@@ -59,6 +59,8 @@ router.get('/nurses', verifyToken, verifyRole(['admin']), async (req, res) => {
     }
   });
 
+
+
 // Patient Overview API
 router.get('/patients/:patientId', verifyToken, verifyRole(['admin']), adminController.getPatientOverview);
 // Support Tickets APIs
@@ -70,5 +72,8 @@ router.put('/support-tickets/:ticketId', verifyToken, verifyRole(['admin']), adm
 router.post('/tasks', verifyToken, verifyRole(['admin']), adminController.createTask);
 router.put('/tasks/:taskId', verifyToken, verifyRole(['admin']), adminController.updateTask);
 router.delete('/tasks/:taskId', verifyToken, verifyRole(['admin']), adminController.deleteTask);
+
+// Dashboard Summary API
+router.get('/dashboard-summary', verifyToken, verifyRole(['admin']), adminController.getDashboardSummary);
 
 module.exports = router;
