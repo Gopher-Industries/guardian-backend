@@ -136,11 +136,10 @@
         }
       }
     },
-    "/api/v1/health-records/{patientId}": {
+    "/api/v1/patient/{patientId}/health-records": {
       "get": {
         "summary": "Fetch health records for a patient",
         "tags": ["HealthRecord"],
-        "security": [{ "bearerAuth": [] }],
         "parameters": [
           {
             "name": "patientId",
@@ -164,6 +163,71 @@
           },
           "404": { "description": "Patient not found" },
           "500": { "description": "Error fetching health records" }
+        }
+      }
+    },
+    "/api/v1/patient/{patientId}/health-record": {
+      "post": {
+        "summary": "Create a health record for a patient",
+        "tags": ["HealthRecord"],
+        "parameters": [
+          {
+            "name": "patientId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "The ID of the patient"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["vitals"],
+                "properties": {
+                  "vitals": {
+                    "type": "object",
+                    "required": ["bloodPressure", "temperature", "heartRate", "respiratoryRate"],
+                    "properties": {
+                      "bloodPressure": { "type": "string" },
+                      "temperature": { "type": "number" },
+                      "heartRate": { "type": "number" },
+                      "respiratoryRate": { "type": "number" }
+                    }
+                  },
+                  "notes": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Health record created successfully" },
+          "400": { "description": "Invalid request" },
+          "404": { "description": "Patient not found" }
+        }
+      }
+    },
+    "/api/v1/patient/{patientId}/report": {
+      "get": {
+        "summary": "Get health history report for a patient",
+        "tags": ["HealthRecord"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "patientId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "The ID of the patient"
+          }
+        ],
+        "responses": {
+          "200": { "description": "Report fetched successfully" },
+          "403": { "description": "You are not assigned to this patient" },
+          "404": { "description": "Patient not found or no report available" }
         }
       }
     },
@@ -236,10 +300,20 @@
         "type": "object",
         "properties": {
           "id": { "type": "string" },
-          "patientId": { "type": "string" },
-          "recordType": { "type": "string" },
-          "description": { "type": "string" },
-          "createdAt": { "type": "string", "format": "date-time" }
+          "patient": { "type": "string" },
+          "nurse": { "type": "string" },
+          "caretaker": { "type": "string" },
+          "vitals": {
+            "type": "object",
+            "properties": {
+              "bloodPressure": { "type": "string" },
+              "temperature": { "type": "number" },
+              "heartRate": { "type": "number" },
+              "respiratoryRate": { "type": "number" }
+            }
+          },
+          "notes": { "type": "string" },
+          "created_at": { "type": "string", "format": "date-time" }
         }
       },
       "User": {
