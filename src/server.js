@@ -8,12 +8,6 @@ const http = require('http');
 const socketIO = require('socket.io');
 
 const cors = require('cors');
-//cors fix
-app.use(cors({
-  origin: '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
 
 
 const swaggerUi = require('swagger-ui-express');
@@ -21,6 +15,12 @@ const swaggerJsdoc = require('swagger-jsdoc');
 const { setEmit } = require('../socket');
 
 const app = express();
+//cors fix
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 
 // Create uploads directory locally only (Vercel filesystem is read-only)
 // if (!process.env.VERCEL) {
