@@ -158,6 +158,7 @@ const adminPatientRoutes = require('./routes/adminPatientRoutes');
 const adminStaffRoutes = require('./routes/adminStaffRoutes');
 const orgRoutes = require('./routes/orgRoutes');
 const prescriptionRoutes = require('./routes/prescriptionRoutes');
+const cors = require('cors');
 
 app.use('/api/v1/auth', userRoutes);
 app.use('/api/v1/caretaker', caretakerRoutes);
@@ -270,6 +271,13 @@ app.get('/', (req, res) => {
     </html>
   `);
 });
+
+//cors fix
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 
 const server = http.createServer(app);
 const io = socketIO(server, { cors: { origin: '*', methods: ['GET', 'POST'] } });
