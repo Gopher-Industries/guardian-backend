@@ -4,7 +4,7 @@ const Patient = require('../models/Patient');
 const User = require('../models/User');
 
 const validatePatientId = (patientId, res) => {
-  if (!mongoose.Types.ObjectId.isValid(patientId)) {
+  if (!patientId || !mongoose.Types.ObjectId.isValid(patientId)) {
     res.status(400).json({ error: 'Invalid patientId format' });
     return false;
   }
@@ -12,16 +12,47 @@ const validatePatientId = (patientId, res) => {
   return true;
 };
 
-const parseVitals = (vitals = {}) => {
-  const { bloodPressure, temperature, heartRate, respiratoryRate } = vitals;
+const ensurePatientAccess = async (patient, userId) => {
+  const actor = await User.findById(userId).populate('role', 'name');
+  if (!actor) {
+    throw new Error('Actor not found');
+  }
+
+  const actorRole = actor.role?.name;
+  if (!actorRole) {
+    return { error: 'User role is missing', status: 403 };
+  }
+
+  if (actorRole === 'admin') {
+    return null;
+  }
+
+  if (actorRole === 'caretaker' && String(patient.caretaker) !== String(actor._id)) {
+    return { error: 'You are not assigned to this patient as caretaker', status: 403 };
+  }
 
   if (
-    bloodPressure == null ||
-    temperature == null ||
-    heartRate == null ||
-    respiratoryRate == null
+    actorRole === 'nurse' &&
+    !(patient.assignedNurses || []).some(assignedNurseId => String(assignedNurseId) === String(actor._id))
   ) {
-    return { error: 'vitals must include bloodPressure, temperature, heartRate, and respiratoryRate' };
+    return { error: 'You are not assigned to this patient as nurse', status: 403 };
+  }
+
+  if (actorRole === 'doctor' && String(patient.assignedDoctor) !== String(actor._id)) {
+    return { error: 'You are not assigned to this patient as doctor', status: 403 };
+  }
+
+  return null;
+};
+
+const parseVitals = (vitals = {}) => {
+  const { bloodPressure, temperature, heartRate, respiratoryRate } = vitals;
+  const isInvalidValue = (value) => value === null || value === undefined || value === '';
+  const requiredFields = { bloodPressure, temperature, heartRate, respiratoryRate };
+  const missing = Object.keys(requiredFields).filter(key => isInvalidValue(requiredFields[key]));
+
+  if (missing.length) {
+    return { error: `Missing required vitals fields: ${missing.join(', ')}` };
   }
 
   const normalizedVitals = {
@@ -30,6 +61,7 @@ const parseVitals = (vitals = {}) => {
     heartRate: Number(heartRate),
     respiratoryRate: Number(respiratoryRate),
   };
+  const bpRegex = /^\d{2,3}\/\d{2,3}$/;
 
   if (
     !normalizedVitals.bloodPressure ||
@@ -40,6 +72,10 @@ const parseVitals = (vitals = {}) => {
     return { error: 'Vitals contain invalid values' };
   }
 
+  if (!bpRegex.test(normalizedVitals.bloodPressure)) {
+    return { error: 'bloodPressure must be in systolic/diastolic format e.g. 120/80' };
+  }
+
   return { vitals: normalizedVitals };
 };
 
@@ -47,13 +83,19 @@ const resolveCareTeam = async (patient, userId) => {
   const caretakerId = patient.caretaker;
   let nurseId = patient.assignedNurses?.[0] || null;
 
+  if (!userId) {
+    return { error: 'Unauthorised: userId is required', status: 401 };
+  }
+
   if (userId) {
     const actor = await User.findById(userId).populate('role', 'name');
-    const actorRole = actor?.role?.name;
+    if (!actor) {
+      throw new Error('Actor not found');
+    }
+
+    const actorRole = actor.role?.name;
 
     if (actorRole === 'nurse') {
-      nurseId = actor._id;
-
       const isAssigned = (patient.assignedNurses || []).some(
         assignedNurseId => String(assignedNurseId) === String(actor._id)
       );
@@ -61,6 +103,8 @@ const resolveCareTeam = async (patient, userId) => {
       if (!isAssigned) {
         return { error: 'You are not assigned to this patient as nurse', status: 403 };
       }
+
+      nurseId = actor._id;
     }
 
     if (actorRole === 'caretaker' && String(patient.caretaker) !== String(actor._id)) {
@@ -86,6 +130,8 @@ const resolveCareTeam = async (patient, userId) => {
  *   get:
  *     summary: Fetch health records of a patient
  *     tags: [Patient]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: patientId
@@ -96,9 +142,13 @@ const resolveCareTeam = async (patient, userId) => {
  *     responses:
  *       200:
  *         description: Health records
+ *       401:
+ *         description: Missing or invalid token
+ *       403:
+ *         description: You are not allowed to view this patient's health records
  *       404:
- *         description: Patient not found
- *       400:
+ *         description: Patient not found or no health records exist
+ *       500:
  *         description: Error fetching health records
  */
 exports.getHealthRecords = async (req, res) => {
@@ -106,9 +156,14 @@ exports.getHealthRecords = async (req, res) => {
     const { patientId } = req.params;
     if (!validatePatientId(patientId, res)) return;
 
-    const patient = await Patient.findById(patientId).select('_id');
+    const patient = await Patient.findById(patientId).select('_id caretaker assignedNurses assignedDoctor');
     if (!patient) {
       return res.status(404).json({ error: 'Patient not found' });
+    }
+
+    const accessError = await ensurePatientAccess(patient, req.user._id);
+    if (accessError) {
+      return res.status(accessError.status).json({ error: accessError.error });
     }
 
     const healthRecords = await HealthRecord.find({ patient: patientId })
@@ -131,6 +186,8 @@ exports.getHealthRecords = async (req, res) => {
  *   post:
  *     summary: Create a health record for a patient
  *     tags: [Patient]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: patientId
@@ -155,21 +212,33 @@ exports.getHealthRecords = async (req, res) => {
  *                 properties:
  *                   bloodPressure:
  *                     type: string
+ *                     description: Blood pressure in systolic/diastolic format, e.g. 120/80
  *                   temperature:
  *                     type: number
+ *                     description: Body temperature in degrees Celsius
  *                   heartRate:
  *                     type: number
+ *                     description: Heart rate in beats per minute (BPM)
  *                   respiratoryRate:
  *                     type: number
+ *                     description: Respiratory rate in breaths per minute
  *               notes:
  *                 type: string
  *     responses:
  *       201:
  *         description: Health record created successfully
  *       400:
- *         description: Error updating health records
+ *         description: Invalid input for the health record
+ *       401:
+ *         description: Missing or invalid token
+ *       403:
+ *         description: You are not allowed to create a health record for this patient
+ *       404:
+ *         description: Patient not found
+ *       500:
+ *         description: Error creating health record
  */
-exports.updateHealthRecords = async (req, res) => {
+exports.createHealthRecords = async (req, res) => {
   try {
     const { patientId } = req.params;
     if (!validatePatientId(patientId, res)) return;
@@ -205,7 +274,7 @@ exports.updateHealthRecords = async (req, res) => {
 
     return res.status(201).json(populatedHealthRecord);
   } catch (error) {
-    return res.status(400).json({ error: error.message });
+    return res.status(500).json({ error: 'Error creating health record', details: error.message });
   }
 };
 

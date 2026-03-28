@@ -140,6 +140,7 @@
       "get": {
         "summary": "Fetch health records for a patient",
         "tags": ["HealthRecord"],
+        "security": [{ "bearerAuth": [] }],
         "parameters": [
           {
             "name": "patientId",
@@ -161,7 +162,9 @@
               }
             }
           },
-          "404": { "description": "Patient not found" },
+          "401": { "description": "Missing or invalid token" },
+          "403": { "description": "You are not allowed to view this patient's health records" },
+          "404": { "description": "Patient not found or no health records exist" },
           "500": { "description": "Error fetching health records" }
         }
       }
@@ -170,6 +173,7 @@
       "post": {
         "summary": "Create a health record for a patient",
         "tags": ["HealthRecord"],
+        "security": [{ "bearerAuth": [] }],
         "parameters": [
           {
             "name": "patientId",
@@ -191,10 +195,22 @@
                     "type": "object",
                     "required": ["bloodPressure", "temperature", "heartRate", "respiratoryRate"],
                     "properties": {
-                      "bloodPressure": { "type": "string" },
-                      "temperature": { "type": "number" },
-                      "heartRate": { "type": "number" },
-                      "respiratoryRate": { "type": "number" }
+                      "bloodPressure": {
+                        "type": "string",
+                        "description": "Blood pressure in systolic/diastolic format, e.g. 120/80"
+                      },
+                      "temperature": {
+                        "type": "number",
+                        "description": "Body temperature in degrees Celsius"
+                      },
+                      "heartRate": {
+                        "type": "number",
+                        "description": "Heart rate in beats per minute (BPM)"
+                      },
+                      "respiratoryRate": {
+                        "type": "number",
+                        "description": "Respiratory rate in breaths per minute"
+                      }
                     }
                   },
                   "notes": { "type": "string" }
@@ -206,7 +222,10 @@
         "responses": {
           "201": { "description": "Health record created successfully" },
           "400": { "description": "Invalid request" },
-          "404": { "description": "Patient not found" }
+          "401": { "description": "Missing or invalid token" },
+          "403": { "description": "You are not allowed to create a health record for this patient" },
+          "404": { "description": "Patient not found" },
+          "500": { "description": "Error creating health record" }
         }
       }
     },
