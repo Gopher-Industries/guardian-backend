@@ -116,7 +116,9 @@ exports.getHealthRecords = async (req, res) => {
       .populate('patient', 'fullname')
       .populate('nurse', 'fullname email')
       .populate('caretaker', 'fullname email');
-
+    if (!healthRecords.length) {
+      return res.status(404).json({ error: 'No health records found for this patient' });
+    }
     return res.status(200).json(healthRecords);
   } catch (error) {
     return res.status(500).json({ error: 'Error fetching health records', details: error.message });
