@@ -129,7 +129,7 @@ exports.createSupportTicket = async (req, res) => {
         userId: newTicket.user,
         actorId: req.user?._id
       })
-    ).catch(() => {});
+    ).catch(() => { });
     res.status(201).json({ message: 'Support ticket created', ticket: newTicket });
   } catch (error) {
     res.status(500).json({ message: 'Error creating support ticket', details: error.message });
@@ -246,7 +246,7 @@ exports.updateSupportTicket = async (req, res) => {
         status: updatedTicket.status,
         actorId: req.user?._id
       })
-    ).catch(() => {});
+    ).catch(() => { });
     res.status(200).json({ message: 'Support ticket updated', ticket: updatedTicket });
   } catch (error) {
     res.status(500).json({ message: 'Error updating support ticket', details: error.message });
@@ -259,6 +259,8 @@ exports.updateSupportTicket = async (req, res) => {
  *   post:
  *     summary: Create a new task
  *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -266,25 +268,32 @@ exports.updateSupportTicket = async (req, res) => {
  *           schema:
  *             type: object
  *             required:
- *               - title
  *               - description
  *               - patientId
  *               - dueDate
- *               - assignedTo
+ *               - caretakerId
  *             properties:
- *               title:
- *                 type: string
  *               description:
  *                 type: string
+ *                 description: Task description
  *               patientId:
  *                 type: string
- *                 description: ID of the patient to whom the task is assigned
+ *                 description: ID of the patient this task is for
  *               dueDate:
  *                 type: string
  *                 format: date
- *               assignedTo:
+ *                 example: '2026-04-01'
+ *               caretakerId:
  *                 type: string
- *                 description: ID of the user (caretaker or nurse) assigned to the task
+ *                 description: ID of the caretaker responsible for this task (required)
+ *               nurseId:
+ *                 type: string
+ *                 description: ID of the nurse assigned to carry out this task (optional)
+ *               priority:
+ *                 type: string
+ *                 enum: [low, medium, high]
+ *                 default: medium
+ *                 description: Task priority level
  *     responses:
  *       201:
  *         description: Task created successfully
@@ -302,9 +311,9 @@ exports.updateSupportTicket = async (req, res) => {
  */
 exports.createTask = async (req, res) => {
   try {
-    const { title, description, patientId, dueDate, assignedTo } = req.body;
+    const { description, patientId, dueDate, caretakerId, nurseId, priority } = req.body;
 
-    const newTask = new Task({ title, description, patient: patientId, dueDate, caretaker: assignedTo });
+    const newTask = new Task({ description, patient: patientId, dueDate, caretaker: caretakerId, nurse_id: nurseId, priority });
     await newTask.save();
     Promise.resolve(
       notifyRules.taskCreated({
@@ -314,7 +323,19 @@ exports.createTask = async (req, res) => {
         dueDate: newTask.dueDate,
         actorId: req.user?._id
       })
-    ).catch(() => {});
+    ).catch(() => { });
+
+    if( newTask.nurse_id && String(newTask.nurse_id) !== String(newTask.caretaker) ) {
+    Promise.resolve(
+      notifyRules.taskCreated({
+        taskId: newTask._id,
+        patientId,
+        assignedTo: newTask.nurse_id,
+        dueDate: newTask.dueDate,
+        actorId: req.user?._id
+      })
+    ).catch(() => { });
+  }
 
     res.status(201).json({ message: 'Task created successfully', task: newTask });
   } catch (error) {
@@ -387,7 +408,7 @@ exports.updateTask = async (req, res) => {
         dueDate: updatedTask.dueDate,
         actorId: req.user?._id
       })
-    ).catch(() => {});
+    ).catch(() => { });
 
     res.status(200).json({ message: 'Task updated successfully', task: updatedTask });
   } catch (error) {
@@ -439,7 +460,7 @@ exports.deleteTask = async (req, res) => {
         assignedTo: deletedTask.caretaker,
         actorId: req.user?._id
       })
-       ).catch(() => {});
+    ).catch(() => { });
 
     res.status(200).json({ message: 'Task deleted successfully' });
   } catch (error) {
@@ -486,9 +507,9 @@ exports.deleteTask = async (req, res) => {
 exports.getDashboardSummary = async (req, res) => {
   try {
     const totalPatients = await Patient.countDocuments();
-    const totalActivePatients = await Patient.countDocuments({isDeleted: false});
+    const totalActivePatients = await Patient.countDocuments({ isDeleted: false });
     const totalTasks = await Task.countDocuments();
-    const totalStaff = await User.countDocuments({ role: { $in: await Role.find({ name: { $in: ['nurse', 'caretaker', 'Doctor'] } }).distinct('_id') } });
+    const totalStaff = await User.countDocuments({ role: { $in: await Role.find({ name: { $in: ['nurse', 'caretaker', 'doctor'] } }).distinct('_id') } });
     const completedTasks = await Task.countDocuments({ status: 'completed' });
     const pendingTasks = await Task.countDocuments({ status: 'pending' });
 

@@ -3,7 +3,7 @@ const router = express.Router();
 
 const { createAndEmit, getUserNotifications, markAsRead } = require('../services/notificationService');
 // Use your existing auth middleware
-const verifyToken = require('../middleware/verifyToken'); 
+const verifyToken = require('../middleware/verifyToken');
 const Notification = require('../models/Notification');
 
 function getUserIdFromReq(req) {
@@ -138,7 +138,7 @@ router.get('/', verifyToken, async (req, res) => {
  */
 router.delete('/:id', verifyToken, async (req, res) => {
   try {
-    const deleted = await Notification.findByIdAndDelete(req.params.id);
+    const deleted = await Notification.findOneAndDelete({ _id: req.params.id, userId: getUserIdFromReq(req) });
     if (!deleted) return res.status(404).json({ message: 'Notification not found.' });
     res.json({ message: 'Notification deleted successfully.' });
   } catch (err) {
@@ -170,7 +170,12 @@ router.delete('/:id', verifyToken, async (req, res) => {
  */
 router.patch('/:id/read', verifyToken, async (req, res) => {
   try {
-    const updated = await markAsRead(req.params.id);
+    const updated = await Notification.findOneAndUpdate(
+      { _id: req.params.id, userId: getUserIdFromReq(req) },
+      { isRead: true },
+      { new: true }
+    );
+    if (!updated) return res.status(404).json({ message: 'Notification not found.' });
     res.json(updated);
   } catch (err) {
     res.status(500).json({ message: 'Error updating notification.', error: err.message });

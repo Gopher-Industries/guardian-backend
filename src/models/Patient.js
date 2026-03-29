@@ -114,7 +114,7 @@ const PatientSchema = new Schema(
     deletedAt: { type: Date },
     deletedBy: { type: Schema.Types.ObjectId, ref: 'User' },
   },
-  { 
+  {  
     timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }, 
     toJSON: { virtuals: true }, 
     toObject: { virtuals: true } 
