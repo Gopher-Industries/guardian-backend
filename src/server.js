@@ -13,15 +13,25 @@ const { setEmit } = require('../socket');
 
 const app = express();
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/');
-  },
-  filename: (req, file, cb) => {
-    const uniqueName = `${Date.now()}-${file.originalname}`;
-    cb(null, uniqueName);
+// Create uploads directory locally only (Vercel filesystem is read-only)
+if (!process.env.VERCEL) {
+  const fs = require('fs');
+  if (!fs.existsSync('uploads')) {
+    fs.mkdirSync('uploads');
   }
-});
+}
+
+const storage = process.env.VERCEL
+  ? multer.memoryStorage()
+  : multer.diskStorage({
+      destination: (req, file, cb) => {
+        cb(null, 'uploads/');
+      },
+      filename: (req, file, cb) => {
+        const uniqueName = `${Date.now()}-${file.originalname}`;
+        cb(null, uniqueName);
+      }
+    });
 
 exports.upload = multer({ storage });
 

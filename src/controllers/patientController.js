@@ -256,31 +256,6 @@ exports.getAllPatients = async (req, res) => {
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               fullname: { type: string }
- *               dateOfBirth:
- *                 type: string
- *                 format: date
- *                 example: '1980-01-01'
- *               gender:
- *                 type: string
- *                 enum: [M, F, other]
- *               emergencyContactName: { type: string, nullable: true }
- *               emergencyContactNumber: { type: string, nullable: true }
- *               guardianNextOfKin: { type: string, nullable: true }
- *               medicalSummary: { type: string, nullable: true }
- *               allergies:
- *                 type: array
- *                 items: { type: string }
- *                 nullable: true
- *               conditions:
- *                 type: array
- *                 items: { type: string }
- *                 nullable: true
- *               notes: { type: string, nullable: true }
  *         multipart/form-data:
  *           schema:
  *             type: object
@@ -293,13 +268,50 @@ exports.getAllPatients = async (req, res) => {
  *               gender:
  *                 type: string
  *                 enum: [M, F, other]
+ *                 description: "Only accepted values: M, F, other"
  *               profilePhoto:
  *                 type: string
  *                 format: binary
  *                 description: Patient profile photo (file upload)
  *               emergencyContactName: { type: string, nullable: true }
  *               emergencyContactNumber: { type: string, nullable: true }
- *               guardianNextOfKin: { type: string, nullable: true }
+ *               nextOfKinName: { type: string, nullable: true, description: "Full name of the patient's next of kin" }
+ *               nextOfKinRelationship:
+ *                 type: string
+ *                 nullable: true
+ *                 enum: [SPOUSE, PARENT, CHILD, SIBLING, GRANDPARENT, GUARDIAN, CARER, FRIEND, OTHER]
+ *                 description: "Only accepted values: SPOUSE, PARENT, CHILD, SIBLING, GRANDPARENT, GUARDIAN, CARER, FRIEND, OTHER"
+ *               medicalSummary: { type: string, nullable: true }
+ *               allergies:
+ *                 type: array
+ *                 items: { type: string }
+ *                 nullable: true
+ *               conditions:
+ *                 type: array
+ *                 items: { type: string }
+ *                 nullable: true
+ *               notes: { type: string, nullable: true }
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               fullname: { type: string }
+ *               dateOfBirth:
+ *                 type: string
+ *                 format: date
+ *                 example: '1980-01-01'
+ *               gender:
+ *                 type: string
+ *                 enum: [M, F, other]
+ *                 description: "Only accepted values: M, F, other"
+ *               emergencyContactName: { type: string, nullable: true }
+ *               emergencyContactNumber: { type: string, nullable: true }
+ *               nextOfKinName: { type: string, nullable: true, description: "Full name of the patient's next of kin" }
+ *               nextOfKinRelationship:
+ *                 type: string
+ *                 nullable: true
+ *                 enum: [SPOUSE, PARENT, CHILD, SIBLING, GRANDPARENT, GUARDIAN, CARER, FRIEND, OTHER]
+ *                 description: "Only accepted values: SPOUSE, PARENT, CHILD, SIBLING, GRANDPARENT, GUARDIAN, CARER, FRIEND, OTHER"
  *               medicalSummary: { type: string, nullable: true }
  *               allergies:
  *                 type: array
