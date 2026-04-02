@@ -37,7 +37,7 @@ const { parseStringArray } = require('../utils/arrayUtils');
  *               profilePhoto:
  *                 type: string
  *                 format: binary
- *                 description: "Patient profile photo (file upload). NOTE: Uploading a photo is currently disabled — submitting with a photo will throw an error. Leave this field empty."
+ *                 description: "Patient profile photo (file upload). NOTE: Uploading a photo is currently disabled - submitting with a photo will throw an error. Leave this field empty."
  *               emergencyContactName:
  *                 type: string
  *                 nullable: true
@@ -54,7 +54,7 @@ const { parseStringArray } = require('../utils/arrayUtils');
  *                 type: string
  *                 nullable: true
  *                 enum: [SPOUSE, PARENT, CHILD, SIBLING, GRANDPARENT, GUARDIAN, CARER, FRIEND, OTHER]
- *                 description: Relationship of the next of kin to the patient.Only accepted values: SPOUSE, PARENT, CHILD, SIBLING, GRANDPARENT, GUARDIAN, CARER, FRIEND, OTHER
+ *                 description: "Relationship of the next of kin to the patient. Only accepted values: SPOUSE, PARENT, CHILD, SIBLING, GRANDPARENT, GUARDIAN, CARER, FRIEND, OTHER"
  *               medicalSummary:
  *                 type: string
  *                 nullable: true
@@ -272,7 +272,7 @@ exports.getAllPatients = async (req, res) => {
  *               profilePhoto:
  *                 type: string
  *                 format: binary
- *                 description: Patient profile photo (file upload). NOTE: Uploading a photo is currently disabled — submitting with a photo will throw an error. Leave this field empty.
+ *                 description: "Patient profile photo (file upload). NOTE: Uploading a photo is currently disabled - submitting with a photo will throw an error. Leave this field empty."
  *               emergencyContactName: { type: string, nullable: true }
  *               emergencyContactNumber: { type: string, nullable: true }
  *               nextOfKinName: { type: string, nullable: true, description: "Full name of the patient's next of kin" }
