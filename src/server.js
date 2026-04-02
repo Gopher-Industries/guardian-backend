@@ -14,12 +14,12 @@ const { setEmit } = require('../socket');
 const app = express();
 
 // Create uploads directory locally only (Vercel filesystem is read-only)
-if (!process.env.VERCEL) {
-  const fs = require('fs');
-  if (!fs.existsSync('uploads')) {
-    fs.mkdirSync('uploads');
-  }
-}
+// if (!process.env.VERCEL) {
+//   const fs = require('fs');
+//   if (!fs.existsSync('uploads')) {
+//     fs.mkdirSync('uploads');
+//   }
+// }
 
 const storage = process.env.VERCEL
   ? multer.memoryStorage()
