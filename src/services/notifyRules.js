@@ -105,7 +105,7 @@ async function taskUpdated({ taskId, patientId, assignedTo, status, dueDate, act
 async function taskDeleted({ taskId, patientId, assignedTo, actorId }) {
   const title = 'Task removed';
   const patient = await Patient.findById(patientId).select('fullname').lean()
-  const msgForAssignee = `Task (${taskId}) was deleted${patient ? ` of ${patient.fullname}` : ''}.`;
+  const msgForAssignee = `Task (${taskId}) was deleted${patient ? ` for ${patient.fullname}` : ''}.`;
   await safeNotify(assignedTo, title, msgForAssignee);
 
   if (actorId && toId(actorId) !== toId(assignedTo)) {

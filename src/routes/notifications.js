@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-const { createAndEmit, getUserNotifications, markAsRead } = require('../services/notificationService');
+const { createAndEmit, getUserNotifications } = require('../services/notificationService');
 // Use your existing auth middleware
 const verifyToken = require('../middleware/verifyToken');
 const Notification = require('../models/Notification');

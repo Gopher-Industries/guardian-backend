@@ -9,6 +9,42 @@ const notifyRules = require('../services/notifyRules');
 
 /**
  * @swagger
+ * components:
+ *   schemas:
+ *     Task:
+ *       type: object
+ *       properties:
+ *         _id:
+ *           type: string
+ *         description:
+ *           type: string
+ *         dueDate:
+ *           type: string
+ *           format: date-time
+ *         priority:
+ *           type: string
+ *           enum: [low, medium, high]
+ *         status:
+ *           type: string
+ *           enum: [pending, in progress, completed]
+ *         patient:
+ *           type: string
+ *         caretaker:
+ *           type: string
+ *         nurse_id:
+ *           type: string
+ *         report:
+ *           type: string
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *         updated_at:
+ *           type: string
+ *           format: date-time
+ */
+
+/**
+ * @swagger
  * /api/v1/admin/patient-overview/{patientId}:
  *   get:
  *     summary: Fetch detailed patient overview
@@ -323,19 +359,22 @@ exports.createTask = async (req, res) => {
         dueDate: newTask.dueDate,
         actorId: req.user?._id
       })
-    ).catch(() => { });
+    ).catch(() => {});
 
-    if( newTask.nurse_id && String(newTask.nurse_id) !== String(newTask.caretaker) ) {
-    Promise.resolve(
-      notifyRules.taskCreated({
-        taskId: newTask._id,
-        patientId,
-        assignedTo: newTask.nurse_id,
-        dueDate: newTask.dueDate,
-        actorId: req.user?._id
-      })
-    ).catch(() => { });
-  }
+    const hasNurse = !!newTask.nurse_id;
+    const isDifferentFromCaretaker = String(newTask.nurse_id) !== String(newTask.caretaker);
+
+    if (hasNurse && isDifferentFromCaretaker) {
+      Promise.resolve(
+        notifyRules.taskCreated({
+          taskId: newTask._id,
+          patientId,
+          assignedTo: newTask.nurse_id,
+          dueDate: newTask.dueDate,
+          actorId: req.user?._id
+        })
+      ).catch(() => {});
+    }
 
     res.status(201).json({ message: 'Task created successfully', task: newTask });
   } catch (error) {
