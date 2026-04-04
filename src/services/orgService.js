@@ -11,14 +11,14 @@ const idsEqual = (a, b) => a && b && String(a) === String(b);
 function toId(x) {
   if (!x) return undefined;
 
-  // already valid ObjectId / 24-hex
-  if (mongoose.isValidObjectId(x)) return String(x);
-
   // mongoose doc or plain object
   if (typeof x === 'object') {
     const v = x._id ?? x.id ?? x.orgId ?? x.userId;
     if (mongoose.isValidObjectId(v)) return String(v);
   }
+
+  // already valid ObjectId / 24-hex
+  if (mongoose.isValidObjectId(x)) return String(x);
 
   // string representations (ObjectId("..."), new ObjectId("..."), raw hex)
   if (typeof x === 'string') {
@@ -48,9 +48,14 @@ async function resolveAdminOrg({ adminUserId, orgIdFromQuery }) {
   // if orgId is explicitly passed
   if (orgIdFromQuery) {
     const id = toId(orgIdFromQuery);
-    const org = id ? await Organization.findById(id) : null;
+    const org = id
+      ? await Organization.findOne({
+          _id: id,
+          $or: [{ createdBy: adminUserId }, { staff: adminUserId }],
+        })
+      : null;
     if (!org) {
-      const e = new Error('Organization not found by orgId');
+      const e = new Error('Organization not found for admin');
       e.status = 404;
       throw e;
     }

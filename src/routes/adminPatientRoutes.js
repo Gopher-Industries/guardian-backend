@@ -13,7 +13,7 @@ router.use(verifyToken, verifyRole(['admin']));
 router.post('/patients', adminPatientController.createPatient);
 
 // reassign nurse / caretaker / doctor for a patient
-router.put('/patients/:id/assign', adminPatientController.reassign);
+router.put('/patients/:id/reassign', adminPatientController.reassign);
 
 // list patients in org (with search + pagination + active filter)
 router.get('/patients', adminPatientController.listPatients);

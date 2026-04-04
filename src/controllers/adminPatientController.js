@@ -30,6 +30,13 @@ const toObjectId = (val) => {
   return new mongoose.Types.ObjectId(String(id));
 };
 
+const sendControllerError = (res, err, fallbackMessage) => {
+  if (err?.status) {
+    return res.status(err.status).json({ message: err.message });
+  }
+  return res.status(500).json({ message: fallbackMessage, details: err.message });
+};
+
 /**
  * Make sure a staff user (nurse/doctor) actually belongs to the org.
  * If not bound yet, but present in org.staff, then we auto-link them.
@@ -197,19 +204,22 @@ exports.createPatient = async (req, res) => {
       return res.status(400).json({ message: 'fullname, gender, dateOfBirth and caretakerId are required' });
     }
 
+    const adminOrg = await findAdminOrg(req.user._id, req.query.orgId);
+    if (!adminOrg) return res.status(404).json({ message: 'Organization not found for admin' });
+
     // caretaker must be valid and have role caretaker
     const caretaker = await ensureUserWithRole(toId(caretakerId), 'caretaker');
     if (!caretaker) return res.status(400).json({ message: 'caretakerId must be a caretaker' });
 
-    // org is taken from caretaker only (never trust client input)
-    let orgId = caretaker.organization;
-    if (!orgId) {
-      const adminOrg = await findAdminOrg(req.user._id, req.query.orgId);
-      if (!adminOrg) return res.status(404).json({ message: 'Organization not found for admin' });
-
+    let orgId = adminOrg._id;
+    if (caretaker.organization) {
+      if (!assertSameOrg(adminOrg, caretaker)) {
+        return res.status(400).json({ message: 'Caretaker belongs to another organization' });
+      }
+      orgId = caretaker.organization;
+    } else {
       const User = require('../models/User');
       await User.updateOne({ _id: caretaker._id }, { $set: { organization: adminOrg._id } });
-      orgId = adminOrg._id;
     }
 
     // validate nurse if provided
@@ -218,8 +228,7 @@ exports.createPatient = async (req, res) => {
       const nd = await ensureUserWithRole(toId(nurseId), 'nurse');
       if (!nd) return res.status(400).json({ message: 'nurseId must be a nurse' });
 
-      const orgFull = await findAdminOrg(req.user._id, orgId);
-      const ensured = await ensureStaffBoundToOrg(nd, orgFull);
+      const ensured = await ensureStaffBoundToOrg(nd, adminOrg);
       if (!ensured.ok) return res.status(400).json({ message: 'nurseId must be a nurse in this org' });
       nurse = nd;
     }
@@ -230,8 +239,7 @@ exports.createPatient = async (req, res) => {
       const dd = await ensureUserWithRole(toId(doctorId), 'doctor');
       if (!dd) return res.status(400).json({ message: 'doctorId must be a doctor' });
 
-      const orgFull = await findAdminOrg(req.user._id, orgId);
-      const ensured = await ensureStaffBoundToOrg(dd, orgFull);
+      const ensured = await ensureStaffBoundToOrg(dd, adminOrg);
       if (!ensured.ok) return res.status(400).json({ message: 'doctorId must be a doctor in this org' });
       doctor = dd;
     }
@@ -261,7 +269,7 @@ exports.createPatient = async (req, res) => {
       patient: { ...patient.toObject(), age: calculateAge(patient.dateOfBirth) }
     });
   } catch (err) {
-    return res.status(500).json({ message: 'Error creating patient', details: err.message });
+    return sendControllerError(res, err, 'Error creating patient');
   }
 };
 
@@ -374,26 +382,51 @@ exports.reassign = async (req, res) => {
     const updates = {};
 
     // assign nurse
-    if (nurseId) {
+     if (nurseId) {
       const nurse = await ensureUserWithRole(toId(nurseId), 'nurse');
-      if (!nurse) return res.status(400).json({ message: 'nurseId must be a nurse' });
-      const ensured = await ensureStaffBoundToOrg(nurse, org);
-      if (!ensured.ok) return res.status(400).json({ message: 'nurseId must be a nurse in this org' });
+      if (!nurse) {
+        return res.status(400).json({ message: 'nurseId must be a nurse' });
+      }
 
-      await Patient.updateOne({ _id: id }, { $addToSet: { assignedNurses: toObjectId(nurse._id) } });
+      const ensured = await ensureStaffBoundToOrg(nurse, org);
+      if (!ensured.ok) {
+        return res.status(400).json({
+          message: 'nurseId must be a nurse in this org'
+        });
+      }
+
+      //remove old nurses
+      if (patient.assignedNurses?.length) {
+        for (const nId of patient.assignedNurses) {
+          await removeAssignedPatient(nId, patient._id);
+        }
+      }
+
+      //assign new nurse (replace, not add)
+      updates.assignedNurses = [toObjectId(nurse._id)];
       await addAssignedPatient(nurse._id, patient._id);
     }
 
     // assign doctor
     if (doctorId) {
       const doctor = await ensureUserWithRole(toId(doctorId), 'doctor');
-      if (!doctor) return res.status(400).json({ message: 'doctorId must be a doctor' });
-      const ensured = await ensureStaffBoundToOrg(doctor, org);
-      if (!ensured.ok) return res.status(400).json({ message: 'doctorId must be a doctor in this org' });
+      if (!doctor) {
+        return res.status(400).json({ message: 'doctorId must be a doctor' });
+      }
 
-      if (patient.assignedDoctor && String(patient.assignedDoctor) !== String(doctor._id)) {
+      const ensured = await ensureStaffBoundToOrg(doctor, org);
+      if (!ensured.ok) {
+        return res.status(400).json({
+          message: 'doctorId must be a doctor in this org'
+        });
+      }
+
+      // remove old doctor
+      if (patient.assignedDoctor &&
+          String(patient.assignedDoctor) !== String(doctor._id)) {
         await removeAssignedPatient(patient.assignedDoctor, patient._id);
       }
+
       updates.assignedDoctor = toObjectId(doctor._id);
       await addAssignedPatient(doctor._id, patient._id);
     }
@@ -401,17 +434,38 @@ exports.reassign = async (req, res) => {
     // assign caretaker
     if (caretakerId) {
       const caretaker = await ensureUserWithRole(toId(caretakerId), 'caretaker');
-      if (!caretaker) return res.status(400).json({ message: 'caretakerId must be a caretaker' });
+      if (!caretaker) {
+        return res.status(400).json({ message: 'caretakerId must be a caretaker' });
+      }
 
-      const linkResult = await linkCaretakerToOrgIfFreelance(caretaker, org);
-      if (linkResult.movedFromOtherOrg) {
-        return res.status(400).json({ message: 'Caretaker belongs to another organization' });
+      const caretakerUnchanged =
+        patient.caretaker && String(patient.caretaker) === String(caretaker._id);
+
+      if (!caretakerUnchanged) {
+        const linkResult = await linkCaretakerToOrgIfFreelance(caretaker, org);
+        if (linkResult.movedFromOtherOrg) {
+          return res.status(400).json({
+            message: 'Caretaker belongs to another organization'
+          });
+        }
+
+        // remove old caretaker
+        if (patient.caretaker) {
+          await removeAssignedPatient(patient.caretaker, patient._id);
+        }
+
+        updates.caretaker = toObjectId(caretaker._id);
+        await addAssignedPatient(caretaker._id, patient._id);
       }
-      if (patient.caretaker && String(patient.caretaker) !== String(caretaker._id)) {
-        await removeAssignedPatient(patient.caretaker, patient._id);
-      }
-      updates.caretaker = toObjectId(caretaker._id);
-      await addAssignedPatient(caretaker._id, patient._id);
+    }
+
+    if (!Object.keys(updates).length) {
+      return res.status(200).json({
+        message: 'No assignment changes applied',
+        data: {
+          patientId: patient._id,
+        }
+      });
     }
 
     const updated = await Patient.findByIdAndUpdate(id, { $set: updates }, { new: true })
@@ -422,7 +476,7 @@ exports.reassign = async (req, res) => {
     const age = calculateAge(updated?.dateOfBirth);
     return res.status(200).json({ message: 'Assignments updated', patient: { ...updated.toObject(), age } });
   } catch (err) {
-    return res.status(500).json({ message: 'Error reassigning', details: err.message });
+    return sendControllerError(res, err, 'Error reassigning');
   }
 };
 
@@ -551,7 +605,7 @@ exports.listPatients = async (req, res) => {
       pagination: { total, page: p, pages: Math.ceil(total / l), limit: l },
     });
   } catch (err) {
-    return res.status(500).json({ message: 'Error listing patients', details: err.message });
+    return sendControllerError(res, err, 'Error listing patients');
   }
 };
 
@@ -701,7 +755,7 @@ exports.patientOverview = async (req, res) => {
       taskCompletionRate,
     });
   } catch (err) {
-    return res.status(500).json({ message: 'Error fetching patient overview', details: err.message });
+    return sendControllerError(res, err, 'Error fetching patient overview');
   }
 };
 
@@ -765,6 +819,6 @@ exports.deactivatePatient = async (req, res) => {
 
     return res.status(200).json({ message: 'Patient deactivated' });
   } catch (err) {
-    return res.status(500).json({ message: 'Error deactivating patient', details: err.message });
+    return sendControllerError(res, err, 'Error deactivating patient');
   }
 };
