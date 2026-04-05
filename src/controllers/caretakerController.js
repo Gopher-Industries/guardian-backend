@@ -35,17 +35,16 @@ exports.getProfile = async (req, res) => {
   try {
     const { caretakerId, email } = req.query;
 
-    // Build the query based on provided parameters
     const query = caretakerId ? { _id: caretakerId } : email ? { email } : null;
     if (!query) {
       return res.status(400).json({ error: 'Please provide either caretakerId or email' });
     }
 
-    // Find the caretaker and populate role and assignedPatients
     const caretaker = await User.findOne(query)
-      .select('-password_hash -__v') // Exclude sensitive fields
-      .populate('role', 'name') // Populate role with name
-      .populate('assignedPatients', 'fullname age gender'); // Populate assignedPatients with full details
+      .select('-password_hash -__v')
+      .populate('role', 'name')
+      .populate('organization', 'name')
+      .populate('assignedPatients', 'fullname age gender');
 
     if (!caretaker) {
       return res.status(404).json({ error: 'Caretaker not found' });

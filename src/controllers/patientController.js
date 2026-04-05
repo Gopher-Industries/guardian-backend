@@ -2,6 +2,28 @@ const Patient = require('../models/Patient');
 const User = require('../models/User');
 const EntryReport = require('../models/EntryReport');
 const notifyRules = require('../services/notifyRules');
+const Role = require('../models/Role');
+
+async function blockIndependentPatientWorkForApprovedOrgMember(userId) {
+  const user = await User.findById(userId).populate('role', 'name');
+  if (!user) {
+    return { blocked: true, message: 'User not found' };
+  }
+
+  const roleName = user.role?.name?.toLowerCase();
+  if (!['nurse', 'caretaker'].includes(roleName)) {
+    return { blocked: false };
+  }
+
+  if (user.organization && user.approvalStatus === 'approved') {
+    return {
+      blocked: true,
+      message: 'Approved organization members cannot manage patients independently. Patient work must be handled through admin assignment flow.'
+    };
+  }
+
+  return { blocked: false };
+}
 
 /**
  * @swagger
@@ -43,8 +65,13 @@ const notifyRules = require('../services/notifyRules');
  */
 exports.addPatient = async (req, res) => {
   try {
+    const accessCheck = await blockIndependentPatientWorkForApprovedOrgMember(req.user._id);
+    if (accessCheck.blocked) {
+      return res.status(403).json({ message: accessCheck.message });
+    }
+
     const { fullname, dateOfBirth, gender } = req.body;
-    const caretakerId = req.user._id; // Extracted from the token middleware
+    const caretakerId = req.user._id;
 
     if (!fullname || !dateOfBirth || !gender) {
       return res.status(400).json({ message: 'Missing required fields' });
@@ -66,7 +93,11 @@ exports.addPatient = async (req, res) => {
         caretakerId
       })
     ).catch(() => {});
-    res.status(201).json({ message: 'Patient added successfully', patient: { ...newPatient.toObject(), age: calculateAge(newPatient.dateOfBirth) } });
+
+    res.status(201).json({
+      message: 'Patient added successfully',
+      patient: { ...newPatient.toObject(), age: calculateAge(newPatient.dateOfBirth) }
+    });
   } catch (err) {
     res.status(400).json({ message: 'Error adding your patient', details: err.message });
   }
@@ -455,6 +486,11 @@ exports.getPatientDetails = async (req, res) => {
  */
 exports.assignNurseToPatient = async (req, res) => {
   try {
+    const accessCheck = await blockIndependentPatientWorkForApprovedOrgMember(req.user._id);
+    if (accessCheck.blocked) {
+      return res.status(403).json({ message: accessCheck.message });
+    }
+
     const { nurseId, patientId } = req.body;
 
     const patient = await Patient.findById(patientId);
@@ -464,7 +500,6 @@ exports.assignNurseToPatient = async (req, res) => {
       return res.status(404).json({ error: 'Invalid nurse or patient ID' });
     }
 
-    // Ensure the selected user is a nurse
     if (!nurse.role || nurse.role.name !== 'nurse') {
       return res.status(400).json({ error: 'Selected user is not a nurse' });
     }
@@ -496,7 +531,6 @@ exports.assignNurseToPatient = async (req, res) => {
     res.status(500).json({ message: 'Error assigning nurse to patient', details: error.message });
   }
 };
-
 
 /**
  * @swagger

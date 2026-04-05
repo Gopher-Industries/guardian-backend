@@ -308,3 +308,292 @@ exports.deactivateStaff = async (req, res) => {
     res.status(500).json({ message: 'Error removing staff', details: err.message });
   }
 };
+
+/* ---------------------------------------------------------------------- */
+/**
+ * @swagger
+ * /api/v1/admin/staff/pending:
+ *   get:
+ *     summary: Fetch pending nurse and caretaker join requests for an admin organization
+ *     tags: [Admin - Staff]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: orgId
+ *         required: false
+ *         description: Organization context if the admin manages multiple organizations
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Pending staff registrations fetched successfully
+ *       404:
+ *         description: Organization not found for admin
+ *       500:
+ *         description: Error fetching pending staff registrations
+ */
+exports.getPendingStaffRegistrations = async (req, res) => {
+  try {
+    const { orgId } = req.query;
+
+    const org = await findAdminOrg(req.user._id, orgId);
+    if (!org) {
+      return res.status(404).json({ message: 'Organization not found for admin' });
+    }
+
+    const roles = await Role.find({ name: { $in: ['nurse', 'caretaker'] } }).lean();
+    const roleIds = roles.map(role => role._id);
+
+    const pendingUsers = await User.find({
+      role: { $in: roleIds },
+      organization: org._id,
+      approvalStatus: 'pending'
+    })
+      .select('-password_hash -__v')
+      .populate('role', 'name')
+      .populate('organization', 'name')
+      .sort({ created_at: -1 })
+      .lean();
+
+    res.status(200).json({
+      organization: { _id: org._id, name: org.name },
+      total: pendingUsers.length,
+      pendingUsers
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: 'Error fetching pending staff registrations',
+      details: error.message
+    });
+  }
+};
+
+
+/* ---------------------------------------------------------------------- */
+/**
+ * @swagger
+ * /api/v1/admin/staff/{id}/approve:
+ *   put:
+ *     summary: Approve a pending nurse or caretaker request
+ *     tags: [Admin - Staff]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: User ID of the staff account
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: orgId
+ *         required: false
+ *         description: Organization context if the admin manages multiple organizations
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Staff request approved successfully
+ *       400:
+ *         description: Invalid role or invalid user id
+ *       403:
+ *         description: User does not belong to this organization
+ *       404:
+ *         description: User or organization not found
+ *       500:
+ *         description: Error approving staff request
+ */
+exports.approveStaff = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { orgId } = req.query;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid user id' });
+    }
+
+    const org = await findAdminOrg(req.user._id, orgId);
+    if (!org) {
+      return res.status(404).json({ message: 'Organization not found for admin' });
+    }
+
+    const user = await User.findById(id).populate('role', 'name');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const roleName = user.role?.name?.toLowerCase();
+    if (!['nurse', 'caretaker'].includes(roleName)) {
+      return res.status(400).json({
+        message: 'Only nurse or caretaker accounts can be approved'
+      });
+    }
+
+    if (!user.organization || String(user.organization) !== String(org._id)) {
+      return res.status(403).json({
+        message: 'User does not belong to this organization'
+      });
+    }
+
+    user.approvalStatus = 'approved';
+    user.approvedBy = req.user._id;
+    user.approvedAt = new Date();
+    user.rejectedBy = null;
+    user.rejectedAt = null;
+    user.rejectionReason = '';
+    user.deactivatedBy = null;
+    user.deactivatedAt = null;
+
+    await user.save();
+
+    // approved nurses become part of org staff
+    if (roleName === 'nurse') {
+      await addUserToOrgStaff(org._id, user._id);
+    }
+
+    res.status(200).json({
+      message: `${roleName} request approved successfully`,
+      user: {
+        _id: user._id,
+        fullname: user.fullname,
+        email: user.email,
+        organization: user.organization,
+        approvalStatus: user.approvalStatus
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: 'Error approving staff request',
+      details: error.message
+    });
+  }
+};
+
+
+/* ---------------------------------------------------------------------- */
+/**
+ * @swagger
+ * /api/v1/admin/staff/{id}/status:
+ *   put:
+ *     summary: Reject or deactivate a nurse or caretaker organization request/member
+ *     tags: [Admin - Staff]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: User ID of the staff account
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: orgId
+ *         required: false
+ *         description: Organization context if the admin manages multiple organizations
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - action
+ *             properties:
+ *               action:
+ *                 type: string
+ *                 enum: [reject, deactivate]
+ *               reason:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Staff status updated successfully
+ *       400:
+ *         description: Invalid user id, invalid action, or invalid role
+ *       403:
+ *         description: User does not belong to this organization
+ *       404:
+ *         description: User or organization not found
+ *       500:
+ *         description: Error updating staff status
+ */
+exports.rejectOrDeactivateStaff = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { orgId } = req.query;
+    const { action, reason } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid user id' });
+    }
+
+    if (!['reject', 'deactivate'].includes(action)) {
+      return res.status(400).json({
+        message: 'action must be either "reject" or "deactivate"'
+      });
+    }
+
+    const org = await findAdminOrg(req.user._id, orgId);
+    if (!org) {
+      return res.status(404).json({ message: 'Organization not found for admin' });
+    }
+
+    const user = await User.findById(id).populate('role', 'name');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const roleName = user.role?.name?.toLowerCase();
+    if (!['nurse', 'caretaker'].includes(roleName)) {
+      return res.status(400).json({
+        message: 'Only nurse or caretaker accounts can be updated'
+      });
+    }
+
+    if (!user.organization || String(user.organization) !== String(org._id)) {
+      return res.status(403).json({
+        message: 'User does not belong to this organization'
+      });
+    }
+
+    if (action === 'reject') {
+      user.approvalStatus = 'rejected';
+      user.rejectedBy = req.user._id;
+      user.rejectedAt = new Date();
+      user.rejectionReason = reason || '';
+      user.approvedBy = null;
+      user.approvedAt = null;
+    }
+
+    if (action === 'deactivate') {
+      user.approvalStatus = 'deactivated';
+      user.deactivatedBy = req.user._id;
+      user.deactivatedAt = new Date();
+
+      // deactivated nurses are removed from active org staff
+      if (roleName === 'nurse') {
+        await removeUserFromOrgStaff(org._id, user._id);
+      }
+    }
+
+    await user.save();
+
+    res.status(200).json({
+      message: `${roleName} account ${action}ed successfully`,
+      user: {
+        _id: user._id,
+        fullname: user.fullname,
+        email: user.email,
+        organization: user.organization,
+        approvalStatus: user.approvalStatus
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: 'Error updating staff approval status',
+      details: error.message
+    });
+  }
+};
