@@ -10,12 +10,12 @@ const {
 } = require('../controllers/HealthRecordController');
 
 // GET health records
-router.get('/patient/:patientId/health-records', verifyToken, verifyRole(['admin', 'caretaker', 'doctor', 'nurse']), getHealthRecords);
+router.get('/:patientId/health-records', verifyToken, verifyRole(['admin', 'caretaker', 'doctor', 'nurse']), getHealthRecords);
 
 // POST (create) health record
-router.post('/patient/:patientId/health-record', verifyToken, verifyRole(['caretaker', 'nurse']), createHealthRecords);
+router.post('/:patientId/health-record', verifyToken, verifyRole(['caretaker', 'nurse']), createHealthRecords);
 
 // GET report
-router.get('/patient/:patientId/report', verifyToken, verifyRole(['nurse']), getPatientReport);
+router.get('/:patientId/report', verifyToken, verifyRole(['nurse']), getPatientReport);
 
 module.exports = router;
