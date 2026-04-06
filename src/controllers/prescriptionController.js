@@ -127,19 +127,61 @@ exports.createPrescription = async (req, res) => {
     }
 
     const { patientId, patientName, items, notes } = req.body;
+    if (!patientId && !patientName) {
+  return res.status(400).json({
+    error: 'Either patientId or patientName is required'
+  });
+}
 
     // Validate items
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: 'At least one prescription item is required' });
     }
     for (const [i, it] of items.entries()) {
-      if (!it?.name || !it?.dose || !it?.frequency || !it?.durationDays) {
-        return res.status(400).json({
-          error: `Item ${i} missing required fields: name, dose, frequency, durationDays`
-        });
-      }
-    }
+  if (!it?.name || !it?.dose || !it?.frequency || !it?.durationDays) {
+    return res.status(400).json({
+      error: `Item ${i + 1} missing required fields: name, dose, frequency, durationDays`
+    });
+  }
 
+  if (typeof it.name !== 'string' || !it.name.trim()) {
+    return res.status(400).json({
+      error: `Item ${i + 1}: medicine name is required and cannot be empty`
+    });
+  }
+
+  if (typeof it.dose !== 'string' || !it.dose.trim()) {
+    return res.status(400).json({
+      error: `Item ${i + 1}: dose is required`
+    });
+  }
+
+  const doseNum = parseFloat(it.dose.replace(/[^0-9.-]+/g, ''));
+  if (isNaN(doseNum) || doseNum <= 0) {
+    return res.status(400).json({
+      error: `Item ${i + 1}: dose must be a positive number`
+    });
+  }
+
+  if (typeof it.frequency !== 'string' || !it.frequency.trim()) {
+    return res.status(400).json({
+      error: `Item ${i + 1}: frequency is required`
+    });
+  }
+
+  if (!Number.isInteger(it.durationDays) || it.durationDays <= 0) {
+    return res.status(400).json({
+      error: `Item ${i + 1}: durationDays must be a positive integer`
+    });
+  }
+
+  if (it.quantity !== undefined && (!Number.isInteger(it.quantity) || it.quantity <= 0)) {
+    return res.status(400).json({
+      error: `Item ${i + 1}: quantity must be a positive integer`
+    });
+  }
+}
+  
     // Find patient (by id or name)
     let patient = null;
     if (patientId && mongoose.Types.ObjectId.isValid(patientId)) {
