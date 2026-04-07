@@ -2,6 +2,7 @@
 
 const mongoose = require('mongoose');
 const Patient = require('../models/Patient');
+const User = require('../models/User');
 const HealthRecord = require('../models/HealthRecord');
 const Task = require('../models/Task');
 const CarePlan = require('../models/CarePlan');
@@ -42,14 +43,16 @@ const sendControllerError = (res, err, fallbackMessage) => {
  * If not bound yet, but present in org.staff, then we auto-link them.
  * Else, we reject it.
  */
-async function ensureStaffBoundToOrg(userDoc, orgDoc) {
+async function ensureStaffBoundToOrg(userDoc, orgDoc, options = {}) {
   if (!userDoc || !orgDoc) return { ok: false, reason: 'missing' };
   if (assertSameOrg(orgDoc, userDoc)) return { ok: true };
 
   if (isUserInOrg(userDoc, orgDoc) || isUserInOrg({ _id: userDoc._id }, orgDoc)) {
-    const User = require('../models/User');
-    await User.updateOne({ _id: userDoc._id }, { $set: { organization: toObjectId(orgDoc._id) } });
-    return { ok: true, linked: true };
+    if (options.applyLink) {
+      const User = require('../models/User');
+      await User.updateOne({ _id: userDoc._id }, { $set: { organization: toObjectId(orgDoc._id) } });
+    }
+    return { ok: true, linked: Boolean(options.applyLink), needsOrgLink: true };
   }
   return { ok: false, reason: 'not_in_staff' };
 }
@@ -199,6 +202,7 @@ exports.createPatient = async (req, res) => {
       caretakerId, nurseId, doctorId,
       image, dateOfAdmitting, description
     } = req.body || {};
+    const postCommitOrgLinks = new Set();
 
     if (!fullname || !gender || !dateOfBirth || !caretakerId) {
       return res.status(400).json({ message: 'fullname, gender, dateOfBirth and caretakerId are required' });
@@ -218,8 +222,7 @@ exports.createPatient = async (req, res) => {
       }
       orgId = caretaker.organization;
     } else {
-      const User = require('../models/User');
-      await User.updateOne({ _id: caretaker._id }, { $set: { organization: adminOrg._id } });
+      postCommitOrgLinks.add(String(caretaker._id));
     }
 
     // validate nurse if provided
@@ -230,6 +233,7 @@ exports.createPatient = async (req, res) => {
 
       const ensured = await ensureStaffBoundToOrg(nd, adminOrg);
       if (!ensured.ok) return res.status(400).json({ message: 'nurseId must be a nurse in this org' });
+      if (ensured.needsOrgLink) postCommitOrgLinks.add(String(nd._id));
       nurse = nd;
     }
 
@@ -241,6 +245,7 @@ exports.createPatient = async (req, res) => {
 
       const ensured = await ensureStaffBoundToOrg(dd, adminOrg);
       if (!ensured.ok) return res.status(400).json({ message: 'doctorId must be a doctor in this org' });
+      if (ensured.needsOrgLink) postCommitOrgLinks.add(String(dd._id));
       doctor = dd;
     }
 
@@ -259,10 +264,16 @@ exports.createPatient = async (req, res) => {
       isDeleted: false
     });
 
-    // maintain reverse links
-    await addAssignedPatient(caretaker._id, patient._id);
-    if (nurse) await addAssignedPatient(nurse._id, patient._id);
-    if (doctor) await addAssignedPatient(doctor._id, patient._id);
+    const postCommitOps = [];
+    for (const userId of postCommitOrgLinks) {
+      postCommitOps.push(
+        User.updateOne({ _id: userId }, { $set: { organization: toObjectId(adminOrg._id) } })
+      );
+    }
+    postCommitOps.push(addAssignedPatient(caretaker._id, patient._id));
+    if (nurse) postCommitOps.push(addAssignedPatient(nurse._id, patient._id));
+    if (doctor) postCommitOps.push(addAssignedPatient(doctor._id, patient._id));
+    await Promise.all(postCommitOps);
 
     return res.status(201).json({
       message: 'Patient created',
@@ -380,9 +391,18 @@ exports.reassign = async (req, res) => {
 
     const { nurseId, caretakerId, doctorId } = req.body || {};
     const updates = {};
+    const reverseLinksToAdd = new Set();
+    const reverseLinksToRemove = new Set();
+    const postCommitOrgLinks = new Set();
+
+    if (!nurseId && !caretakerId && !doctorId) {
+      return res.status(400).json({
+        message: 'At least one of nurseId, doctorId, or caretakerId is required'
+      });
+    }
 
     // assign nurse
-     if (nurseId) {
+    if (nurseId) {
       const nurse = await ensureUserWithRole(toId(nurseId), 'nurse');
       if (!nurse) {
         return res.status(400).json({ message: 'nurseId must be a nurse' });
@@ -394,17 +414,16 @@ exports.reassign = async (req, res) => {
           message: 'nurseId must be a nurse in this org'
         });
       }
+      if (ensured.needsOrgLink) postCommitOrgLinks.add(String(nurse._id));
 
-      //remove old nurses
-      if (patient.assignedNurses?.length) {
-        for (const nId of patient.assignedNurses) {
-          await removeAssignedPatient(nId, patient._id);
-        }
-      }
+      const currentNurseIds = (patient.assignedNurses || []).map(String);
+      const nextNurseId = String(nurse._id);
+      currentNurseIds
+        .filter((nId) => nId !== nextNurseId)
+        .forEach((nId) => reverseLinksToRemove.add(nId));
+      if (!currentNurseIds.includes(nextNurseId)) reverseLinksToAdd.add(nextNurseId);
 
-      //assign new nurse (replace, not add)
       updates.assignedNurses = [toObjectId(nurse._id)];
-      await addAssignedPatient(nurse._id, patient._id);
     }
 
     // assign doctor
@@ -420,15 +439,16 @@ exports.reassign = async (req, res) => {
           message: 'doctorId must be a doctor in this org'
         });
       }
+      if (ensured.needsOrgLink) postCommitOrgLinks.add(String(doctor._id));
 
-      // remove old doctor
-      if (patient.assignedDoctor &&
-          String(patient.assignedDoctor) !== String(doctor._id)) {
-        await removeAssignedPatient(patient.assignedDoctor, patient._id);
+      if (patient.assignedDoctor && String(patient.assignedDoctor) !== String(doctor._id)) {
+        reverseLinksToRemove.add(String(patient.assignedDoctor));
+      }
+      if (String(patient.assignedDoctor || '') !== String(doctor._id)) {
+        reverseLinksToAdd.add(String(doctor._id));
       }
 
       updates.assignedDoctor = toObjectId(doctor._id);
-      await addAssignedPatient(doctor._id, patient._id);
     }
 
     // assign caretaker
@@ -442,20 +462,17 @@ exports.reassign = async (req, res) => {
         patient.caretaker && String(patient.caretaker) === String(caretaker._id);
 
       if (!caretakerUnchanged) {
-        const linkResult = await linkCaretakerToOrgIfFreelance(caretaker, org);
+        const linkResult = await linkCaretakerToOrgIfFreelance(caretaker, org, { applyLink: false });
         if (linkResult.movedFromOtherOrg) {
           return res.status(400).json({
             message: 'Caretaker belongs to another organization'
           });
         }
-
-        // remove old caretaker
-        if (patient.caretaker) {
-          await removeAssignedPatient(patient.caretaker, patient._id);
-        }
+        if (linkResult.needsOrgLink) postCommitOrgLinks.add(String(caretaker._id));
+        if (patient.caretaker) reverseLinksToRemove.add(String(patient.caretaker));
+        reverseLinksToAdd.add(String(caretaker._id));
 
         updates.caretaker = toObjectId(caretaker._id);
-        await addAssignedPatient(caretaker._id, patient._id);
       }
     }
 
@@ -472,6 +489,20 @@ exports.reassign = async (req, res) => {
       .populate('caretaker', 'fullname email')
       .populate('assignedNurses', 'fullname email')
       .populate('assignedDoctor', 'fullname email');
+
+    const postCommitOps = [];
+    for (const userId of postCommitOrgLinks) {
+      postCommitOps.push(
+        User.updateOne({ _id: userId }, { $set: { organization: toObjectId(org._id) } })
+      );
+    }
+    for (const userId of reverseLinksToRemove) {
+      postCommitOps.push(removeAssignedPatient(userId, patient._id));
+    }
+    for (const userId of reverseLinksToAdd) {
+      postCommitOps.push(addAssignedPatient(userId, patient._id));
+    }
+    await Promise.all(postCommitOps);
 
     const age = calculateAge(updated?.dateOfBirth);
     return res.status(200).json({ message: 'Assignments updated', patient: { ...updated.toObject(), age } });

@@ -203,7 +203,9 @@ async function buildSecondOrg(roleIds) {
   };
 }
 
-describe('admin patient reassign flow', () => {
+describe('admin patient reassign flow', function () {
+  this.timeout(15000);
+
   before(async () => {
     await mongoose.connect(MONGODB_URI, {
       useNewUrlParser: true,
@@ -327,6 +329,56 @@ describe('admin patient reassign flow', () => {
     expect(res.body).to.deep.equal({ message: 'nurseId must be a nurse' });
   });
 
+  it('returns 400 when reassign is called with an empty body', async () => {
+    const fixture = await buildFixture();
+    const req = {
+      params: { id: String(fixture.patient._id) },
+      query: { orgId: String(fixture.organization._id) },
+      body: {},
+      user: { _id: String(fixture.admin._id) },
+    };
+    const res = makeRes();
+
+    await adminPatientController.reassign(req, res);
+
+    expect(res.statusCode).to.equal(400);
+    expect(res.body).to.deep.equal({
+      message: 'At least one of nurseId, doctorId, or caretakerId is required'
+    });
+  });
+
+  it('does not mutate reverse links when reassign fails after partial validation', async () => {
+    const fixture = await buildFixture();
+    const req = {
+      params: { id: String(fixture.patient._id) },
+      query: { orgId: String(fixture.organization._id) },
+      body: {
+        nurseId: String(fixture.newNurse._id),
+        doctorId: String(fixture.newCaretaker._id),
+      },
+      user: { _id: String(fixture.admin._id) },
+    };
+    const res = makeRes();
+
+    await adminPatientController.reassign(req, res);
+
+    expect(res.statusCode).to.equal(400);
+    expect(res.body).to.deep.equal({ message: 'doctorId must be a doctor' });
+
+    const [patient, oldNurse, newNurse, oldDoctor] = await Promise.all([
+      Patient.findById(fixture.patient._id).lean(),
+      User.findById(fixture.oldNurse._id).lean(),
+      User.findById(fixture.newNurse._id).lean(),
+      User.findById(fixture.oldDoctor._id).lean(),
+    ]);
+
+    expect(patient.assignedNurses.map(String)).to.deep.equal([String(fixture.oldNurse._id)]);
+    expect(String(patient.assignedDoctor)).to.equal(String(fixture.oldDoctor._id));
+    expect((oldNurse.assignedPatients || []).map(String)).to.include(String(fixture.patient._id));
+    expect((newNurse.assignedPatients || []).map(String)).to.not.include(String(fixture.patient._id));
+    expect((oldDoctor.assignedPatients || []).map(String)).to.include(String(fixture.patient._id));
+  });
+
   it('blocks cross-org reassignment attempts for staff and caretakers', async () => {
     const fixture = await buildFixture();
     const roleIds = await Role.find({}).lean().then((roles) => roles.reduce((acc, role) => {
@@ -390,6 +442,44 @@ describe('admin patient reassign flow', () => {
 
     expect(res.statusCode).to.equal(400);
     expect(res.body).to.deep.equal({ message: 'Caretaker belongs to another organization' });
+  });
+
+  it('does not link a freelance caretaker to the org when create fails later', async () => {
+    const fixture = await buildFixture();
+    const roles = await Role.find({}).lean();
+    const roleIds = roles.reduce((acc, role) => {
+      acc[role.name] = role._id;
+      return acc;
+    }, {});
+    const freelanceCaretaker = await createUser({
+      fullname: 'Freelance Caretaker',
+      email: 'freelance-caretaker@test.local',
+      role: roleIds.caretaker,
+    });
+
+    const req = {
+      query: { orgId: String(fixture.organization._id) },
+      body: {
+        fullname: 'Failed Patient',
+        gender: 'male',
+        dateOfBirth: '1985-01-01',
+        caretakerId: String(freelanceCaretaker._id),
+        doctorId: String(fixture.newCaretaker._id),
+      },
+      user: { _id: String(fixture.admin._id) },
+    };
+    const res = makeRes();
+
+    await adminPatientController.createPatient(req, res);
+
+    expect(res.statusCode).to.equal(400);
+    expect(res.body).to.deep.equal({ message: 'doctorId must be a doctor' });
+
+    const reloadedCaretaker = await User.findById(freelanceCaretaker._id).lean();
+    const failedPatient = await Patient.findOne({ fullname: 'Failed Patient' }).lean();
+
+    expect(reloadedCaretaker.organization || null).to.equal(null);
+    expect(failedPatient).to.equal(null);
   });
 
   it('blocks explicit org access when the admin does not belong to that org', async () => {

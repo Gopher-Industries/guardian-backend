@@ -112,7 +112,7 @@ function isUserInOrg(userDoc, orgDoc) {
 }
 
 // if caretaker has no org → link them to this org
-async function linkCaretakerToOrgIfFreelance(caretakerDoc, orgDoc) {
+async function linkCaretakerToOrgIfFreelance(caretakerDoc, orgDoc, options = {}) {
   if (!caretakerDoc) {
     const e = new Error('linkCaretakerToOrgIfFreelance: caretaker is required');
     e.status = 400;
@@ -125,7 +125,7 @@ async function linkCaretakerToOrgIfFreelance(caretakerDoc, orgDoc) {
   }
 
   if (!userHasOrgField()) {
-    return { linked: false, alreadyInOrg: false, movedFromOtherOrg: false };
+    return { linked: false, alreadyInOrg: false, movedFromOtherOrg: false, needsOrgLink: false };
   }
 
   const orgId = toId(orgDoc);
@@ -133,17 +133,24 @@ async function linkCaretakerToOrgIfFreelance(caretakerDoc, orgDoc) {
 
   // freelance caretaker → assign org
   if (!currentOrgId) {
-    await User.updateOne({ _id: caretakerDoc._id }, { $set: { organization: orgId } });
-    return { linked: true, alreadyInOrg: false, movedFromOtherOrg: false };
+    if (options.applyLink) {
+      await User.updateOne({ _id: caretakerDoc._id }, { $set: { organization: orgId } });
+    }
+    return {
+      linked: Boolean(options.applyLink),
+      alreadyInOrg: false,
+      movedFromOtherOrg: false,
+      needsOrgLink: true,
+    };
   }
 
   // already in same org
   if (idsEqual(currentOrgId, orgId)) {
-    return { linked: false, alreadyInOrg: true, movedFromOtherOrg: false };
+    return { linked: false, alreadyInOrg: true, movedFromOtherOrg: false, needsOrgLink: false };
   }
 
   // caretaker already belongs elsewhere
-  return { linked: false, alreadyInOrg: false, movedFromOtherOrg: true };
+  return { linked: false, alreadyInOrg: false, movedFromOtherOrg: true, needsOrgLink: false };
 }
 
 /* ------------------------- Staff add/remove helpers ------------------------ */
