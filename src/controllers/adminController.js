@@ -351,30 +351,17 @@ exports.createTask = async (req, res) => {
 
     const newTask = new Task({ description, patient: patientId, dueDate, caretaker: caretakerId, nurse_id: nurseId, priority });
     await newTask.save();
+
     Promise.resolve(
       notifyRules.taskCreated({
         taskId: newTask._id,
         patientId,
-        assignedTo: newTask.caretaker,
+        caretaker: newTask.caretaker,
+        nurse: newTask.nurse_id,
         dueDate: newTask.dueDate,
         actorId: req.user?._id
       })
-    ).catch(() => {});
-
-    const hasNurse = !!newTask.nurse_id;
-    const isDifferentFromCaretaker = String(newTask.nurse_id) !== String(newTask.caretaker);
-
-    if (hasNurse && isDifferentFromCaretaker) {
-      Promise.resolve(
-        notifyRules.taskCreated({
-          taskId: newTask._id,
-          patientId,
-          assignedTo: newTask.nurse_id,
-          dueDate: newTask.dueDate,
-          actorId: req.user?._id
-        })
-      ).catch(() => {});
-    }
+    ).catch(() => { });
 
     res.status(201).json({ message: 'Task created successfully', task: newTask });
   } catch (error) {
@@ -409,7 +396,9 @@ exports.createTask = async (req, res) => {
  *               dueDate:
  *                 type: string
  *                 format: date
- *               assignedTo:
+ *               caretakerId:
+ *                 type: string
+ *               nurseId:
  *                 type: string
  *     responses:
  *       200:
@@ -431,9 +420,16 @@ exports.createTask = async (req, res) => {
 exports.updateTask = async (req, res) => {
   try {
     const { taskId } = req.params;
-    const updateData = req.body;
+    const { caretakerId, nurseId, ...rest } = req.body;
+
+    const updateData = {
+      ...rest,
+      ...((caretakerId) && { caretaker: caretakerId }),
+      ...(nurseId && { nurse_id: nurseId })
+    };
 
     const updatedTask = await Task.findByIdAndUpdate(taskId, updateData, { new: true });
+
 
     if (!updatedTask) {
       return res.status(404).json({ message: 'Task not found' });
@@ -442,7 +438,8 @@ exports.updateTask = async (req, res) => {
       notifyRules.taskUpdated({
         taskId: updatedTask._id,
         patientId: updatedTask.patient,
-        assignedTo: updatedTask.caretaker,
+        caretaker: updatedTask.caretaker,
+        nurse: updatedTask.nurse_id,
         status: updatedTask.status,
         dueDate: updatedTask.dueDate,
         actorId: req.user?._id
@@ -492,14 +489,13 @@ exports.deleteTask = async (req, res) => {
     if (!deletedTask) {
       return res.status(404).json({ message: 'Task not found' });
     }
-    Promise.resolve(
-      notifyRules.taskDeleted({
-        taskId,
-        patientId: deletedTask.patient,
-        assignedTo: deletedTask.caretaker,
-        actorId: req.user?._id
-      })
-    ).catch(() => { });
+    notifyRules.taskDeleted({
+      taskId,
+      patientId: deletedTask.patient,
+      caretaker: deletedTask.caretaker,
+      nurse: deletedTask.nurse_id,
+      actorId: req.user?._id
+    })
 
     res.status(200).json({ message: 'Task deleted successfully' });
   } catch (error) {
