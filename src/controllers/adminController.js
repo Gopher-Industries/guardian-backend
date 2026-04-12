@@ -89,8 +89,8 @@ exports.getPatientOverview = async (req, res) => {
     const { patientId } = req.params;
 
     const patientDetails = await Patient.findById(patientId)
-      .populate('assignedCaretaker')
-      .populate('assignedNurse');
+      .populate('caretaker')
+      .populate('assignedNurses');
 
     if (!patientDetails) {
       return res.status(404).json({ message: 'Patient not found' });
