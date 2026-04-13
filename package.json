@@ -39,6 +39,7 @@
     "@types/socket.io": "^3.0.2",
     "chai": "^4.4.1",
     "chai-http": "^4.4.0",
-    "mocha": "^10.7.3"
+    "mocha": "^10.7.3",
+    "mongodb-memory-server": "^11.0.1"
   }
 }

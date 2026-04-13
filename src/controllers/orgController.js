@@ -7,7 +7,7 @@ const User = require('../models/User');
  * @swagger
  * tags:
  *   - name: Organization
- *     description: Endpoints for creating and listing organizations (admin only)
+ *     description: Endpoints for organization creation, retrieval, and join requests
  */
 
 /* ---------------------------------------------------------------------- */
@@ -16,7 +16,7 @@ const User = require('../models/User');
  * /api/v1/orgs:
  *   post:
  *     summary: Create a new organization
- *     description: Admins can spin up a fresh org. The creator becomes the `createdBy` and is auto-added into `staff`.
+ *     description: Creates a new organization. The authenticated admin becomes the creator and is automatically added to the organization's staff list.
  *     tags: [Organization]
  *     security:
  *       - bearerAuth: []
@@ -26,7 +26,8 @@ const User = require('../models/User');
  *         application/json:
  *           schema:
  *             type: object
- *             required: [name]
+ *             required:
+ *               - name
  *             properties:
  *               name:
  *                 type: string
@@ -36,7 +37,7 @@ const User = require('../models/User');
  *                 type: string
  *                 nullable: true
  *                 default: ""
- *                 example: Primary org for testing
+ *                 example: Primary organization for testing
  *               active:
  *                 type: boolean
  *                 default: true
@@ -48,14 +49,21 @@ const User = require('../models/User');
  *           application/json:
  *             schema:
  *               type: object
- *               required: [message, org]
+ *               required:
+ *                 - message
+ *                 - org
  *               properties:
  *                 message:
  *                   type: string
  *                   example: Organization created
  *                 org:
  *                   type: object
- *                   required: [_id, name, active, createdBy, staff]
+ *                   required:
+ *                     - _id
+ *                     - name
+ *                     - active
+ *                     - createdBy
+ *                     - staff
  *                   properties:
  *                     _id:
  *                       type: string
@@ -67,16 +75,17 @@ const User = require('../models/User');
  *                     description:
  *                       type: string
  *                       nullable: true
- *                       example: Primary org for testing
+ *                       example: Primary organization for testing
  *                     active:
  *                       type: boolean
  *                       example: true
  *                     createdBy:
  *                       type: string
- *                       description: User ID of the creator (admin)
+ *                       description: User ID of the admin who created the organization
  *                       example: 66ef5b7d9f3a1d0012ab34aa
  *                     staff:
  *                       type: array
+ *                       description: List of user IDs currently linked as organization staff
  *                       items:
  *                         type: string
  *                       example: ["66ef5b7d9f3a1d0012ab34aa"]
@@ -87,12 +96,13 @@ const User = require('../models/User');
  *                       type: string
  *                       format: date-time
  *       400:
- *         description: Validation error or bad request
+ *         description: Validation failed or the organization could not be created
  *         content:
  *           application/json:
  *             schema:
  *               type: object
- *               required: [message]
+ *               required:
+ *                 - message
  *               properties:
  *                 message:
  *                   type: string
@@ -101,7 +111,7 @@ const User = require('../models/User');
  *                   type: string
  *                   example: name is required
  *       401:
- *         description: Unauthorized (no/invalid token)
+ *         description: Unauthorized request
  */
 exports.createOrg = async (req, res) => {
   try {
@@ -122,7 +132,7 @@ exports.createOrg = async (req, res) => {
       return res.status(400).json({ message: 'Organization with this name already exists' });
     }
 
-    // creator auto-added to staff
+    // Automatically add the creator to the initial organization staff list
     const org = await Organization.create({
       name: normalizedName,
       description,
@@ -142,25 +152,31 @@ exports.createOrg = async (req, res) => {
  * @swagger
  * /api/v1/orgs/mine:
  *   get:
- *     summary: List my organizations
- *     description: Fetch all orgs where I’m either the creator or part of staff. Only works for admins.
+ *     summary: List organizations linked to the authenticated user
+ *     description: Returns all organizations where the authenticated user is either the creator or a member of the staff list.
  *     tags: [Organization]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Array of organizations I belong to
+ *         description: Organizations fetched successfully
  *         content:
  *           application/json:
  *             schema:
  *               type: object
- *               required: [orgs]
+ *               required:
+ *                 - orgs
  *               properties:
  *                 orgs:
  *                   type: array
  *                   items:
  *                     type: object
- *                     required: [_id, name, active, createdBy, staff]
+ *                     required:
+ *                       - _id
+ *                       - name
+ *                       - active
+ *                       - createdBy
+ *                       - staff
  *                     properties:
  *                       _id:
  *                         type: string
@@ -171,7 +187,7 @@ exports.createOrg = async (req, res) => {
  *                       description:
  *                         type: string
  *                         nullable: true
- *                         example: Primary org for testing
+ *                         example: Primary organization for testing
  *                       active:
  *                         type: boolean
  *                         example: true
@@ -190,14 +206,15 @@ exports.createOrg = async (req, res) => {
  *                         type: string
  *                         format: date-time
  *       401:
- *         description: Unauthorized (no/invalid token)
+ *         description: Unauthorized request
  *       500:
- *         description: Error fetching orgs
+ *         description: Internal server error while fetching organizations
  *         content:
  *           application/json:
  *             schema:
  *               type: object
- *               required: [message]
+ *               required:
+ *                 - message
  *               properties:
  *                 message:
  *                   type: string
@@ -227,8 +244,8 @@ exports.listMyOrgs = async (req, res) => {
  * @swagger
  * /api/v1/orgs/public:
  *   get:
- *     summary: Fetch active organizations for nurse and caretaker users
- *     description: Returns active organizations that freelance nurse and caretaker users can browse before sending a join request.
+ *     summary: List active organizations available for browsing
+ *     description: Returns all active organizations that freelance nurse and caretaker users can browse before submitting a join request.
  *     tags: [Organization]
  *     security:
  *       - bearerAuth: []
@@ -239,6 +256,8 @@ exports.listMyOrgs = async (req, res) => {
  *           application/json:
  *             schema:
  *               type: object
+ *               required:
+ *                 - orgs
  *               properties:
  *                 orgs:
  *                   type: array
@@ -260,7 +279,7 @@ exports.listMyOrgs = async (req, res) => {
  *                         type: string
  *                         format: date-time
  *       500:
- *         description: Error fetching organizations
+ *         description: Internal server error while fetching organizations
  */
 exports.listActiveOrgs = async (req, res) => {
   try {
@@ -278,14 +297,13 @@ exports.listActiveOrgs = async (req, res) => {
   }
 };
 
-
 /* ---------------------------------------------------------------------- */
 /**
  * @swagger
- * /api/v1/orgs/request-join:
+ * /api/v1/orgs/join-request:
  *   post:
  *     summary: Request to join an organization
- *     description: Allows a freelance nurse or caretaker to request joining an active organization. The request is stored in pending state for admin review.
+ *     description: Allows a freelance nurse or caretaker to submit a join request to an active organization.
  *     tags: [Organization]
  *     security:
  *       - bearerAuth: []
@@ -300,38 +318,19 @@ exports.listActiveOrgs = async (req, res) => {
  *             properties:
  *               orgId:
  *                 type: string
- *                 description: Selected organization ID
+ *                 description: Organization ID
+ *                 example: 66ef5c2a9f3a1d0012ab34cd
  *     responses:
  *       200:
  *         description: Join request submitted successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 user:
- *                   type: object
- *                   properties:
- *                     _id:
- *                       type: string
- *                     fullname:
- *                       type: string
- *                     email:
- *                       type: string
- *                     organization:
- *                       type: string
- *                     approvalStatus:
- *                       type: string
  *       400:
- *         description: Missing orgId or invalid request state
+ *         description: Invalid request, duplicate pending request, or user is already approved in another organization
  *       403:
- *         description: Only nurse or caretaker can request to join an organization
+ *         description: Only nurse or caretaker accounts can request to join an organization
  *       404:
- *         description: User not found or organization not found
+ *         description: Organization or user not found
  *       500:
- *         description: Error requesting organization join
+ *         description: Internal server error while submitting the join request
  */
 exports.requestToJoinOrg = async (req, res) => {
   try {
@@ -358,7 +357,7 @@ exports.requestToJoinOrg = async (req, res) => {
       });
     }
 
-    // prevent duplicate pending request for the same org
+    // Prevent duplicate pending requests for the same organization
     if (
       user.organization &&
       String(user.organization) === String(org._id) &&
@@ -369,7 +368,7 @@ exports.requestToJoinOrg = async (req, res) => {
       });
     }
 
-    // if already approved in the same org, no new request is needed
+    // Prevent re-requesting if the user is already approved in this organization
     if (
       user.organization &&
       String(user.organization) === String(org._id) &&
@@ -380,7 +379,7 @@ exports.requestToJoinOrg = async (req, res) => {
       });
     }
 
-    // approved org members should not silently switch orgs themselves
+    // Prevent approved members from switching organizations directly without admin action
     if (
       user.organization &&
       String(user.organization) !== String(org._id) &&
@@ -391,7 +390,7 @@ exports.requestToJoinOrg = async (req, res) => {
       });
     }
 
-    // move user from freelance/requesting state into pending org state
+    // Move the user into a pending state for the selected organization
     user.organization = org._id;
     user.approvalStatus = 'pending';
     user.approvedBy = null;

@@ -4,6 +4,10 @@ const EntryReport = require('../models/EntryReport');
 const notifyRules = require('../services/notifyRules');
 const Role = require('../models/Role');
 
+/**
+ * Restricts independent patient-management routes for approved organization-linked
+ * nurses and caretakers. These users must use the organization-based workflow.
+ */
 async function blockIndependentPatientWorkForApprovedOrgMember(userId) {
   const user = await User.findById(userId).populate('role', 'name');
   if (!user) {
@@ -27,14 +31,22 @@ async function blockIndependentPatientWorkForApprovedOrgMember(userId) {
 
 /**
  * @swagger
+ * tags:
+ *   - name: Patient
+ *     description: Endpoints for independent patient management
+ *   - name: EntryReport
+ *     description: Endpoints for patient activity and entry reporting
+ */
+
+/**
+ * @swagger
  * /api/v1/patients/add:
  *   post:
- *     summary: Add a new patient with profile photo
+ *     summary: Add a new patient with an optional profile photo
+ *     description: Creates a new patient in the independent freelance flow for the authenticated caretaker.
  *     tags: [Patient]
  *     security:
  *       - bearerAuth: []
- *     consumes:
- *       - multipart/form-data
  *     requestBody:
  *       required: true
  *       content:
@@ -48,12 +60,14 @@ async function blockIndependentPatientWorkForApprovedOrgMember(userId) {
  *             properties:
  *               fullname:
  *                 type: string
+ *                 example: John Smith
  *               dateOfBirth:
- *                 type: String
+ *                 type: string
  *                 format: date
- *                 example: '1980-01-01'
+ *                 example: 1980-01-01
  *               gender:
  *                 type: string
+ *                 example: Male
  *               profilePhoto:
  *                 type: string
  *                 format: binary
@@ -61,7 +75,9 @@ async function blockIndependentPatientWorkForApprovedOrgMember(userId) {
  *       201:
  *         description: Patient added successfully
  *       400:
- *         description: Error adding patient
+ *         description: Missing required fields or invalid request data
+ *       403:
+ *         description: Approved organization members cannot use independent patient routes
  */
 exports.addPatient = async (req, res) => {
   try {
@@ -107,59 +123,56 @@ exports.addPatient = async (req, res) => {
  * @swagger
  * /api/v1/patients:
  *   get:
- *     summary: Get all patients (excluding soft-deleted by default)
+ *     summary: Get patients in the independent freelance flow
+ *     description: Returns patients visible to the authenticated user within the independent workflow, with optional filtering, pagination, and sorting.
  *     tags: [Patient]
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: page
- *         schema: { type: integer, minimum: 1, default: 1 }
- *         description: Page number (1-indexed)
+ *         schema:
+ *           type: integer
+ *           example: 1
  *       - in: query
  *         name: limit
- *         schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
- *         description: Page size (max 100)
+ *         schema:
+ *           type: integer
+ *           example: 20
  *       - in: query
  *         name: search
- *         schema: { type: string }
- *         description: Case-insensitive match on fullname
+ *         schema:
+ *           type: string
+ *           example: John
  *       - in: query
  *         name: gender
- *         schema: { type: string, enum: [male, female, other] }
- *         description: Filter by gender
+ *         schema:
+ *           type: string
+ *           example: Male
  *       - in: query
  *         name: caretakerId
- *         schema: { type: string }
- *         description: Filter by caretaker ObjectId
+ *         schema:
+ *           type: string
+ *           example: 661111111111111111111111
  *       - in: query
  *         name: includeDeleted
- *         schema: { type: boolean, default: false }
- *         description: Include soft-deleted records if true
+ *         schema:
+ *           type: boolean
+ *           example: false
  *       - in: query
  *         name: sort
- *         schema: { type: string, default: "-created_at" }
- *         description: Mongoose-style sort (e.g. "-created_at", "fullname")
+ *         schema:
+ *           type: string
+ *           example: -created_at
  *     responses:
  *       200:
- *         description: Paged list of patients
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 page: { type: integer }
- *                 limit: { type: integer }
- *                 total: { type: integer }
- *                 totalPages: { type: integer }
- *                 data:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Patient'
- *       400:
- *         description: Bad request
+ *         description: Patients fetched successfully
+ *       403:
+ *         description: Approved organization members cannot use independent patient routes
+ *       404:
+ *         description: User not found
  *       500:
- *         description: Server error
+ *         description: Internal server error while fetching patients
  */
 exports.getAllPatients = async (req, res) => {
   try {
@@ -169,8 +182,14 @@ exports.getAllPatients = async (req, res) => {
 
     const { search, gender, caretakerId, includeDeleted, sort = '-created_at' } = req.query;
 
+    const me = await User.findById(req.user._id).populate('role', 'name');
+    if (!me) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const roleName = me.role?.name?.toLowerCase();
     const filter = {};
-    // Soft-delete handling
+
     if (!(String(includeDeleted).toLowerCase() === 'true')) {
       filter.isDeleted = { $ne: true };
     }
@@ -178,49 +197,67 @@ exports.getAllPatients = async (req, res) => {
     if (search) {
       filter.fullname = { $regex: search, $options: 'i' };
     }
+
     if (gender) {
       filter.gender = gender;
     }
-    if (caretakerId) {
+
+    if (roleName === 'caretaker') {
+      if (me.organization && me.approvalStatus === 'approved') {
+        return res.status(403).json({
+          message: 'Approved organization members cannot view patients through independent patient routes. Use organization-based routes instead.'
+        });
+      }
+
+      filter.caretaker = me._id;
+    } else if (roleName === 'nurse') {
+      if (me.organization && me.approvalStatus === 'approved') {
+        return res.status(403).json({
+          message: 'Approved organization members cannot view patients through independent patient routes. Use organization-based routes instead.'
+        });
+      }
+
+      filter.assignedNurses = me._id;
+    } else if (caretakerId) {
       filter.caretaker = caretakerId;
     }
 
-    const [total, patients] = await Promise.all([
-      Patient.countDocuments(filter),
-      Patient.find(filter)
-        .populate('caretaker', 'fullname email')
-        .populate('assignedNurses', 'fullname email')
-        .sort(sort)
-        .skip(skip)
-        .limit(limit)
-    ]);
+    const total = await Patient.countDocuments(filter);
 
-    // Add computed age to each item (non-destructive)
-    const data = patients.map(p => {
-      const obj = p.toObject();
-      if (obj.dateOfBirth) obj.age = calculateAge(obj.dateOfBirth);
-      return obj;
-    });
+    const patients = await Patient.find(filter)
+      .populate('caretaker', 'fullname email')
+      .populate('assignedNurses', 'fullname email')
+      .populate('assignedDoctor', 'fullname email')
+      .sort(sort)
+      .skip(skip)
+      .limit(limit);
+
+    const formatted = patients.map((patient) => ({
+      ...patient.toObject(),
+      age: calculateAge(patient.dateOfBirth)
+    }));
 
     return res.status(200).json({
       page,
       limit,
       total,
       totalPages: Math.ceil(total / limit),
-      data
+      patients: formatted
     });
-  } catch (err) {
-    return res.status(500).json({ message: 'Error fetching patients', details: err.message });
+  } catch (error) {
+    return res.status(500).json({
+      message: 'Error fetching patients',
+      details: error.message
+    });
   }
 };
-
 
 /**
  * @swagger
  * /api/v1/patients/{patientId}:
  *   put:
- *     summary: Update patient details
- *     description: Update one or more fields of an existing patient. Accepts JSON or multipart/form-data when uploading a new profile photo.
+ *     summary: Update a patient in the independent freelance flow
+ *     description: Updates an existing patient record for an authorized caretaker or assigned nurse within the independent workflow.
  *     tags: [Patient]
  *     security:
  *       - bearerAuth: []
@@ -230,7 +267,7 @@ exports.getAllPatients = async (req, res) => {
  *         required: true
  *         schema:
  *           type: string
- *         description: MongoDB ObjectId of the patient
+ *         description: Patient ID
  *     requestBody:
  *       required: true
  *       content:
@@ -238,107 +275,101 @@ exports.getAllPatients = async (req, res) => {
  *           schema:
  *             type: object
  *             properties:
- *               fullname: { type: string }
+ *               fullname:
+ *                 type: string
+ *               gender:
+ *                 type: string
  *               dateOfBirth:
  *                 type: string
  *                 format: date
- *                 example: '1980-01-01'
- *               gender: { type: string }
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             properties:
- *               fullname: { type: string }
- *               dateOfBirth:
+ *               description:
+ *                 type: string
+ *               image:
+ *                 type: string
+ *               dateOfAdmitting:
  *                 type: string
  *                 format: date
- *                 example: '1980-01-01'
- *               gender: { type: string }
- *               profilePhoto:
- *                 type: string
- *                 format: binary
  *     responses:
  *       200:
  *         description: Patient updated successfully
- *       400:
- *         description: Invalid patient id or bad input
+ *       403:
+ *         description: Approved organization members cannot use independent update routes, or the user is not authorized for this patient
  *       404:
  *         description: Patient not found
- *       410:
- *         description: Patient is deleted and cannot be updated
  *       500:
- *         description: Server error
+ *         description: Internal server error while updating the patient
  */
 exports.updatePatient = async (req, res) => {
   try {
-    const { patientId } = req.params;
-
-    // Load existing (and not soft-deleted) patient
-    let patient;
-    try {
-      patient = await Patient.findById(patientId);
-    } catch (e) {
-      if (e.name === 'CastError') {
-        return res.status(400).json({ message: 'Invalid patient id' });
-      }
-      throw e;
+    const block = await blockIndependentPatientWorkForApprovedOrgMember(req.user._id);
+    if (block.blocked) {
+      return res.status(403).json({
+        message: block.message || 'Approved organization members cannot update patients through independent routes.'
+      });
     }
+
+    const patient = await Patient.findOne({
+      _id: req.params.patientId,
+      isDeleted: { $ne: true }
+    });
 
     if (!patient) {
       return res.status(404).json({ message: 'Patient not found' });
     }
-    if (patient.isDeleted) {
-      return res.status(410).json({ message: 'Patient is deleted and cannot be updated' });
+
+    const me = await User.findById(req.user._id).populate('role', 'name');
+    const roleName = me?.role?.name?.toLowerCase();
+
+    if (roleName === 'caretaker' && String(patient.caretaker) !== String(req.user._id)) {
+      return res.status(403).json({ message: 'You can only update your own patients' });
     }
 
-    // Accept JSON or multipart/form-data; profilePhoto may come via req.file
-    const { fullname, dateOfBirth, gender } = req.body;
-
-    if (typeof fullname !== 'undefined' && fullname !== patient.fullname) {
-      patient.fullname = fullname;
-    }
-    if (typeof gender !== 'undefined' && gender !== patient.gender) {
-      patient.gender = gender;
+    if (roleName === 'nurse' && !patient.assignedNurses.some((id) => String(id) === String(req.user._id))) {
+      return res.status(403).json({ message: 'You can only update assigned patients' });
     }
 
-    if (typeof dateOfBirth !== 'undefined') {
-      const d = new Date(dateOfBirth);
-      if (isNaN(d.getTime())) {
-        return res.status(400).json({ message: 'Invalid dateOfBirth; expected YYYY-MM-DD' });
+    const allowedFields = [
+      'fullname',
+      'gender',
+      'dateOfBirth',
+      'description',
+      'image',
+      'dateOfAdmitting'
+    ];
+
+    for (const field of allowedFields) {
+      if (req.body[field] !== undefined) {
+        if (field === 'image') {
+          patient.profilePhoto = req.body[field];
+        } else {
+          patient[field] = req.body[field];
+        }
       }
-      patient.dateOfBirth = d;
-    }
-
-    if (req.file && req.file.filename) {
-      patient.profilePhoto = req.file.filename;
-      // (Optional) TODO: remove older photo file from storage if needed
-    }
-
-    // Track updater (optional)
-    if (req.user && req.user._id) {
-      patient.updatedBy = req.user._id;
     }
 
     await patient.save();
 
-    const obj = patient.toObject();
-    if (obj.dateOfBirth) {
-      obj.age = calculateAge(obj.dateOfBirth);
-    }
-
-    return res.status(200).json({ message: 'Patient updated successfully', patient: obj });
-  } catch (err) {
-    return res.status(500).json({ message: 'Error updating patient', details: err.message });
+    return res.status(200).json({
+      message: 'Patient updated successfully',
+      patient: {
+        ...patient.toObject(),
+        age: calculateAge(patient.dateOfBirth)
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: 'Error updating patient',
+      details: error.message
+    });
   }
 };
+
 /**
  * @swagger
  * /api/v1/patients/{patientId}:
  *   delete:
- *     summary: Soft delete a patient
- *     description: |
- *       Marks the patient as deleted (non-destructive).
- *       The record remains in the database with isDeleted set to true.
+ *     summary: Soft delete a patient in the independent freelance flow
+ *     description: Marks a patient as deleted for an authorized caretaker or assigned nurse within the independent workflow.
  *     tags: [Patient]
  *     security:
  *       - bearerAuth: []
@@ -348,54 +379,57 @@ exports.updatePatient = async (req, res) => {
  *         required: true
  *         schema:
  *           type: string
- *         description: MongoDB ObjectId of the patient
+ *         description: Patient ID
  *     responses:
- *       '200':
- *         description: Patient soft-deleted
- *       '400':
- *         description: Invalid patient id
- *       '404':
+ *       200:
+ *         description: Patient deleted successfully
+ *       403:
+ *         description: Approved organization members cannot use independent delete routes, or the user is not authorized for this patient
+ *       404:
  *         description: Patient not found
- *       '410':
- *         description: Patient already deleted
- *       '500':
- *         description: Server error
+ *       500:
+ *         description: Internal server error while deleting the patient
  */
-
 exports.deletePatient = async (req, res) => {
   try {
-    const { patientId } = req.params;
-
-    // Try to load the patient; catch invalid ObjectId without importing mongoose
-    let patient;
-    try {
-      patient = await Patient.findById(patientId);
-    } catch (e) {
-      if (e.name === 'CastError') {
-        return res.status(400).json({ message: 'Invalid patient id' });
-      }
-      throw e;
+    const block = await blockIndependentPatientWorkForApprovedOrgMember(req.user._id);
+    if (block.blocked) {
+      return res.status(403).json({
+        message: block.message || 'Approved organization members cannot delete patients through independent routes.'
+      });
     }
+
+    const patient = await Patient.findOne({
+      _id: req.params.patientId,
+      isDeleted: { $ne: true }
+    });
 
     if (!patient) {
       return res.status(404).json({ message: 'Patient not found' });
     }
 
-    if (patient.isDeleted) {
-      return res.status(410).json({ message: 'Patient already deleted' });
+    const me = await User.findById(req.user._id).populate('role', 'name');
+    const roleName = me?.role?.name?.toLowerCase();
+
+    if (roleName === 'caretaker' && String(patient.caretaker) !== String(req.user._id)) {
+      return res.status(403).json({ message: 'You can only delete your own patients' });
     }
 
-    // Soft delete
+    if (roleName === 'nurse' && !patient.assignedNurses.some((id) => String(id) === String(req.user._id))) {
+      return res.status(403).json({ message: 'You can only delete assigned patients' });
+    }
+
     patient.isDeleted = true;
-    patient.deletedAt = new Date();
-    if (req.user && req.user._id) {
-      patient.deletedBy = req.user._id;
-    }
-
     await patient.save();
-    return res.status(200).json({ message: 'Patient deleted', id: patientId });
-  } catch (err) {
-    return res.status(500).json({ message: 'Error deleting patient', details: err.message });
+
+    return res.status(200).json({
+      message: 'Patient deleted successfully'
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: 'Error deleting patient',
+      details: error.message
+    });
   }
 };
 
@@ -404,6 +438,7 @@ exports.deletePatient = async (req, res) => {
  * /api/v1/patients/{patientId}:
  *   get:
  *     summary: Fetch patient details by ID
+ *     description: Retrieves a non-deleted patient record by its ID.
  *     tags: [Patient]
  *     security:
  *       - bearerAuth: []
@@ -416,11 +451,11 @@ exports.deletePatient = async (req, res) => {
  *         description: MongoDB ObjectId of the patient
  *     responses:
  *       200:
- *         description: Patient details
+ *         description: Patient details fetched successfully
+ *       400:
+ *         description: Invalid patient ID or request error
  *       404:
  *         description: Patient not found
- *       400:
- *         description: Invalid patient id or error fetching details
  */
 exports.getPatientDetails = async (req, res) => {
   try {
@@ -459,6 +494,7 @@ exports.getPatientDetails = async (req, res) => {
  * /api/v1/patients/assign-nurse:
  *   post:
  *     summary: Assign a nurse to a patient
+ *     description: Assigns a nurse to a patient and updates both the patient and nurse records.
  *     tags: [Patient]
  *     security:
  *       - bearerAuth: []
@@ -479,10 +515,14 @@ exports.getPatientDetails = async (req, res) => {
  *     responses:
  *       200:
  *         description: Nurse assigned successfully
+ *       400:
+ *         description: Selected user is not a nurse
+ *       403:
+ *         description: Approved organization members cannot use independent patient routes
  *       404:
  *         description: Invalid nurse or patient ID
  *       500:
- *         description: Server error
+ *         description: Internal server error while assigning the nurse
  */
 exports.assignNurseToPatient = async (req, res) => {
   try {
@@ -537,12 +577,13 @@ exports.assignNurseToPatient = async (req, res) => {
  * /api/v1/patients/assigned-patients:
  *   get:
  *     summary: Fetch assigned patients for a nurse or caretaker
+ *     description: Returns patients assigned to the authenticated nurse or caretaker.
  *     tags: [Patient]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: List of assigned patients
+ *         description: Assigned patients fetched successfully
  *         content:
  *           application/json:
  *             schema:
@@ -550,13 +591,13 @@ exports.assignNurseToPatient = async (req, res) => {
  *               items:
  *                 $ref: '#/components/schemas/Patient'
  *       403:
- *         description: Unauthorized role
+ *         description: Unauthorized role or invalid role information
  *       500:
- *         description: Error fetching assigned patients
+ *         description: Internal server error while fetching assigned patients
  */
 exports.getAssignedPatients = async (req, res) => {
   try {
-    // Get user from the DB and populate their role
+    // Load the authenticated user and role before applying role-based filters
     const user = await User.findById(req.user._id).populate('role');
     if (!user || !user.role || !user.role.name) {
       return res.status(403).json({ message: 'Invalid or missing user role' });
@@ -571,7 +612,10 @@ exports.getAssignedPatients = async (req, res) => {
       return res.status(403).json({ message: 'Unauthorized role' });
     }
 
-    const patients = await Patient.find(query).populate('assignedNurses', 'fullname email').populate('caretaker', 'fullname email');
+    const patients = await Patient.find(query)
+      .populate('assignedNurses', 'fullname email')
+      .populate('caretaker', 'fullname email');
+
     res.status(200).json(patients);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching assigned patients', details: error.message });
@@ -582,7 +626,8 @@ exports.getAssignedPatients = async (req, res) => {
  * @swagger
  * /api/v1/patients/entryreport:
  *   post:
- *     summary: Nurse logs a patient activity
+ *     summary: Log a patient activity entry
+ *     description: Creates a new entry report for a patient activity by the authenticated nurse.
  *     tags: [EntryReport]
  *     security:
  *       - bearerAuth: []
@@ -595,15 +640,15 @@ exports.getAssignedPatients = async (req, res) => {
  *             required:
  *               - patientId
  *               - activityType
- *               - description
  *             properties:
  *               patientId:
  *                 type: string
  *               activityType:
  *                 type: string
  *                 example: eating
- *               description:
+ *               comment:
  *                 type: string
+ *                 example: Patient finished lunch normally
  *               timestamp:
  *                 type: string
  *                 format: date-time
@@ -612,7 +657,7 @@ exports.getAssignedPatients = async (req, res) => {
  *       201:
  *         description: Activity logged successfully
  *       400:
- *         description: Error logging activity
+ *         description: Invalid request or error logging activity
  */
 exports.logEntry = async (req, res) => {
   try {
@@ -638,23 +683,31 @@ exports.logEntry = async (req, res) => {
  * @swagger
  * /api/v1/patients/activities:
  *   get:
- *     summary: Fetch activities for a patients
+ *     summary: Fetch activities for a patient
+ *     description: Returns all entry reports associated with the provided patient ID.
  *     tags: [EntryReport]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: patientId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Patient ID
  *     responses:
  *       200:
- *         description: List of patient activities
+ *         description: Patient activities fetched successfully
  *         content:
  *           application/json:
  *             schema:
  *               type: array
  *               items:
  *                 $ref: '#/components/schemas/EntryReport'
- *       403:
- *         description: Unauthorized role
+ *       400:
+ *         description: Missing patientId in query
  *       500:
- *         description: Error fetching patient activities
+ *         description: Internal server error while fetching patient activities
  */
 exports.getPatientActivities = async (req, res) => {
   try {
@@ -666,7 +719,6 @@ exports.getPatientActivities = async (req, res) => {
     const activities = await EntryReport.find({ patient: patientId })
       .populate('nurse', 'fullname');
 
-    // Map nurse field to just the fullname string
     const formattedActivities = activities.map(activity => {
       const obj = activity.toObject();
       obj.nurse = obj.nurse ? obj.nurse.fullname : null;
@@ -684,21 +736,24 @@ exports.getPatientActivities = async (req, res) => {
  * /api/v1/patients/entryreport/{entryId}:
  *   delete:
  *     summary: Delete an entry report
+ *     description: Deletes an existing entry report by its ID.
  *     tags: [EntryReport]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: entryId
  *         required: true
  *         schema:
  *           type: string
- *         description: The ID of the entry to delete
+ *         description: Entry report ID
  *     responses:
  *       200:
  *         description: Entry deleted successfully
  *       404:
  *         description: Entry not found
  *       400:
- *         description: Error deleting entry
+ *         description: Invalid request or error deleting entry
  */
 exports.deleteEntry = async (req, res) => {
   try {

@@ -5,12 +5,12 @@ const verifyToken = require('../middleware/verifyToken');
 const verifyRole = require('../middleware/verifyRole');
 const orgController = require('../controllers/orgController');
 
-// freelance nurse/caretaker can browse active orgs
+// browse active orgs
 router.get('/public', verifyToken, orgController.listActiveOrgs);
 
 // freelance nurse/caretaker can request to join an org
 router.post(
-  '/request-join',
+  '/join-request',
   verifyToken,
   verifyRole(['nurse', 'caretaker']),
   orgController.requestToJoinOrg
