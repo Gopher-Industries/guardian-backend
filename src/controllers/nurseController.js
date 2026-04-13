@@ -1,6 +1,8 @@
 const User = require('../models/User');
 const Role = require('../models/Role');
 const Patient = require('../models/Patient'); // only for population types
+const Task = require('../models/Task'); // only for dashboard summary
+const PatientLog = require('../models/PatientLog'); // only for population types
 
 /**
  * @swagger
@@ -145,5 +147,86 @@ exports.getAssignedPatientsForNurse = async (req, res) => {
     res.status(200).json({ nurse: { id: nurse._id, fullname: nurse.fullname }, patients });
   } catch (err) {
     res.status(500).json({ error: 'Error fetching assigned patients', details: err.message });
+  }
+};
+
+// Dashboard summary for nurse's own dashboard
+/**
+ * @swagger
+ * /api/v1/nurse/dashboard-summary:
+ *   get:
+ *     summary: Get nurse dashboard summary
+ *     tags: [Nurse]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Nurse dashboard summary
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 totalPatients:
+ *                   type: integer
+ *                   description: Total patients assigned to the nurse
+ *                 totalActivePatients:
+ *                   type: integer
+ *                   description: Active (non-deleted) patients assigned to the nurse
+ *                 totalTasks:
+ *                   type: integer
+ *                   description: Total tasks assigned to the nurse
+ *                 completedTasks:
+ *                   type: integer
+ *                   description: Completed tasks assigned to the nurse
+ *                 pendingTasks:
+ *                   type: integer
+ *                   description: Pending tasks assigned to the nurse
+ *                 recentLogsCount:
+ *                   type: integer
+ *                   description: Patient logs created by the nurse in the last 7 days
+ *       500:
+ *         description: Error fetching nurse dashboard summary
+ */
+exports.getDashboardSummary = async (req, res) => {
+  try {
+    const nurseId = req.user._id;
+
+    // Get Role _id for "nurse"
+    const nurseRole = await Role.findOne({ name: 'nurse' }).lean();
+    if (!nurseRole) {
+      return res.status(500).json({ error: 'Role "nurse" not found' });
+    }
+
+    // Total patients assigned to this nurse
+    const totalPatients = await Patient.countDocuments({ assignedNurses: nurseId });
+
+    // Total active patients (not discharged or deceased)
+    const totalActivePatients = await Patient.countDocuments({ assignedNurses: nurseId, isDeleted: false });
+
+    // Total pending tasks assigned to this nurse
+    const totalTasks = await Task.countDocuments({ nurse_id: nurseId });
+    const completedTasks = await Task.countDocuments({ nurse_id: nurseId, status: 'completed' });
+    const pendingTasks = totalTasks - completedTasks;
+
+    // Total Patient Logs for this nurse
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const recentLogsCount = await PatientLog.countDocuments({
+      createdBy: req.user._id,
+      createdAt: { $gte: sevenDaysAgo }
+    });
+
+    const summary = {
+      totalPatients,
+      totalActivePatients,
+      totalTasks,
+      completedTasks,
+      pendingTasks,
+      recentLogsCount
+    };
+
+    res.status(200).json(summary);
+  } catch (error) {
+    res.status(500).json({ error: 'Error fetching dashboard summary', details: error.message });
   }
 };
