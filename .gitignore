@@ -134,3 +134,6 @@ dist
 **/.DS_Store
 **/.Rhistory
 src/routes/.s893.env
+
+**/.Rhistory
+**/.DS_Store
