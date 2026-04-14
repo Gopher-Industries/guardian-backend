@@ -126,7 +126,13 @@ dist
 .tern-port
 
 # Stores VSCode versions used for testing VSCode extensions
+.vscode
 .vscode-test
+
+
+
+#remove claude folder
+.claude
 
 # yarn v2
 .yarn/cache
