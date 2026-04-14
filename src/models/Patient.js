@@ -109,6 +109,23 @@ const PatientSchema = new Schema(
     dateOfAdmitting: { type: Date },
     description: { type: String, default: '' },
 
+    // emergency contact
+    emergencyContactName: { type: String },
+    emergencyContactNumber: { type: String },
+
+    // next of kin
+    nextOfKinName: { type: String },
+    nextOfKinRelationship: {
+      type: String,
+      enum: ['SPOUSE', 'PARENT', 'CHILD', 'SIBLING', 'GRANDPARENT', 'GUARDIAN', 'CARER', 'FRIEND', 'OTHER'],
+    },
+
+    // medical info
+    medicalSummary: { type: String },
+    allergies: [{ type: String }],
+    conditions: [{ type: String }],
+    notes: { type: String },
+
     // soft delete fields
     isDeleted: { type: Boolean, default: false, index: true },
     deletedAt: { type: Date },
