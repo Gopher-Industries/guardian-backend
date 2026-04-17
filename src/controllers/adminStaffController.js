@@ -450,9 +450,9 @@ exports.getPendingStaffRegistrations = async (req, res) => {
 /**
  * @swagger
  * /api/v1/admin/staff/{id}/approve:
- *   patch:
+ *   put:
  *     summary: Approve a pending nurse or caretaker account
- *     description: Approves a pending nurse or caretaker account belonging to the admin's organization and adds the approved user to the organization staff list.
+ *     description: Approves a pending nurse or caretaker account belonging to the admin's organization and adds the approved user to the organization's active staff list.
  *     tags: [AdminStaff]
  *     security:
  *       - bearerAuth: []
@@ -460,15 +460,15 @@ exports.getPendingStaffRegistrations = async (req, res) => {
  *       - in: path
  *         name: id
  *         required: true
- *         description: Staff user ID
+ *         description: User ID of the staff account
  *         schema:
  *           type: string
  *       - in: query
  *         name: orgId
  *         required: false
+ *         description: Optional organization ID when the admin manages multiple organizations
  *         schema:
  *           type: string
- *         description: Optional organization ID when the admin manages multiple organizations
  *     responses:
  *       200:
  *         description: Staff account approved successfully
