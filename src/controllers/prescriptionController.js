@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 const Prescription = require('../models/Prescription');
 const Patient = require('../models/Patient');
-const notifyRules = require('../services/notifyRules');
 
 /**
  * @swagger
@@ -77,8 +76,8 @@ const notifyRules = require('../services/notifyRules');
  *     summary: Create a new prescription for a patient
  *     description: |
  *       ### Required fields (at a glance)
- *       - **items** with at least one item  
- *       - **Each item** must include: **name**, **dose**, **frequency**, **durationDays**  
+ *       - **items** with at least one item
+ *       - **Each item** must include: **name**, **dose**, **frequency**, **durationDays**
  *       - **patientId** *or* **patientName**
  *     tags:
  *       - Prescription
@@ -129,62 +128,113 @@ exports.createPrescription = async (req, res) => {
 
     const { patientId, patientName, items, notes } = req.body;
 
-    // Validate items
-    if (!Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ error: 'At least one prescription item is required' });
+    if (!patientId && !patientName) {
+      return res.status(400).json({
+        error: 'Either patientId or patientName is required'
+      });
     }
+
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({
+        error: 'At least one prescription item is required'
+      });
+    }
+
     for (const [i, it] of items.entries()) {
       if (!it?.name || !it?.dose || !it?.frequency || !it?.durationDays) {
         return res.status(400).json({
-          error: `Item ${i} missing required fields: name, dose, frequency, durationDays`
+          error: `Item ${i + 1} missing required fields: name, dose, frequency, durationDays`
+        });
+      }
+
+      if (typeof it.name !== 'string' || !it.name.trim()) {
+        return res.status(400).json({
+          error: `Item ${i + 1}: medicine name is required and cannot be empty`
+        });
+      }
+
+      if (typeof it.dose !== 'string' || !it.dose.trim()) {
+        return res.status(400).json({
+          error: `Item ${i + 1}: dose is required`
+        });
+      }
+
+      const doseNum = parseFloat(it.dose.replace(/[^0-9.-]+/g, ''));
+      if (isNaN(doseNum) || doseNum <= 0) {
+        return res.status(400).json({
+          error: `Item ${i + 1}: dose must be a positive number`
+        });
+      }
+
+      if (typeof it.frequency !== 'string' || !it.frequency.trim()) {
+        return res.status(400).json({
+          error: `Item ${i + 1}: frequency is required`
+        });
+      }
+
+      if (!Number.isInteger(it.durationDays) || it.durationDays <= 0) {
+        return res.status(400).json({
+          error: `Item ${i + 1}: durationDays must be a positive integer`
+        });
+      }
+
+      if (
+        it.quantity !== undefined &&
+        (!Number.isInteger(it.quantity) || it.quantity <= 0)
+      ) {
+        return res.status(400).json({
+          error: `Item ${i + 1}: quantity must be a positive integer`
         });
       }
     }
 
-    // Find patient (by id or name)
     let patient = null;
+
     if (patientId && mongoose.Types.ObjectId.isValid(patientId)) {
       patient = await Patient.findById(patientId);
     } else if (patientName) {
-      patient = await Patient.findOne({ fullname: patientName, isDeleted: { $ne: true } });
+      patient = await Patient.findOne({
+        fullname: patientName,
+        isDeleted: { $ne: true }
+      });
     }
-    if (!patient) return res.status(404).json({ error: 'Patient not found' });
 
-    // NOTE: model expects `prescriber`, not `prescribedBy`
+    if (!patient) {
+      return res.status(404).json({ error: 'Patient not found' });
+    }
+
     const prescription = await Prescription.create({
       patient: patient._id,
-      prescriber: req.user._id,   // <-- key fix
+      prescriber: req.user._id,
       items,
       notes,
       status: 'active'
     });
 
-    // Trigger notifications based on rules
-    Promise.resolve(
-      notifyRules.prescriptionCreated({
-        prescriptionId: prescription._id,
-        patientId: patient._id,
-      })
-    ).catch(() => {});
-
     return res.status(201).json(prescription);
   } catch (err) {
-    return res.status(500).json({ error: 'Error creating prescription', details: err.message });
+    return res.status(500).json({
+      error: 'Error creating prescription',
+      details: err.message
+    });
   }
 };
+
 /**
  * @swagger
  * /api/v1/prescriptions/{id}:
  *   get:
  *     summary: Get prescription by ID
- *     tags: [Prescription]
+ *     tags:
+ *       - Prescription
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
- *         schema: { type: string }
+ *         schema:
+ *           type: string
  *         description: Prescription ID
  *     responses:
  *       200:
@@ -196,39 +246,43 @@ exports.getPrescriptionById = async (req, res) => {
   try {
     const prescription = await Prescription.findById(req.params.id)
       .populate('patient', 'fullname gender dateOfBirth')
-      .populate('prescriber', 'fullname email');   // <-- FIX here
+      .populate('prescriber', 'fullname email');
 
     if (!prescription) {
       return res.status(404).json({ error: 'Prescription not found' });
     }
 
-    res.status(200).json(prescription);
+    return res.status(200).json(prescription);
   } catch (err) {
-    res.status(500).json({ error: 'Error fetching prescription', details: err.message });
+    return res.status(500).json({
+      error: 'Error fetching prescription',
+      details: err.message
+    });
   }
 };
-
 
 /**
  * @swagger
  * /api/v1/prescriptions/{id}:
  *   patch:
  *     summary: Update prescription by ID
- *     tags: [Prescription]
+ *     tags:
+ *       - Prescription
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
- *         schema: { type: string }
+ *         schema:
+ *           type: string
  *         description: Prescription ID
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Prescription'
+ *             type: object
  *     responses:
  *       200:
  *         description: Prescription updated successfully
@@ -246,9 +300,12 @@ exports.updatePrescription = async (req, res) => {
       return res.status(404).json({ error: 'Prescription not found' });
     }
 
-    res.status(200).json(prescription);
+    return res.status(200).json(prescription);
   } catch (err) {
-    res.status(500).json({ error: 'Error updating prescription', details: err.message });
+    return res.status(500).json({
+      error: 'Error updating prescription',
+      details: err.message
+    });
   }
 };
 
@@ -257,14 +314,16 @@ exports.updatePrescription = async (req, res) => {
  * /api/v1/prescriptions/{id}/discontinue:
  *   post:
  *     summary: Discontinue a prescription
- *     tags: [Prescription]
+ *     tags:
+ *       - Prescription
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
- *         schema: { type: string }
+ *         schema:
+ *           type: string
  *         description: Prescription ID
  *     responses:
  *       200:
@@ -286,9 +345,12 @@ exports.discontinuePrescription = async (req, res) => {
       return res.status(404).json({ error: 'Prescription not found' });
     }
 
-    res.status(200).json(prescription);
+    return res.status(200).json(prescription);
   } catch (err) {
-    res.status(500).json({ error: 'Error discontinuing prescription', details: err.message });
+    return res.status(500).json({
+      error: 'Error discontinuing prescription',
+      details: err.message
+    });
   }
 };
 
@@ -297,14 +359,16 @@ exports.discontinuePrescription = async (req, res) => {
  * /api/v1/prescriptions/{id}:
  *   delete:
  *     summary: Delete prescription by ID
- *     tags: [Prescription]
+ *     tags:
+ *       - Prescription
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
- *         schema: { type: string }
+ *         schema:
+ *           type: string
  *         description: Prescription ID
  *     responses:
  *       200:
@@ -322,9 +386,12 @@ exports.deletePrescription = async (req, res) => {
       return res.status(404).json({ error: 'Prescription not found' });
     }
 
-    res.status(200).json({ message: 'Prescription deleted successfully' });
+    return res.status(200).json({ message: 'Prescription deleted successfully' });
   } catch (err) {
-    res.status(500).json({ error: 'Error deleting prescription', details: err.message });
+    return res.status(500).json({
+      error: 'Error deleting prescription',
+      details: err.message
+    });
   }
 };
 
@@ -333,26 +400,32 @@ exports.deletePrescription = async (req, res) => {
  * /api/v1/patients/{patientId}/prescriptions:
  *   get:
  *     summary: List prescriptions for a patient
- *     tags: [Prescription]
+ *     tags:
+ *       - Prescription
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: patientId
  *         required: true
- *         schema: { type: string }
+ *         schema:
+ *           type: string
  *         description: Patient ID
  *       - in: query
  *         name: status
- *         schema: { type: string, enum: [active, discontinued] }
+ *         schema:
+ *           type: string
+ *           enum: [active, discontinued]
  *         description: Filter prescriptions by status
  *       - in: query
  *         name: page
- *         schema: { type: integer }
+ *         schema:
+ *           type: integer
  *         description: Page number (default 1)
  *       - in: query
  *         name: limit
- *         schema: { type: integer }
+ *         schema:
+ *           type: integer
  *         description: Results per page (default 10)
  *     responses:
  *       200:
@@ -363,7 +436,6 @@ exports.listPrescriptionsForPatient = async (req, res) => {
     const { patientId } = req.params;
     const { status, page = 1, limit = 10 } = req.query;
 
-    // Validate ObjectId
     if (!mongoose.Types.ObjectId.isValid(patientId)) {
       return res.status(400).json({ error: 'Invalid patientId format' });
     }
@@ -374,21 +446,24 @@ exports.listPrescriptionsForPatient = async (req, res) => {
     const [prescriptions, total] = await Promise.all([
       Prescription.find(filter)
         .populate('prescriber', 'fullname email')
-        .skip((parseInt(page) - 1) * parseInt(limit))
-        .limit(parseInt(limit)),
-      Prescription.countDocuments(filter),
+        .skip((parseInt(page, 10) - 1) * parseInt(limit, 10))
+        .limit(parseInt(limit, 10)),
+      Prescription.countDocuments(filter)
     ]);
 
-    res.status(200).json({
+    return res.status(200).json({
       prescriptions,
       pagination: {
         total,
-        page: parseInt(page),
-        pages: Math.ceil(total / parseInt(limit)),
-        limit: parseInt(limit),
-      },
+        page: parseInt(page, 10),
+        pages: Math.ceil(total / parseInt(limit, 10)),
+        limit: parseInt(limit, 10)
+      }
     });
   } catch (err) {
-    res.status(500).json({ error: 'Error listing prescriptions', details: err.message });
+    return res.status(500).json({
+      error: 'Error listing prescriptions',
+      details: err.message
+    });
   }
 };
