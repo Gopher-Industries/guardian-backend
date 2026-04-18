@@ -12,6 +12,6 @@ router.put('/profile', verifyToken, caretakerController.updateProfile);
 router.get('/', verifyToken, caretakerController.getAllCaretakers);
 router.post('/reports', verifyToken, verifyRole('caretaker'), dailyReportController.createReport);
 router.get('/reports', verifyToken, verifyRole('caretaker'), dailyReportController.getReports);
-router.get('/reports/patient/:patientId',verifyToken,verifyRole('caretaker', 'doctor', 'nurse'), caretakerController.getReportsByPatient);
+router.get('/reports/patient/:patientId',verifyToken,verifyRole(['caretaker', 'doctor', 'nurse']), caretakerController.getReportsByPatient);
 
 module.exports = router;
