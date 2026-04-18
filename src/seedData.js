@@ -5,6 +5,7 @@ const Role = require('./models/Role');
 const User = require('./models/User');
 const Patient = require('./models/Patient');
 const EntryReport = require('./models/EntryReport');
+const updateSeedData = require('./updateSeedData');
 
 const getRoleId = async (name) => {
   const role = await Role.findOne({ name });
@@ -25,6 +26,7 @@ const seedData = async () => {
 
     if (userCount > 0 || patientCount > 0 || reportCount > 0) {
       console.log('⚠️ Existing data detected. Skipping seed to avoid duplication.');
+      await updateSeedData();
       return;
     }
 
@@ -67,19 +69,37 @@ const seedData = async () => {
     const patient1 = await Patient.create({
       fullname: 'Elderly Patient One',
       dateOfBirth: new Date('1978-01-15'),
-      gender: 'male',
+      gender: 'M',
       caretaker: caretaker1._id,
       assignedNurses: [nurse1._id],
-      healthConditions: ['hypertension']
+      dateOfAdmitting: new Date('2024-01-10'),
+      description: 'Requires daily medication and light physiotherapy.',
+      emergencyContactName: 'Margaret Smith',
+      emergencyContactNumber: '+61412345678',
+      nextOfKinName: 'Margaret Smith',
+      nextOfKinRelationship: 'SPOUSE',
+      medicalSummary: 'Managed hypertension with regular blood pressure monitoring. No known surgical history.',
+      allergies: ['Penicillin'],
+      conditions: ['Hypertension'],
+      notes: 'Prefers morning visits. Responds well to routine.'
     });
 
     const patient2 = await Patient.create({
       fullname: 'Elderly Patient Two',
       dateOfBirth: new Date('1983-05-22'),
-      gender: 'female',
+      gender: 'F',
       caretaker: caretaker2._id,
       assignedNurses: [nurse1._id, nurse2._id],
-      healthConditions: ['diabetes', 'arthritis']
+      dateOfAdmitting: new Date('2024-03-18'),
+      description: 'Diabetic patient requiring dietary supervision and insulin management.',
+      emergencyContactName: 'David Lee',
+      emergencyContactNumber: '+61498765432',
+      nextOfKinName: 'David Lee',
+      nextOfKinRelationship: 'CHILD',
+      medicalSummary: 'Type 2 Diabetes diagnosed in 2015. Rheumatoid arthritis affecting both hands. On metformin and ibuprofen.',
+      allergies: ['Sulfa drugs', 'Shellfish'],
+      conditions: ['Type 2 Diabetes', 'Arthritis'],
+      notes: 'Requires low-sugar diet. Arthritis flares in cold weather.'
     });
 
     // Create entry reports

@@ -62,14 +62,19 @@ async function getTaskPatientId(taskId) {
  * Called after task creation.
  * Notifies the assignee; optionally also the actor.
  */
-async function taskCreated({ taskId, patientId, assignedTo, dueDate, actorId }) {
+async function taskCreated({ taskId, patientId, caretaker, nurse, dueDate, actorId }) {
   const title = 'New task assigned';
-  const msgForAssignee = `Task (${taskId}) was created${patientId ? ` for patient (${patientId})` : ''}${
+  const patient = await Patient.findById(patientId).select('fullname').lean()
+  const msgForAssignee = `A new task was created ${patient ? ` for ${patient.fullname}` : ''}${
     dueDate ? `, due ${new Date(dueDate).toDateString()}` : ''
   }.`;
-  await safeNotify(assignedTo, title, msgForAssignee);
+  await safeNotify(caretaker, title, msgForAssignee);
 
-  if (actorId && toId(actorId) !== toId(assignedTo)) {
+ if (nurse && toId(nurse) !== toId(caretaker)) {
+    await safeNotify(nurse, title, msgForAssignee);
+  }
+
+  if (actorId && toId(actorId) !== toId(caretaker)) {
     await safeNotify(actorId, 'Task created', `You created task (${taskId}).`);
   }
 }
@@ -78,34 +83,45 @@ async function taskCreated({ taskId, patientId, assignedTo, dueDate, actorId }) 
  * Called after task update.
  * Notifies the current assignee about the change; optionally also the actor.
  */
-async function taskUpdated({ taskId, patientId, assignedTo, status, dueDate, actorId }) {
+async function taskUpdated({ taskId, patientId, caretaker, nurse, status, dueDate, actorId }) {
   const title = 'Task updated';
+  const patient = await Patient.findById(patientId).select('fullname').lean();
   const details = [
-    patientId ? `patient (${patientId})` : null,
+    patientId ? `patient: ${patient.fullname}` : null,
     status ? `status: ${status}` : null,
     dueDate ? `due: ${new Date(dueDate).toDateString()}` : null,
   ]
     .filter(Boolean)
     .join(', ');
-  const msgForAssignee = `Task (${taskId}) was updated${details ? ` (${details})` : ''}.`;
+  const msgForAssignee = `Task (${taskId}) was updated ${details ? ` (${details})` : ''}.`;
+  await safeNotify(caretaker, title, msgForAssignee);
+  
+  if (nurse && toId(nurse) !== toId(caretaker)) {
+    console.log('Notifying nurse about task update:', { nurse, title, msgForAssignee });
+    await safeNotify(nurse, title, msgForAssignee);
+  }
 
-  await safeNotify(assignedTo, title, msgForAssignee);
-
-  if (actorId && toId(actorId) !== toId(assignedTo)) {
+  if (actorId && toId(actorId) !== toId(caretaker)) {
+    console.log('Notifying actor about task update:', { actorId, title: 'Task updated', message: `You updated task (${taskId}).` });
     await safeNotify(actorId, 'Task updated', `You updated task (${taskId}).`);
   }
 }
-
 /**
  * Called after task deletion.
  * Notifies the last known assignee; optionally also the actor.
  */
-async function taskDeleted({ taskId, patientId, assignedTo, actorId }) {
+async function taskDeleted({ taskId, patientId, caretaker, nurse, actorId }) {
   const title = 'Task removed';
-  const msgForAssignee = `Task (${taskId}) was deleted${patientId ? ` for patient (${patientId})` : ''}.`;
-  await safeNotify(assignedTo, title, msgForAssignee);
+  const patient = await Patient.findById(patientId).select('fullname').lean();
+  const msgForAssignee = `Task (${taskId}) was deleted${patient ? ` for ${patient.fullname}` : ''}.`;
 
-  if (actorId && toId(actorId) !== toId(assignedTo)) {
+  await safeNotify(caretaker, title, msgForAssignee);
+
+  if (nurse && toId(nurse) !== toId(caretaker)) {
+    await safeNotify(nurse, title, msgForAssignee);
+  }
+
+  if (actorId && toId(actorId) !== toId(caretaker)) {
     await safeNotify(actorId, 'Task removed', `You deleted task (${taskId}).`);
   }
 }
@@ -136,6 +152,16 @@ async function patientCreated({ patientId, actorId, caretakerId }) {
   await safeNotify(target, title, msg);
 }
 
+async function prescriptionCreated({ prescriptionId, patientId }) {
+  try {
+    const patient = await Patient.findById(patientId).select('caretaker fullname').lean();
+    if (!patient) return;
+
+    const title = 'New prescription created';
+    const msg = `A new prescription has been created for patient ${patient.fullname}.`;
+    await safeNotify(patient.caretaker, title, msg);
+  } catch (_) {}
+}
 
 module.exports = {
   // Support tickets
@@ -150,4 +176,8 @@ module.exports = {
 
   // Optional utility
   getTaskPatientId,
+
+  // Prescriptions
+  prescriptionCreated,
+
 };

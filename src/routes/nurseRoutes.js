@@ -18,4 +18,7 @@ router.get(
   nurseController.getAssignedPatientsForNurse 
 );
 
+// nurse's own dashboard summary
+router.get('/dashboard-summary', verifyToken, verifyRole(['nurse']), nurseController.getDashboardSummary);
+
 module.exports = router;
