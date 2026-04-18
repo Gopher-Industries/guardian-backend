@@ -76,8 +76,8 @@ const Patient = require('../models/Patient');
  *     summary: Create a new prescription for a patient
  *     description: |
  *       ### Required fields (at a glance)
- *       - **items** with at least one item  
- *       - **Each item** must include: **name**, **dose**, **frequency**, **durationDays**  
+ *       - **items** with at least one item
+ *       - **Each item** must include: **name**, **dose**, **frequency**, **durationDays**
  *       - **patientId** *or* **patientName**
  *     tags:
  *       - Prescription
@@ -225,14 +225,16 @@ exports.createPrescription = async (req, res) => {
  * /api/v1/prescriptions/{id}:
  *   get:
  *     summary: Get prescription by ID
- *     tags: [Prescription]
+ *     tags:
+ *       - Prescription
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
- *         schema: { type: string }
+ *         schema:
+ *           type: string
  *         description: Prescription ID
  *     responses:
  *       200:
@@ -250,9 +252,9 @@ exports.getPrescriptionById = async (req, res) => {
       return res.status(404).json({ error: 'Prescription not found' });
     }
 
-    res.status(200).json(prescription);
+    return res.status(200).json(prescription);
   } catch (err) {
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Error fetching prescription',
       details: err.message
     });
@@ -264,21 +266,23 @@ exports.getPrescriptionById = async (req, res) => {
  * /api/v1/prescriptions/{id}:
  *   patch:
  *     summary: Update prescription by ID
- *     tags: [Prescription]
+ *     tags:
+ *       - Prescription
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
- *         schema: { type: string }
+ *         schema:
+ *           type: string
  *         description: Prescription ID
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Prescription'
+ *             type: object
  *     responses:
  *       200:
  *         description: Prescription updated successfully
@@ -296,9 +300,9 @@ exports.updatePrescription = async (req, res) => {
       return res.status(404).json({ error: 'Prescription not found' });
     }
 
-    res.status(200).json(prescription);
+    return res.status(200).json(prescription);
   } catch (err) {
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Error updating prescription',
       details: err.message
     });
@@ -310,14 +314,16 @@ exports.updatePrescription = async (req, res) => {
  * /api/v1/prescriptions/{id}/discontinue:
  *   post:
  *     summary: Discontinue a prescription
- *     tags: [Prescription]
+ *     tags:
+ *       - Prescription
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
- *         schema: { type: string }
+ *         schema:
+ *           type: string
  *         description: Prescription ID
  *     responses:
  *       200:
@@ -339,9 +345,9 @@ exports.discontinuePrescription = async (req, res) => {
       return res.status(404).json({ error: 'Prescription not found' });
     }
 
-    res.status(200).json(prescription);
+    return res.status(200).json(prescription);
   } catch (err) {
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Error discontinuing prescription',
       details: err.message
     });
@@ -353,14 +359,16 @@ exports.discontinuePrescription = async (req, res) => {
  * /api/v1/prescriptions/{id}:
  *   delete:
  *     summary: Delete prescription by ID
- *     tags: [Prescription]
+ *     tags:
+ *       - Prescription
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
- *         schema: { type: string }
+ *         schema:
+ *           type: string
  *         description: Prescription ID
  *     responses:
  *       200:
@@ -378,9 +386,9 @@ exports.deletePrescription = async (req, res) => {
       return res.status(404).json({ error: 'Prescription not found' });
     }
 
-    res.status(200).json({ message: 'Prescription deleted successfully' });
+    return res.status(200).json({ message: 'Prescription deleted successfully' });
   } catch (err) {
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Error deleting prescription',
       details: err.message
     });
@@ -392,26 +400,32 @@ exports.deletePrescription = async (req, res) => {
  * /api/v1/patients/{patientId}/prescriptions:
  *   get:
  *     summary: List prescriptions for a patient
- *     tags: [Prescription]
+ *     tags:
+ *       - Prescription
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: patientId
  *         required: true
- *         schema: { type: string }
+ *         schema:
+ *           type: string
  *         description: Patient ID
  *       - in: query
  *         name: status
- *         schema: { type: string, enum: [active, discontinued] }
+ *         schema:
+ *           type: string
+ *           enum: [active, discontinued]
  *         description: Filter prescriptions by status
  *       - in: query
  *         name: page
- *         schema: { type: integer }
+ *         schema:
+ *           type: integer
  *         description: Page number (default 1)
  *       - in: query
  *         name: limit
- *         schema: { type: integer }
+ *         schema:
+ *           type: integer
  *         description: Results per page (default 10)
  *     responses:
  *       200:
@@ -432,22 +446,22 @@ exports.listPrescriptionsForPatient = async (req, res) => {
     const [prescriptions, total] = await Promise.all([
       Prescription.find(filter)
         .populate('prescriber', 'fullname email')
-        .skip((parseInt(page) - 1) * parseInt(limit))
-        .limit(parseInt(limit)),
+        .skip((parseInt(page, 10) - 1) * parseInt(limit, 10))
+        .limit(parseInt(limit, 10)),
       Prescription.countDocuments(filter)
     ]);
 
-    res.status(200).json({
+    return res.status(200).json({
       prescriptions,
       pagination: {
         total,
-        page: parseInt(page),
-        pages: Math.ceil(total / parseInt(limit)),
-        limit: parseInt(limit)
+        page: parseInt(page, 10),
+        pages: Math.ceil(total / parseInt(limit, 10)),
+        limit: parseInt(limit, 10)
       }
     });
   } catch (err) {
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Error listing prescriptions',
       details: err.message
     });
