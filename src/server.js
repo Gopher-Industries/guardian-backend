@@ -13,15 +13,25 @@ const { setEmit } = require('../socket');
 
 const app = express();
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/');
-  },
-  filename: (req, file, cb) => {
-    const uniqueName = `${Date.now()}-${file.originalname}`;
-    cb(null, uniqueName);
-  }
-});
+// Create uploads directory locally only (Vercel filesystem is read-only)
+// if (!process.env.VERCEL) {
+//   const fs = require('fs');
+//   if (!fs.existsSync('uploads')) {
+//     fs.mkdirSync('uploads');
+//   }
+// }
+
+const storage = process.env.VERCEL
+  ? multer.memoryStorage()
+  : multer.diskStorage({
+      destination: (req, file, cb) => {
+        cb(null, 'uploads/');
+      },
+      filename: (req, file, cb) => {
+        const uniqueName = `${Date.now()}-${file.originalname}`;
+        cb(null, uniqueName);
+      }
+    });
 
 exports.upload = multer({ storage });
 
@@ -136,6 +146,7 @@ const userRoutes = require('./routes/user');
 const caretakerRoutes = require('./routes/caretakerRoutes');
 const nurseRoutes = require('./routes/nurseRoutes');
 const patientRoutes = require('./routes/patientRoutes');
+const healthRecordRoutes = require('./routes/healthRecordRoutes');
 const wifiCSIRoutes = require('./routes/wifiCSI');
 const activityRecognitionRoutes = require('./routes/activityRecognition');
 const alertsRoutes = require('./routes/alerts');
@@ -151,6 +162,7 @@ const prescriptionRoutes = require('./routes/prescriptionRoutes');
 app.use('/api/v1/auth', userRoutes);
 app.use('/api/v1/caretaker', caretakerRoutes);
 app.use('/api/v1/nurse', nurseRoutes);
+app.use('/api/v1/patient', healthRecordRoutes);
 app.use('/api/v1/patients', patientRoutes);
 app.use('/api/v1/wifi-csi', wifiCSIRoutes);
 app.use('/api/v1/activity-recognition', activityRecognitionRoutes);

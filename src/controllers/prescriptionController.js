@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const Prescription = require('../models/Prescription');
 const Patient = require('../models/Patient');
+const notifyRules = require('../services/notifyRules');
 
 /**
  * @swagger
@@ -157,6 +158,14 @@ exports.createPrescription = async (req, res) => {
       notes,
       status: 'active'
     });
+
+    // Trigger notifications based on rules
+    Promise.resolve(
+      notifyRules.prescriptionCreated({
+        prescriptionId: prescription._id,
+        patientId: patient._id,
+      })
+    ).catch(() => {});
 
     return res.status(201).json(prescription);
   } catch (err) {

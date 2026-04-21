@@ -9,17 +9,8 @@ const upload = require('../middleware/multer');
 const prescriptionController = require('../controllers/prescriptionController');
 
 
-router.post(
-    '/add',
-    verifyToken,
-    verifyRole(['caretaker']),
-    upload.single('photo'),
-    patientController.addPatient
-  );
-router.delete('/:patientId', verifyToken, patientController.deletePatient);
-
 // Patients
-router.post('/add', verifyToken, upload.single('profilePhoto'), patientController.addPatient);
+router.post('/add', verifyToken, verifyRole(['caretaker']), upload.single('profilePhoto'), patientController.addPatient);
 router.delete('/:patientId', verifyToken, patientController.deletePatient);
 router.put('/:patientId', verifyToken, upload.single('profilePhoto'), patientController.updatePatient);
 router.get('/', verifyToken, patientController.getAllPatients);
