@@ -1,12 +1,17 @@
 const mongoose = require('mongoose');
 
-
 const CarePlanSchema = new mongoose.Schema({
-  tasks: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Task' }], // List of tasks
+  title: { type: String, required: true },
+  tasks: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Task' }],
   patient: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient', required: true },
-  caretaker: { type: mongoose.Schema.Types.ObjectId, ref: 'Caretaker', required: true },
-  nurse: { type: mongoose.Schema.Types.ObjectId, ref: 'Nurse', required: true },
-  created_at: { type: Date, default: Date.now }
+  author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  created_at: { type: Date, default: Date.now },
+  updated_at: { type: Date, default: Date.now }
+});
+
+CarePlanSchema.pre('save', function(next) {
+  this.updated_at = Date.now();
+  next();
 });
 
 const CarePlan = mongoose.model('CarePlan', CarePlanSchema);
