@@ -115,14 +115,11 @@ async function ensureStaffBoundToOrg(userDoc, orgDoc) {
  *                 example: 662222222222222222222222
  *               doctorId:
  *                 type: string
-<<<<<<< HEAD
  *                 example: 663333333333333333333333
  *               image:
-=======
  *                 nullable: true
  *                 description: Optional doctor to assign (Mongo ObjectId)
  *               profilePhoto:
->>>>>>> origin/main
  *                 type: string
  *                 example: https://example.com/profile.jpg
  *               dateOfAdmitting:
@@ -131,9 +128,7 @@ async function ensureStaffBoundToOrg(userDoc, orgDoc) {
  *                 example: 2026-04-11
  *               description:
  *                 type: string
-<<<<<<< HEAD
  *                 example: Patient admitted for regular monitoring
-=======
  *                 nullable: true
  *                 default: ""
  *               emergencyContactName:
@@ -165,7 +160,6 @@ async function ensureStaffBoundToOrg(userDoc, orgDoc) {
  *               notes:
  *                 type: string
  *                 nullable: true
->>>>>>> origin/main
  *     responses:
  *       201:
  *         description: Patient created successfully
@@ -183,24 +177,12 @@ exports.createPatient = async (req, res) => {
     }
 
     const {
-<<<<<<< HEAD
-      fullname,
-      gender,
-      dateOfBirth,
-      caretakerId,
-      nurseId,
-      doctorId,
-      image,
-      dateOfAdmitting,
-      description
-=======
       fullname, gender, dateOfBirth,
       caretakerId, nurseId, doctorId,
       profilePhoto, image, dateOfAdmitting, description,
       emergencyContactName, emergencyContactNumber,
       nextOfKinName, nextOfKinRelationship, medicalSummary,
       allergies, conditions, notes
->>>>>>> origin/main
     } = req.body || {};
 
     if (!fullname || !gender || !dateOfBirth || !caretakerId) {
@@ -567,19 +549,6 @@ exports.reassign = async (req, res) => {
  *                       - gender
  *                       - dateOfBirth
  *                     properties:
-<<<<<<< HEAD
- *                       _id:
- *                         type: string
- *                       fullname:
- *                         type: string
- *                       gender:
- *                         type: string
- *                       dateOfBirth:
- *                         type: string
- *                         format: date
- *                       age:
- *                         type: integer
-=======
  *                       _id: { type: string }
  *                       fullname: { type: string }
  *                       gender: { type: string, enum: [M, F, other] }
@@ -621,7 +590,6 @@ exports.reassign = async (req, res) => {
  *                         type: string
  *                         nullable: true
  *                         description: Free-text clinical or care notes for the patient
->>>>>>> origin/main
  *                       caretaker:
  *                         type: object
  *                         nullable: true
@@ -763,19 +731,6 @@ exports.listPatients = async (req, res) => {
  *                     - gender
  *                     - dateOfBirth
  *                   properties:
-<<<<<<< HEAD
- *                     _id:
- *                       type: string
- *                     fullname:
- *                       type: string
- *                     gender:
- *                       type: string
- *                     dateOfBirth:
- *                       type: string
- *                       format: date
- *                     age:
- *                       type: integer
-=======
  *                     _id: { type: string }
  *                     fullname: { type: string }
  *                     gender: { type: string, enum: [M, F, other] }
@@ -817,7 +772,6 @@ exports.listPatients = async (req, res) => {
  *                       type: string
  *                       nullable: true
  *                       description: Free-text clinical or care notes for the patient
->>>>>>> origin/main
  *                     caretaker:
  *                       type: object
  *                       nullable: true
