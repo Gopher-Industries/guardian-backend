@@ -2,8 +2,8 @@ const Patient = require('../models/Patient');
 const User = require('../models/User');
 const EntryReport = require('../models/EntryReport');
 const notifyRules = require('../services/notifyRules');
-<<<<<<< HEAD
 const Role = require('../models/Role');
+const { parseStringArray } = require('../utils/arrayUtils');
 
 /**
  * Restricts independent patient-management routes for approved organization-linked
@@ -37,10 +37,6 @@ async function blockIndependentPatientWorkForApprovedOrgMember(userId) {
  *     description: Endpoints for independent patient management
  *   - name: EntryReport
  *     description: Endpoints for patient activity and entry reporting
- */
-=======
-const { parseStringArray } = require('../utils/arrayUtils');
->>>>>>> origin/main
 
 /**
  * @swagger
@@ -71,11 +67,7 @@ const { parseStringArray } = require('../utils/arrayUtils');
  *                 example: 1980-01-01
  *               gender:
  *                 type: string
-<<<<<<< HEAD
- *                 example: Male
-=======
  *                 enum: [M, F, other]
->>>>>>> origin/main
  *               profilePhoto:
  *                 type: string
  *                 format: binary
@@ -121,7 +113,6 @@ const { parseStringArray } = require('../utils/arrayUtils');
  *       201:
  *         description: Patient added successfully
  *       400:
-<<<<<<< HEAD
  *         description: Missing required fields or invalid request data
  *       403:
  *         description: Approved organization members cannot use independent patient routes
@@ -132,14 +123,7 @@ exports.addPatient = async (req, res) => {
     if (accessCheck.blocked) {
       return res.status(403).json({ message: accessCheck.message });
     }
-
-    const { fullname, dateOfBirth, gender } = req.body;
-    const caretakerId = req.user._id;
-=======
- *         description: Missing required fields or validation error
- */
-exports.addPatient = async (req, res) => {
-  try {
+    
     const {
       fullname, dateOfBirth, gender,
       emergencyContactName, emergencyContactNumber,
@@ -147,7 +131,7 @@ exports.addPatient = async (req, res) => {
       allergies, conditions, notes
     } = req.body;
     const caretakerId = req.user._id; // Extracted from the token middleware
->>>>>>> origin/main
+
 
     if (!fullname || !dateOfBirth || !gender) {
       return res.status(400).json({ message: 'Missing required fields' });
@@ -339,26 +323,6 @@ exports.getAllPatients = async (req, res) => {
  *     requestBody:
  *       required: true
  *       content:
-<<<<<<< HEAD
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               fullname:
- *                 type: string
- *               gender:
- *                 type: string
- *               dateOfBirth:
- *                 type: string
- *                 format: date
- *               description:
- *                 type: string
- *               image:
- *                 type: string
- *               dateOfAdmitting:
- *                 type: string
- *                 format: date
-=======
  *         multipart/form-data:
  *           schema:
  *             type: object
@@ -461,66 +425,92 @@ exports.updatePatient = async (req, res) => {
       return res.status(403).json({ message: 'You can only update your own patients' });
     }
 
-<<<<<<< HEAD
-    if (roleName === 'nurse' && !patient.assignedNurses.some((id) => String(id) === String(req.user._id))) {
+    if (
+      roleName === 'nurse' &&
+      !patient.assignedNurses.some((id) => String(id) === String(req.user._id))
+    ) {
       return res.status(403).json({ message: 'You can only update assigned patients' });
-=======
-    // Accept JSON or multipart/form-data; profilePhoto may come via req.file
+    }
+
     const {
-      fullname, dateOfBirth, gender,
-      emergencyContactName, emergencyContactNumber,
-      nextOfKinName, nextOfKinRelationship, medicalSummary,
-      allergies, conditions, notes
+      fullname,
+      dateOfBirth,
+      gender,
+      emergencyContactName,
+      emergencyContactNumber,
+      nextOfKinName,
+      nextOfKinRelationship,
+      medicalSummary,
+      allergies,
+      conditions,
+      notes,
+      description,
+      image,
+      dateOfAdmitting
     } = req.body;
 
-    if (typeof fullname !== 'undefined' && fullname !== patient.fullname) {
+    if (typeof fullname !== 'undefined') {
       patient.fullname = fullname;
     }
-    if (typeof gender !== 'undefined' && gender !== patient.gender) {
+
+    if (typeof gender !== 'undefined') {
       patient.gender = gender;
->>>>>>> origin/main
     }
 
-    const allowedFields = [
-      'fullname',
-      'gender',
-      'dateOfBirth',
-      'description',
-      'image',
-      'dateOfAdmitting'
-    ];
+    if (typeof description !== 'undefined') {
+      patient.description = description;
+    }
 
-    for (const field of allowedFields) {
-      if (req.body[field] !== undefined) {
-        if (field === 'image') {
-          patient.profilePhoto = req.body[field];
-        } else {
-          patient[field] = req.body[field];
-        }
+    if (typeof dateOfAdmitting !== 'undefined') {
+      patient.dateOfAdmitting = dateOfAdmitting;
+    }
+
+    if (typeof image !== 'undefined') {
+      patient.profilePhoto = image;
+    }
+
+    if (typeof dateOfBirth !== 'undefined') {
+      const d = new Date(dateOfBirth);
+      if (!Number.isNaN(d.getTime())) {
+        patient.dateOfBirth = d;
       }
-<<<<<<< HEAD
-=======
-      patient.dateOfBirth = d;
     }
 
     if (req.file && req.file.filename) {
       patient.profilePhoto = req.file.filename;
-      // (Optional) TODO: remove older photo file from storage if needed
     }
 
-    if (typeof emergencyContactName !== 'undefined') patient.emergencyContactName = emergencyContactName;
-    if (typeof emergencyContactNumber !== 'undefined') patient.emergencyContactNumber = emergencyContactNumber;
-    if (typeof nextOfKinName !== 'undefined') patient.nextOfKinName = nextOfKinName;
-    if (typeof nextOfKinRelationship !== 'undefined') patient.nextOfKinRelationship = nextOfKinRelationship;
-    if (typeof medicalSummary !== 'undefined') patient.medicalSummary = medicalSummary;
+    if (typeof emergencyContactName !== 'undefined') {
+      patient.emergencyContactName = emergencyContactName;
+    }
+
+    if (typeof emergencyContactNumber !== 'undefined') {
+      patient.emergencyContactNumber = emergencyContactNumber;
+    }
+
+    if (typeof nextOfKinName !== 'undefined') {
+      patient.nextOfKinName = nextOfKinName;
+    }
+
+    if (typeof nextOfKinRelationship !== 'undefined') {
+      patient.nextOfKinRelationship = nextOfKinRelationship;
+    }
+
+    if (typeof medicalSummary !== 'undefined') {
+      patient.medicalSummary = medicalSummary;
+    }
+
     if (typeof allergies !== 'undefined') {
       patient.allergies = parseStringArray(allergies);
->>>>>>> origin/main
     }
+
     if (typeof conditions !== 'undefined') {
       patient.conditions = parseStringArray(conditions);
     }
-    if (typeof notes !== 'undefined') patient.notes = notes;
+
+    if (typeof notes !== 'undefined') {
+      patient.notes = notes;
+    }
 
     await patient.save();
 
@@ -626,11 +616,6 @@ exports.deletePatient = async (req, res) => {
  *         description: MongoDB ObjectId of the patient
  *     responses:
  *       200:
-<<<<<<< HEAD
- *         description: Patient details fetched successfully
- *       400:
- *         description: Invalid patient ID or request error
-=======
  *         description: Patient details
  *         content:
  *           application/json:
@@ -647,7 +632,10 @@ exports.deletePatient = async (req, res) => {
  *                 description: { type: string }
  *                 emergencyContactName: { type: string, nullable: true }
  *                 emergencyContactNumber: { type: string, nullable: true }
- *                 nextOfKinName: { type: string, nullable: true, description: "Full name of the patient's next of kin" }
+ *                 nextOfKinName:
+ *                   type: string
+ *                   nullable: true
+ *                   description: Full name of the patient's next of kin
  *                 nextOfKinRelationship:
  *                   type: string
  *                   nullable: true
@@ -676,7 +664,8 @@ exports.deletePatient = async (req, res) => {
  *                       _id: { type: string }
  *                       fullname: { type: string }
  *                       email: { type: string }
->>>>>>> origin/main
+ *       400:
+ *         description: Invalid patient ID or request error
  *       404:
  *         description: Patient not found
  */
