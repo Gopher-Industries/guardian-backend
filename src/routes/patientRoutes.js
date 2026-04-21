@@ -10,11 +10,8 @@ const prescriptionController = require('../controllers/prescriptionController');
 
 
 // Patients
-<<<<<<< HEAD
-=======
 router.post('/add', verifyToken, verifyRole(['caretaker']), upload.single('profilePhoto'), patientController.addPatient);
 router.delete('/:patientId', verifyToken, patientController.deletePatient);
->>>>>>> origin/main
 router.put('/:patientId', verifyToken, upload.single('profilePhoto'), patientController.updatePatient);
 router.get('/', verifyToken, patientController.getAllPatients);
 
