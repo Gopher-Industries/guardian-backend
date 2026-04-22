@@ -3,6 +3,7 @@
 const mongoose = require('mongoose');
 const Patient = require('../models/Patient');
 const User = require('../models/User');
+const { parseStringArray } = require('../utils/arrayUtils');
 const HealthRecord = require('../models/HealthRecord');
 const Task = require('../models/Task');
 const CarePlan = require('../models/CarePlan');
