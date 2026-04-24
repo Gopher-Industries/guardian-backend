@@ -2,6 +2,13 @@ const Resource = require('../models/Resource');
 
 /**
  * @swagger
+ * tags:
+ *   name: Resources
+ *   description: Admin resource management APIs
+ */
+
+/**
+ * @swagger
  * /api/v1/resources:
  *   post:
  *     summary: Create a new resource
@@ -23,6 +30,7 @@ const Resource = require('../models/Resource');
  *                 type: string
  *               type:
  *                 type: string
+ *                 enum: [caregiver, exercise]
  *               description:
  *                 type: string
  *               link:
@@ -34,26 +42,6 @@ const Resource = require('../models/Resource');
  *     responses:
  *       201:
  *         description: Resource created successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 _id:
- * 
- *                   type: string
- *                 title:
- *                   type: string
- *                 type:
- *                   type: string
- *                 description:
- *                   type: string
- *                 link:
- *                   type: string
- *                 category:
- *                   type: string
- *                 isActive:
- *                   type: boolean
  *       400:
  *         description: title, type, and description are required
  *       500:
@@ -89,13 +77,6 @@ exports.createResource = async (req, res) => {
 
 /**
  * @swagger
- * tags:
- *   name: Resources
- *   description: Admin resource management APIs
- */
-
-/**
- * @swagger
  * /api/v1/resources:
  *   get:
  *     summary: List all resources
@@ -107,32 +88,12 @@ exports.createResource = async (req, res) => {
  *         name: type
  *         schema:
  *           type: string
+ *           enum: [caregiver, exercise]
  *         required: false
  *         description: Filter resources by type
  *     responses:
  *       200:
  *         description: Resources fetched successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   _id:
- *                     type: string
- *                   title:
- *                     type: string
- *                   type:
- *                     type: string
- *                   description:
- *                     type: string
- *                   link:
- *                     type: string
- *                   category:
- *                     type: string
- *                   isActive:
- *                     type: boolean
  *       500:
  *         description: Error fetching resources
  */

@@ -16,51 +16,46 @@ const Patient = require('../models/Patient');
  *       properties:
  *         name:
  *           type: string
- *           description: Medicine name (required)
+ *           description: Medicine name
  *           example: Amoxicillin
  *         dose:
  *           type: string
- *           description: Dosage info (required)
+ *           description: Dosage info
  *           example: "500 mg"
  *         frequency:
  *           type: string
- *           description: How often to take it (required)
+ *           description: How often to take it
  *           example: "twice daily"
  *         durationDays:
  *           type: integer
- *           description: Number of days (required)
+ *           description: Number of days
  *           example: 7
  *         quantity:
  *           type: integer
- *           description: Total tablets/capsules (optional)
+ *           description: Total tablets or capsules
  *           example: 14
  *         instructions:
  *           type: string
- *           description: Extra guidance (optional)
+ *           description: Extra guidance
  *           example: "Take after food"
  *
  *     PrescriptionCreateRequest:
  *       type: object
- *       description: |
- *         ### Required fields
- *         - **items** (array, min 1)
- *         - For each **items[i]**: **name**, **dose**, **frequency**, **durationDays**
- *         - **patientId** **or** **patientName** (at least one must be provided)
+ *       description: Create prescription request body
  *       required:
  *         - items
  *       properties:
  *         patientId:
  *           type: string
- *           description: Patient ObjectId (required if patientName not provided)
+ *           description: Patient ObjectId, required if patientName is not provided
  *           example: "68c268a3097a71d5162ac23a"
  *         patientName:
  *           type: string
- *           description: Patient full name (required if patientId not provided)
+ *           description: Patient full name, required if patientId is not provided
  *           example: "Asha Patel"
  *         items:
  *           type: array
  *           minItems: 1
- *           description: Array of prescription items (at least one required)
  *           items:
  *             $ref: '#/components/schemas/PrescriptionItem'
  *         notes:
@@ -70,22 +65,18 @@ const Patient = require('../models/Patient');
  *       oneOf:
  *         - required: [patientId]
  *         - required: [patientName]
- *
+ */
+
+/**
+ * @swagger
  * /api/v1/prescriptions:
  *   post:
  *     summary: Create a new prescription for a patient
- *     description: |
- *       ### Required fields (at a glance)
- *       - **items** with at least one item
- *       - **Each item** must include: **name**, **dose**, **frequency**, **durationDays**
- *       - **patientId** *or* **patientName**
- *     tags:
- *       - Prescription
+ *     tags: [Prescription]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
  *       required: true
- *       description: Send as **application/json**. Use patientId when possible.
  *       content:
  *         application/json:
  *           schema:
@@ -119,11 +110,15 @@ const Patient = require('../models/Patient');
  *         description: Missing or invalid fields
  *       404:
  *         description: Patient not found
+ *       500:
+ *         description: Error creating prescription
  */
 exports.createPrescription = async (req, res) => {
   try {
     if (!req.user?._id) {
-      return res.status(401).json({ error: 'Unauthorized: missing user context' });
+      return res.status(401).json({
+        error: 'Unauthorized: missing user context'
+      });
     }
 
     const { patientId, patientName, items, notes } = req.body;
@@ -190,7 +185,13 @@ exports.createPrescription = async (req, res) => {
 
     let patient = null;
 
-    if (patientId && mongoose.Types.ObjectId.isValid(patientId)) {
+    if (patientId) {
+      if (!mongoose.Types.ObjectId.isValid(patientId)) {
+        return res.status(400).json({
+          error: 'Invalid patientId format'
+        });
+      }
+
       patient = await Patient.findById(patientId);
     } else if (patientName) {
       patient = await Patient.findOne({
@@ -200,7 +201,9 @@ exports.createPrescription = async (req, res) => {
     }
 
     if (!patient) {
-      return res.status(404).json({ error: 'Patient not found' });
+      return res.status(404).json({
+        error: 'Patient not found'
+      });
     }
 
     const prescription = await Prescription.create({
@@ -225,8 +228,7 @@ exports.createPrescription = async (req, res) => {
  * /api/v1/prescriptions/{id}:
  *   get:
  *     summary: Get prescription by ID
- *     tags:
- *       - Prescription
+ *     tags: [Prescription]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -239,17 +241,58 @@ exports.createPrescription = async (req, res) => {
  *     responses:
  *       200:
  *         description: Prescription fetched successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Access denied
  *       404:
  *         description: Prescription not found
+ *       500:
+ *         description: Error fetching prescription
  */
 exports.getPrescriptionById = async (req, res) => {
   try {
+    if (!req.user?._id) {
+      return res.status(401).json({
+        error: 'Unauthorized: missing user context'
+      });
+    }
+
     const prescription = await Prescription.findById(req.params.id)
-      .populate('patient', 'fullname gender dateOfBirth')
-      .populate('prescriber', 'fullname email');
+      .populate('patient', 'fullname gender dateOfBirth organisation')
+      .populate('prescriber', 'fullname email organisation');
 
     if (!prescription) {
-      return res.status(404).json({ error: 'Prescription not found' });
+      return res.status(404).json({
+        error: 'Prescription not found'
+      });
+    }
+
+    const userId = String(req.user._id);
+    const userRole = req.user.role;
+    const userOrganisation = req.user.organisation
+      ? String(req.user.organisation)
+      : null;
+
+    const prescriberId = prescription.prescriber?._id
+      ? String(prescription.prescriber._id)
+      : null;
+
+    const patientOrganisation = prescription.patient?.organisation
+      ? String(prescription.patient.organisation)
+      : null;
+
+    const canRead =
+      userRole === 'admin' ||
+      prescriberId === userId ||
+      (userOrganisation &&
+        patientOrganisation &&
+        userOrganisation === patientOrganisation);
+
+    if (!canRead) {
+      return res.status(403).json({
+        error: 'Access denied'
+      });
     }
 
     return res.status(200).json(prescription);
@@ -266,8 +309,7 @@ exports.getPrescriptionById = async (req, res) => {
  * /api/v1/prescriptions/{id}:
  *   patch:
  *     summary: Update prescription by ID
- *     tags:
- *       - Prescription
+ *     tags: [Prescription]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -288,16 +330,22 @@ exports.getPrescriptionById = async (req, res) => {
  *         description: Prescription updated successfully
  *       404:
  *         description: Prescription not found
+ *       500:
+ *         description: Error updating prescription
  */
 exports.updatePrescription = async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
 
-    const prescription = await Prescription.findByIdAndUpdate(id, updates, { new: true });
+    const prescription = await Prescription.findByIdAndUpdate(id, updates, {
+      new: true
+    });
 
     if (!prescription) {
-      return res.status(404).json({ error: 'Prescription not found' });
+      return res.status(404).json({
+        error: 'Prescription not found'
+      });
     }
 
     return res.status(200).json(prescription);
@@ -314,8 +362,7 @@ exports.updatePrescription = async (req, res) => {
  * /api/v1/prescriptions/{id}/discontinue:
  *   post:
  *     summary: Discontinue a prescription
- *     tags:
- *       - Prescription
+ *     tags: [Prescription]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -330,6 +377,8 @@ exports.updatePrescription = async (req, res) => {
  *         description: Prescription discontinued successfully
  *       404:
  *         description: Prescription not found
+ *       500:
+ *         description: Error discontinuing prescription
  */
 exports.discontinuePrescription = async (req, res) => {
   try {
@@ -342,7 +391,9 @@ exports.discontinuePrescription = async (req, res) => {
     );
 
     if (!prescription) {
-      return res.status(404).json({ error: 'Prescription not found' });
+      return res.status(404).json({
+        error: 'Prescription not found'
+      });
     }
 
     return res.status(200).json(prescription);
@@ -359,8 +410,7 @@ exports.discontinuePrescription = async (req, res) => {
  * /api/v1/prescriptions/{id}:
  *   delete:
  *     summary: Delete prescription by ID
- *     tags:
- *       - Prescription
+ *     tags: [Prescription]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -375,6 +425,8 @@ exports.discontinuePrescription = async (req, res) => {
  *         description: Prescription deleted successfully
  *       404:
  *         description: Prescription not found
+ *       500:
+ *         description: Error deleting prescription
  */
 exports.deletePrescription = async (req, res) => {
   try {
@@ -383,10 +435,14 @@ exports.deletePrescription = async (req, res) => {
     const prescription = await Prescription.findByIdAndDelete(id);
 
     if (!prescription) {
-      return res.status(404).json({ error: 'Prescription not found' });
+      return res.status(404).json({
+        error: 'Prescription not found'
+      });
     }
 
-    return res.status(200).json({ message: 'Prescription deleted successfully' });
+    return res.status(200).json({
+      message: 'Prescription deleted successfully'
+    });
   } catch (err) {
     return res.status(500).json({
       error: 'Error deleting prescription',
@@ -400,8 +456,7 @@ exports.deletePrescription = async (req, res) => {
  * /api/v1/patients/{patientId}/prescriptions:
  *   get:
  *     summary: List prescriptions for a patient
- *     tags:
- *       - Prescription
+ *     tags: [Prescription]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -421,15 +476,19 @@ exports.deletePrescription = async (req, res) => {
  *         name: page
  *         schema:
  *           type: integer
- *         description: Page number (default 1)
+ *         description: Page number
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
- *         description: Results per page (default 10)
+ *         description: Results per page
  *     responses:
  *       200:
  *         description: List of prescriptions for the patient
+ *       400:
+ *         description: Invalid patientId format
+ *       500:
+ *         description: Error listing prescriptions
  */
 exports.listPrescriptionsForPatient = async (req, res) => {
   try {
@@ -437,17 +496,24 @@ exports.listPrescriptionsForPatient = async (req, res) => {
     const { status, page = 1, limit = 10 } = req.query;
 
     if (!mongoose.Types.ObjectId.isValid(patientId)) {
-      return res.status(400).json({ error: 'Invalid patientId format' });
+      return res.status(400).json({
+        error: 'Invalid patientId format'
+      });
     }
 
     const filter = { patient: patientId };
-    if (status) filter.status = status;
+    if (status) {
+      filter.status = status;
+    }
+
+    const parsedPage = parseInt(page, 10);
+    const parsedLimit = parseInt(limit, 10);
 
     const [prescriptions, total] = await Promise.all([
       Prescription.find(filter)
         .populate('prescriber', 'fullname email')
-        .skip((parseInt(page, 10) - 1) * parseInt(limit, 10))
-        .limit(parseInt(limit, 10)),
+        .skip((parsedPage - 1) * parsedLimit)
+        .limit(parsedLimit),
       Prescription.countDocuments(filter)
     ]);
 
@@ -455,9 +521,9 @@ exports.listPrescriptionsForPatient = async (req, res) => {
       prescriptions,
       pagination: {
         total,
-        page: parseInt(page, 10),
-        pages: Math.ceil(total / parseInt(limit, 10)),
-        limit: parseInt(limit, 10)
+        page: parsedPage,
+        pages: Math.ceil(total / parsedLimit),
+        limit: parsedLimit
       }
     });
   } catch (err) {
