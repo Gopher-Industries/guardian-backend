@@ -8,6 +8,10 @@ const AlertSchema = new mongoose.Schema({
   created_at: { type: Date, default: Date.now }
 });
 
+
+AlertSchema.index({ user_id: 1, is_read: 1 });
+AlertSchema.index({ user_id: 1, created_at: -1 });
+
 const Alert = mongoose.model('Alert', AlertSchema);
 
 module.exports = Alert;

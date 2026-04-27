@@ -9,6 +9,10 @@ const ActivityRecognitionSchema = new mongoose.Schema({
   created_at: { type: Date, default: Date.now }
 });
 
+ActivityRecognitionSchema.index({ user_id: 1, detected_at: -1 });
+ActivityRecognitionSchema.index({ wifi_csi_id: 1 });
+
+
 const ActivityRecognition = mongoose.model('ActivityRecognition', ActivityRecognitionSchema);
 
 module.exports = ActivityRecognition;

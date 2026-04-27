@@ -28,6 +28,10 @@ const EntryReportSchema = new mongoose.Schema({
   }
 });
 
+EntryReportSchema.index({ patient: 1, createdAt: -1 });
+EntryReportSchema.index({ nurse: 1, createdAt: -1 });
+
+
 const EntryReport = mongoose.model('EntryReport', EntryReportSchema);
 
 module.exports = EntryReport;
