@@ -37,6 +37,7 @@ exports.getProfile = async (req, res) => {
     const nurse = await User.findOne(query)
       .select('-password_hash -__v')
       .populate('role', 'name')
+      .populate('organization', 'name')
       .populate('assignedPatients', 'fullname gender dateOfBirth');
 
     if (!nurse) return res.status(404).json({ error: 'Nurse not found' });

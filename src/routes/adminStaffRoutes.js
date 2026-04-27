@@ -18,4 +18,9 @@ router.post('/staff', adminStaffController.addStaff);
 // remove nurse/doctor from org staff (deactivate)
 router.put('/staff/:id/deactivate', adminStaffController.deactivateStaff);
 
+// approval flow routes 
+router.get('/staff/pending', adminStaffController.getPendingStaffRegistrations);
+router.put('/staff/:id/approve', adminStaffController.approveStaff);
+router.put('/staff/:id/status', adminStaffController.rejectOrDeactivateStaff);
+
 module.exports = router;
