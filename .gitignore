@@ -140,3 +140,9 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+**/.DS_Store
+**/.Rhistory
+src/routes/.s893.env
+
+**/.Rhistory
+**/.DS_Store
