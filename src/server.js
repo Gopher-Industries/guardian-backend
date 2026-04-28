@@ -174,6 +174,8 @@ const adminPatientRoutes = require('./routes/adminPatientRoutes');
 const adminStaffRoutes = require('./routes/adminStaffRoutes');
 const orgRoutes = require('./routes/orgRoutes');
 const prescriptionRoutes = require('./routes/prescriptionRoutes');
+const taskRoutes = require('./routes/taskRoutes');
+const carePlanRoutes = require('./routes/carePlanRoutes');
 
 app.use('/api/v1/auth', userRoutes);
 app.use('/api/v1/caretaker', caretakerRoutes);
@@ -191,6 +193,8 @@ app.use('/api/v1/prescriptions', prescriptionRoutes);
 app.use('/api/v1/admin', adminStaffRoutes);
 app.use('/api/v1/admin', adminPatientRoutes);
 app.use('/api/v1/orgs', orgRoutes);
+app.use('/api/v1/tasks', taskRoutes);
+app.use('/api/v1/care-plans', carePlanRoutes);
 
 app.use(
   '/swaggerDocs',

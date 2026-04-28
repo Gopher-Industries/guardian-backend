@@ -188,20 +188,15 @@ exports.getTasks = async (req, res) => {
   try {
     const { filter, dueDate, status, sort, page = '1', limit = '20' } = req.query;
 
-    // IMPORTANT: tie to logged-in caretaker
-    // If your JWT stores the caretaker document _id in req.user.id, this works directly.
-    // If your Task.caretaker references a different collection (_id not equal to User _id),
-    // accept ?caretakerId override or map here as needed.
     const caretakerId = req.query.caretakerId || req.user?.id;
     if (!caretakerId) {
       return res.status(400).json({ error: 'Missing caretaker context' });
     }
 
-    // Build query
-    const query = { caretaker: caretakerId };
+    const query = { assignee: caretakerId };
 
     if (filter === 'urgent') {
-      query.priority = 'high'; // maps from "urgent" to priority=high
+      query.priority = 'high';
     }
 
     if (dueDate) {
@@ -209,7 +204,6 @@ exports.getTasks = async (req, res) => {
       if (Number.isNaN(dt.getTime())) {
         return res.status(400).json({ error: 'Invalid dueDate. Use YYYY-MM-DD.' });
       }
-      // Tasks due on or before provided date (end of that day)
       const endOfDay = new Date(dt);
       endOfDay.setHours(23, 59, 59, 999);
       query.dueDate = { $lte: endOfDay };
@@ -223,10 +217,8 @@ exports.getTasks = async (req, res) => {
       query.status = status;
     }
 
-    // Sorting
-    let sortSpec = { dueDate: 1 }; // default: soonest first
+    let sortSpec = { dueDate: 1 };
     if (sort) {
-      // e.g., "dueDate", "-dueDate", "created_at", "-created_at"
       const direction = sort.startsWith('-') ? -1 : 1;
       const field = sort.replace(/^-/, '');
       if (!['dueDate', 'created_at'].includes(field)) {
@@ -235,7 +227,6 @@ exports.getTasks = async (req, res) => {
       sortSpec = { [field]: direction };
     }
 
-    // Pagination
     const pageNum = Math.max(parseInt(page, 10) || 1, 1);
     const limitNum = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100);
     const skip = (pageNum - 1) * limitNum;
@@ -429,18 +420,13 @@ exports.getDashboardSummary = async (req, res) => {
       return res.status(500).json({ error: 'Role "caretaker" not found' });
     }
 
-    // Total patients assigned to this caretaker
     const totalPatients = await Patient.countDocuments({ caretaker: caretakerId });
-
-    // Total active patients (not discharged or deceased)
     const totalActivePatients = await Patient.countDocuments({ caretaker: caretakerId, isDeleted: false });
 
-    // Total pending tasks assigned to this caretaker
-    const totalTasks = await Task.countDocuments({ caretaker: caretakerId });
-    const completedTasks = await Task.countDocuments({ caretaker: caretakerId, status: 'completed' });
+    const totalTasks = await Task.countDocuments({ assignee: caretakerId });
+    const completedTasks = await Task.countDocuments({ assignee: caretakerId, status: 'completed' });
     const pendingTasks = totalTasks - completedTasks;
 
-    // Total Patient Logs for this caretaker
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const recentLogsCount = await PatientLog.countDocuments({
       createdBy: req.user._id,
