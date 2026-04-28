@@ -107,6 +107,7 @@ const blockScriptRequests = (req, res, next) => {
 };
 
 // app.use(blockScriptRequests);
+app.set('trust proxy', 1);
 
 const rateLimit = require('express-rate-limit');
 const limiter = rateLimit({

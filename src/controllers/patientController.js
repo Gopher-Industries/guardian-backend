@@ -389,7 +389,6 @@ exports.getAllPatients = async (req, res) => {
  *                 items: { type: string }
  *                 nullable: true
  *               notes: { type: string, nullable: true }
->>>>>>> origin/main
  *     responses:
  *       200:
  *         description: Patient updated successfully
