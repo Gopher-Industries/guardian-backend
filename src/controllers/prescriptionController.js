@@ -196,7 +196,8 @@ exports.getPrescriptionById = async (req, res) => {
   try {
     const prescription = await Prescription.findById(req.params.id)
       .populate('patient', 'fullname gender dateOfBirth')
-      .populate('prescriber', 'fullname email');   // <-- FIX here
+      .populate('prescriber', 'fullname email')   // <-- FIX here
+      .lean();
 
     if (!prescription) {
       return res.status(404).json({ error: 'Prescription not found' });
@@ -375,7 +376,8 @@ exports.listPrescriptionsForPatient = async (req, res) => {
       Prescription.find(filter)
         .populate('prescriber', 'fullname email')
         .skip((parseInt(page) - 1) * parseInt(limit))
-        .limit(parseInt(limit)),
+        .limit(parseInt(limit))
+        .lean(),
       Prescription.countDocuments(filter),
     ]);
 

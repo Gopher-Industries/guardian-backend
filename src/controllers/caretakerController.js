@@ -47,7 +47,8 @@ exports.getProfile = async (req, res) => {
     const caretaker = await User.findOne(query)
       .select('-password_hash -__v') // Exclude sensitive fields
       .populate('role', 'name') // Populate role with name
-      .populate('assignedPatients', 'fullname age gender'); // Populate assignedPatients with full details
+      .populate('assignedPatients', 'fullname age gender')
+      .lean(); // Populate assignedPatients with full details
 
     if (!caretaker) {
       return res.status(404).json({ error: 'Caretaker not found' });
@@ -115,7 +116,8 @@ exports.updateProfile = async (req, res) => {
     )
       .select('-password_hash -__v')
       .populate('role', 'name')
-      .populate('assignedPatients', 'fullname age gender');
+      .populate('assignedPatients', 'fullname age gender')
+      .lean();
 
     if (!updatedCaretaker) {
       return res.status(404).json({ error: 'Caretaker not found' });
@@ -322,6 +324,7 @@ exports.getAllCaretakers = async (req, res) => {
         .sort(sort)
         .skip(skip)
         .limit(limit)
+        .lean()
     ]);
 
     return res.status(200).json({
