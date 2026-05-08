@@ -30,6 +30,8 @@ const EntryReportSchema = new mongoose.Schema({
 
 EntryReportSchema.index({ patient: 1, createdAt: -1 });
 EntryReportSchema.index({ nurse: 1, createdAt: -1 });
+EntryReportSchema.index({ patient: 1, activityTimestamp: -1 });
+
 
 
 const EntryReport = mongoose.model('EntryReport', EntryReportSchema);

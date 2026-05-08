@@ -149,6 +149,9 @@ PatientSchema.pre('validate', function (next) {
 
 // common query index
 PatientSchema.index({ organization: 1, isDeleted: 1, created_at: -1 });
+PatientSchema.index({ caretaker: 1 });
+PatientSchema.index({ assignedNurses: 1 });
+PatientSchema.index({ assignedDoctor: 1 });
 
 // virtual age calc
 PatientSchema.virtual('age').get(function () {
