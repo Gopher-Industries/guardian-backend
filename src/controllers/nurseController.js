@@ -193,29 +193,17 @@ exports.getDashboardSummary = async (req, res) => {
   try {
     const nurseId = req.user._id;
 
-    // Get Role _id for "nurse"
-    const nurseRole = await Role.findOne({ name: 'nurse' }).lean();
-    if (!nurseRole) {
-      return res.status(500).json({ error: 'Role "nurse" not found' });
-    }
-
-    // Total patients assigned to this nurse
-    const totalPatients = await Patient.countDocuments({ assignedNurses: nurseId });
-
-    // Total active patients (not discharged or deceased)
-    const totalActivePatients = await Patient.countDocuments({ assignedNurses: nurseId, isDeleted: false });
-
-    // Total pending tasks assigned to this nurse
-    const totalTasks = await Task.countDocuments({ nurse_id: nurseId });
-    const completedTasks = await Task.countDocuments({ nurse_id: nurseId, status: 'completed' });
-    const pendingTasks = totalTasks - completedTasks;
-
-    // Total Patient Logs for this nurse
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const recentLogsCount = await PatientLog.countDocuments({
-      createdBy: req.user._id,
-      createdAt: { $gte: sevenDaysAgo }
-    });
+
+    const [totalPatients, totalActivePatients, totalTasks, completedTasks, recentLogsCount] = await Promise.all([
+      Patient.countDocuments({ assignedNurses: nurseId }),
+      Patient.countDocuments({ assignedNurses: nurseId, isDeleted: false }),
+      Task.countDocuments({ nurse_id: nurseId }),
+      Task.countDocuments({ nurse_id: nurseId, status: 'completed' }),
+      PatientLog.countDocuments({ createdBy: req.user._id, createdAt: { $gte: sevenDaysAgo } })
+    ]);
+
+    const pendingTasks = totalTasks - completedTasks;
 
     const summary = {
       totalPatients,

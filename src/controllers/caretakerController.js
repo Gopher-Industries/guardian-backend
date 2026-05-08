@@ -382,30 +382,18 @@ exports.getAllCaretakers = async (req, res) => {
 exports.getDashboardSummary = async (req, res) => {
   try {
     const caretakerId = req.user._id;
-
-    // Get Role _id for "caretaker"
-    const caretakerRole = await Role.findOne({ name: 'caretaker' }).lean();
-    if (!caretakerRole) {
-      return res.status(500).json({ error: 'Role "caretaker" not found' });
-    }
-
-    // Total patients assigned to this caretaker
-    const totalPatients = await Patient.countDocuments({ caretaker: caretakerId });
-
-    // Total active patients (not discharged or deceased)
-    const totalActivePatients = await Patient.countDocuments({ caretaker: caretakerId, isDeleted: false });
-
-    // Total pending tasks assigned to this caretaker
-    const totalTasks = await Task.countDocuments({ caretaker: caretakerId });
-    const completedTasks = await Task.countDocuments({ caretaker: caretakerId, status: 'completed' });
-    const pendingTasks = totalTasks - completedTasks;
-
-    // Total Patient Logs for this caretaker
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const recentLogsCount = await PatientLog.countDocuments({
-      createdBy: req.user._id,
-      createdAt: { $gte: sevenDaysAgo }
-    });
+
+    
+    const [totalPatients, totalActivePatients, totalTasks, completedTasks, recentLogsCount] = await Promise.all([
+      Patient.countDocuments({ caretaker: caretakerId }),
+      Patient.countDocuments({ caretaker: caretakerId, isDeleted: false }),
+      Task.countDocuments({ caretaker: caretakerId }),
+      Task.countDocuments({ caretaker: caretakerId, status: 'completed' }),
+      PatientLog.countDocuments({ createdBy: req.user._id, createdAt: { $gte: sevenDaysAgo } })
+    ]);
+    
+    const pendingTasks = totalTasks - completedTasks;
 
     const summary = {
       totalPatients,

@@ -542,12 +542,17 @@ exports.deleteTask = async (req, res) => {
  */
 exports.getDashboardSummary = async (req, res) => {
   try {
-    const totalPatients = await Patient.countDocuments();
-    const totalActivePatients = await Patient.countDocuments({ isDeleted: false });
-    const totalTasks = await Task.countDocuments();
-    const totalStaff = await User.countDocuments({ role: { $in: await Role.find({ name: { $in: ['nurse', 'caretaker', 'doctor'] } }).distinct('_id') } });
-    const completedTasks = await Task.countDocuments({ status: 'completed' });
-    const pendingTasks = await Task.countDocuments({ status: 'pending' });
+    // sequential - parallel
+    const roleIds = await Role.find({ name: { $in: ['nurse', 'caretaker', 'doctor'] } }).distinct('_id');
+
+    const [totalPatients, totalActivePatients, totalTasks, totalStaff, completedTasks, pendingTasks] = await Promise.all([
+      Patient.countDocuments(),
+      Patient.countDocuments({ isDeleted: false }),
+      Task.countDocuments(),
+      User.countDocuments({ role: { $in: roleIds } }),
+      Task.countDocuments({ status: 'completed' }),
+      Task.countDocuments({ status: 'pending' })
+    ]);
 
     const summary = {
       totalPatients,
