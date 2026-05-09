@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const seedRoles = require('../seedRoles');
 const seedData = require('../seedData');
 const seedDoctorData = require('../seedDoctorData');
+const seedStaffData = require('../seedStaffData');
 
 const mongoDBUrl = process.env.MONGODB_URI;
 
@@ -21,6 +22,7 @@ const connectDB = async () => {
 
     // Seed data when the server starts
     await seedData();
+    await seedStaffData();
     await seedDoctorData();
     console.log("Data seeded successfully");
   } catch (err) {

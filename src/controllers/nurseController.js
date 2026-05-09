@@ -157,12 +157,18 @@ exports.getAssignedPatientsForNurse = async (req, res) => {
  * /api/v1/nurse/dashboard-summary:
  *   get:
  *     summary: Get nurse dashboard summary
+ *     description: >-
+ *       Returns a real-time snapshot of activity scoped to the authenticated nurse.
+ *       Includes patient counts, a full task breakdown (total, completed, in-progress,
+ *       pending, and overdue), task completion rate, and a count of patient logs
+ *       created by this nurse in the last 7 days. Requires a valid JWT with the
+ *       **nurse** role.
  *     tags: [Nurse]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Nurse dashboard summary
+ *         description: Nurse dashboard summary fetched successfully.
  *         content:
  *           application/json:
  *             schema:
@@ -170,33 +176,51 @@ exports.getAssignedPatientsForNurse = async (req, res) => {
  *               properties:
  *                 totalPatients:
  *                   type: integer
- *                   description: Total patients assigned to the nurse
+ *                   description: Total patients assigned to this nurse (including deleted).
+ *                   example: 5
  *                 totalActivePatients:
  *                   type: integer
- *                   description: Active (non-deleted) patients assigned to the nurse
+ *                   description: Active (non-deleted) patients assigned to this nurse.
+ *                   example: 4
  *                 totalTasks:
  *                   type: integer
- *                   description: Total tasks assigned to the nurse
+ *                   description: Total tasks assigned to this nurse across all patients.
+ *                   example: 10
  *                 completedTasks:
  *                   type: integer
- *                   description: Completed tasks assigned to the nurse
+ *                   description: Tasks this nurse has marked as completed.
+ *                   example: 4
  *                 inProgressTasks:
  *                   type: integer
- *                   description: Tasks currently in progress
+ *                   description: Tasks currently marked as in progress.
+ *                   example: 2
  *                 pendingTasks:
  *                   type: integer
- *                   description: Tasks not yet started
+ *                   description: Tasks not yet started (totalTasks − completed − inProgress).
+ *                   example: 4
  *                 overdueTasks:
  *                   type: integer
- *                   description: Incomplete tasks whose due date has passed
+ *                   description: Incomplete tasks whose due date has already passed.
+ *                   example: 2
  *                 taskCompletionRate:
  *                   type: integer
- *                   description: Percentage of completed tasks
+ *                   description: Percentage of tasks completed (0–100).
+ *                   example: 40
  *                 recentLogsCount:
  *                   type: integer
- *                   description: Patient logs created by the nurse in the last 7 days
+ *                   description: Patient log entries created by this nurse in the last 7 days.
+ *                   example: 3
  *       500:
- *         description: Error fetching nurse dashboard summary
+ *         description: Unexpected server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                 details:
+ *                   type: string
  */
 exports.getDashboardSummary = async (req, res) => {
   try {

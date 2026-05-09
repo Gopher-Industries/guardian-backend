@@ -511,12 +511,18 @@ exports.deleteTask = async (req, res) => {
  * /api/v1/admin/dashboard-summary:
  *   get:
  *     summary: Get admin dashboard summary
+ *     description: >-
+ *       Returns a system-wide snapshot for administrators. Includes total and active
+ *       patient counts, a staff breakdown by role with pending approval count, a full
+ *       task breakdown (total, completed, in-progress, pending, and overdue) across
+ *       all staff, task completion rate, and a count of patient logs created
+ *       system-wide in the last 7 days. Requires a valid JWT with the **admin** role.
  *     tags: [Admin]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Admin dashboard summary
+ *         description: Admin dashboard summary fetched successfully.
  *         content:
  *           application/json:
  *             schema:
@@ -524,45 +530,75 @@ exports.deleteTask = async (req, res) => {
  *               properties:
  *                 totalPatients:
  *                   type: integer
- *                   description: Total patients in the system
+ *                   description: Total patients registered in the system (including deleted).
+ *                   example: 20
  *                 totalActivePatients:
  *                   type: integer
- *                   description: Active (non-deleted) patients
+ *                   description: Active (non-deleted) patients in the system.
+ *                   example: 18
  *                 staff:
  *                   type: object
+ *                   description: Breakdown of registered staff accounts.
  *                   properties:
  *                     total:
  *                       type: integer
- *                       description: Total staff (doctors, nurses, caretakers)
+ *                       description: Total staff across all clinical roles (doctors, nurses, caretakers).
+ *                       example: 12
  *                     doctors:
  *                       type: integer
+ *                       description: Number of users with the doctor role.
+ *                       example: 3
  *                     nurses:
  *                       type: integer
+ *                       description: Number of users with the nurse role.
+ *                       example: 5
  *                     caretakers:
  *                       type: integer
+ *                       description: Number of users with the caretaker role.
+ *                       example: 4
  *                     pendingApprovals:
  *                       type: integer
- *                       description: Staff accounts awaiting approval
+ *                       description: Staff accounts with approvalStatus = "pending".
+ *                       example: 2
  *                 totalTasks:
  *                   type: integer
+ *                   description: Total tasks across all staff and patients in the system.
+ *                   example: 45
  *                 completedTasks:
  *                   type: integer
+ *                   description: Tasks marked as completed system-wide.
+ *                   example: 20
  *                 inProgressTasks:
  *                   type: integer
+ *                   description: Tasks currently marked as in progress system-wide.
+ *                   example: 8
  *                 pendingTasks:
  *                   type: integer
- *                   description: Tasks not yet started
+ *                   description: Tasks not yet started (totalTasks − completed − inProgress).
+ *                   example: 17
  *                 overdueTasks:
  *                   type: integer
- *                   description: Incomplete tasks whose due date has passed
+ *                   description: Incomplete tasks whose due date has already passed, system-wide.
+ *                   example: 6
  *                 taskCompletionRate:
  *                   type: integer
- *                   description: Percentage of completed tasks
+ *                   description: Percentage of tasks completed system-wide (0–100).
+ *                   example: 44
  *                 recentLogsCount:
  *                   type: integer
- *                   description: Patient logs created system-wide in the last 7 days
+ *                   description: Patient log entries created system-wide in the last 7 days.
+ *                   example: 14
  *       500:
- *         description: Error fetching dashboard summary
+ *         description: Unexpected server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 details:
+ *                   type: string
  */
 exports.getDashboardSummary = async (req, res) => {
   try {
