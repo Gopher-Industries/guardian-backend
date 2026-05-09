@@ -15,16 +15,10 @@ const getRoleId = async (name) => {
 
 const seedData = async () => {
   try {
-    const userCount = await User.countDocuments();
-    const patientCount = await Patient.countDocuments();
-    const reportCount = await EntryReport.countDocuments();
+    // Guard on alice specifically so doctor/nurse seeds don't trigger a false skip
+    const alreadySeeded = await User.findOne({ email: 'alice@guardian.com' });
 
-    // Clear previous data
-    // await User.deleteMany({});
-    // await Patient.deleteMany({});
-    // await EntryReport.deleteMany({});
-
-    if (userCount > 0 || patientCount > 0 || reportCount > 0) {
+    if (alreadySeeded) {
       console.log('⚠️ Existing data detected. Skipping seed to avoid duplication.');
       await updateSeedData();
       return;

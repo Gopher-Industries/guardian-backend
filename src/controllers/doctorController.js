@@ -3,6 +3,9 @@ const User = require('../models/User');
 const Role = require('../models/Role');
 const Patient = require('../models/Patient');
 const Doctor = require('../models/Doctor');
+const Prescription = require('../models/Prescription');
+const PatientLog = require('../models/PatientLog');
+const Task = require('../models/Task');
 
 const asInt = (v, d) => {
   const n = parseInt(v, 10);
@@ -143,7 +146,7 @@ exports.assignDoctorToPatient = async (req, res) => {
     const patient = await Patient.findById(patientId);
     if (!patient) return res.status(404).json({ error: 'Patient not found' });
 
-    const prevDoctorId = patient.doctor ? patient.doctor.toString() : null;
+    const prevDoctorId = patient.assignedDoctor ? patient.assignedDoctor.toString() : null;
 
     let newDoctorId = null;
     if (doctorId !== null && doctorId !== undefined && doctorId !== '') {
@@ -161,7 +164,7 @@ exports.assignDoctorToPatient = async (req, res) => {
     }
 
     // Update patient
-    patient.doctor = newDoctorId || null;
+    patient.assignedDoctor = newDoctorId || null;
     await patient.save();
 
     // OPTIONAL: keep User.assignedPatients mirrored on doctor User
@@ -181,7 +184,7 @@ exports.assignDoctorToPatient = async (req, res) => {
     res.status(200).json({
       message: newDoctorId ? 'Doctor assigned' : 'Doctor unassigned',
       patientId: patient._id,
-      doctorId: patient.doctor
+      doctorId: patient.assignedDoctor
     });
   } catch (err) {
     res.status(500).json({ error: 'Error assigning doctor', details: err.message });
@@ -192,29 +195,16 @@ exports.assignDoctorToPatient = async (req, res) => {
  * @swagger
  * /api/v1/doctors/profile:
  *   get:
- *     summary: Get a doctor's profile
+ *     summary: Get the logged-in doctor's profile
  *     description: >-
- *       Returns the full profile for a doctor, combining their User account details
- *       (name, email, role, organisation, assigned patients) with their Doctor-specific
- *       record (phone, gender, age, address). The Doctor-specific record is stored in a
- *       separate collection linked by the user ID. Requires a valid JWT issued to a user
- *       with the **doctor** role. Provide either `doctorId` or `email` as a query parameter.
+ *       Returns the full profile for the currently authenticated doctor, combining their
+ *       User account details (name, email, role, organisation, assigned patients) with their
+ *       Doctor-specific record (phone, gender, age, address) stored in a separate collection.
+ *       The doctor is identified from the JWT — no query parameters are required.
+ *       Requires a valid JWT issued to a user with the **doctor** role.
  *     tags: [Doctor]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: doctorId
- *         schema:
- *           type: string
- *           example: "6641a2f3c89e4b001f3d9abc"
- *         description: MongoDB ObjectId of the doctor's User record. Takes priority over `email` if both are supplied.
- *       - in: query
- *         name: email
- *         schema:
- *           type: string
- *           example: "johndoctor@example.com"
- *         description: Email address of the doctor. Used only when `doctorId` is omitted.
  *     responses:
  *       200:
  *         description: Doctor profile fetched successfully.
@@ -228,7 +218,7 @@ exports.assignDoctorToPatient = async (req, res) => {
  *                   example: "6641a2f3c89e4b001f3d9abc"
  *                 fullname:
  *                   type: string
- *                   example: "John Doe"
+ *                   example: "Dr. Seed"
  *                 email:
  *                   type: string
  *                   example: "johndoctor@example.com"
@@ -263,7 +253,7 @@ exports.assignDoctorToPatient = async (req, res) => {
  *                         type: string
  *                 profile:
  *                   type: object
- *                   description: Doctor-specific profile data stored in the Doctor collection.
+ *                   description: Doctor-specific data stored in the Doctor collection. Empty object if not yet set.
  *                   properties:
  *                     phone:
  *                       type: string
@@ -281,18 +271,8 @@ exports.assignDoctorToPatient = async (req, res) => {
  *                       type: string
  *                       nullable: true
  *                       example: "123 Health St, Sydney NSW 2000"
- *       400:
- *         description: Neither `doctorId` nor `email` was provided.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: "Please provide either doctorId or email"
  *       404:
- *         description: No user matching the given `doctorId` or `email` was found.
+ *         description: The authenticated user's doctor record was not found.
  *         content:
  *           application/json:
  *             schema:
@@ -315,14 +295,9 @@ exports.assignDoctorToPatient = async (req, res) => {
  */
 exports.getProfile = async (req, res) => {
   try {
-    const { doctorId, email } = req.query;
+    const doctorId = req.user._id;
 
-    const query = doctorId ? { _id: doctorId } : email ? { email } : null;
-    if (!query) {
-      return res.status(400).json({ error: 'Please provide either doctorId or email' });
-    }
-
-    const user = await User.findOne(query)
+    const user = await User.findById(doctorId)
       .select('-password_hash -__v')
       .populate('role', 'name')
       .populate('organization', 'name')
@@ -333,7 +308,7 @@ exports.getProfile = async (req, res) => {
       return res.status(404).json({ error: 'Doctor not found' });
     }
 
-    const profile = await Doctor.findOne({ user: user._id }).select('-__v -user').lean();
+    const profile = await Doctor.findOne({ user: doctorId }).select('-__v -user').lean();
 
     res.status(200).json({ ...user, profile: profile || {} });
   } catch (error) {
@@ -345,15 +320,15 @@ exports.getProfile = async (req, res) => {
  * @swagger
  * /api/v1/doctors/profile:
  *   put:
- *     summary: Update a doctor's profile
+ *     summary: Update the logged-in doctor's profile
  *     description: >-
- *       Updates profile information for a doctor. Fields are written to two collections:
- *       `fullname` and `email` are updated on the **User** record; `phone`, `gender`,
- *       `age`, and `address` are upserted into the **Doctor** collection linked by the
- *       user ID. The Doctor record is created automatically on the first update — no
- *       separate registration step is required. Only fields included in the request body
- *       are changed; omitted fields are left as-is. Requires a valid JWT issued to a user
- *       with the **doctor** role.
+ *       Updates profile information for the currently authenticated doctor. The doctor is
+ *       identified from the JWT — no `doctorId` is required in the body. Fields are written
+ *       to two collections: `fullname` and `email` are updated on the **User** record;
+ *       `phone`, `gender`, `age`, and `address` are upserted into the **Doctor** collection.
+ *       The Doctor record is created automatically on the first update. Only fields included
+ *       in the request body are changed; omitted fields are left as-is. Requires a valid JWT
+ *       issued to a user with the **doctor** role.
  *     tags: [Doctor]
  *     security:
  *       - bearerAuth: []
@@ -363,17 +338,11 @@ exports.getProfile = async (req, res) => {
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - doctorId
  *             properties:
- *               doctorId:
- *                 type: string
- *                 description: MongoDB ObjectId of the doctor's User record.
- *                 example: "6641a2f3c89e4b001f3d9abc"
  *               fullname:
  *                 type: string
  *                 description: Updated display name. Written to the User record.
- *                 example: "John Doe"
+ *                 example: "Dr. Seed"
  *               email:
  *                 type: string
  *                 description: Updated email address. Written to the User record. Must be unique.
@@ -398,8 +367,7 @@ exports.getProfile = async (req, res) => {
  *             full update:
  *               summary: Update all fields
  *               value:
- *                 doctorId: "6641a2f3c89e4b001f3d9abc"
- *                 fullname: "John Doe"
+ *                 fullname: "Dr. Seed"
  *                 email: "johndoctor@example.com"
  *                 phone: "04082234"
  *                 gender: "M"
@@ -408,7 +376,6 @@ exports.getProfile = async (req, res) => {
  *             partial update:
  *               summary: Update phone and address only
  *               value:
- *                 doctorId: "6641a2f3c89e4b001f3d9abc"
  *                 phone: "0411999888"
  *                 address: "456 Care Ave, Melbourne VIC 3000"
  *     responses:
@@ -448,18 +415,8 @@ exports.getProfile = async (req, res) => {
  *                     updatedAt:
  *                       type: string
  *                       format: date-time
- *       400:
- *         description: "`doctorId` was not provided in the request body."
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: "Missing doctorId"
  *       404:
- *         description: No User record found for the given `doctorId`.
+ *         description: The authenticated user's doctor record was not found.
  *         content:
  *           application/json:
  *             schema:
@@ -482,18 +439,14 @@ exports.getProfile = async (req, res) => {
  */
 exports.updateProfile = async (req, res) => {
   try {
-    const { doctorId, fullname, email, ...doctorFields } = req.body;
+    const doctorId = req.user._id;
+    const { fullname, email, ...doctorFields } = req.body;
 
-    if (!doctorId) {
-      return res.status(400).json({ error: 'Missing doctorId' });
-    }
-
-    const user = await User.findById(doctorId).select('-password_hash -__v').lean();
+    const user = await User.findById(doctorId).select('_id').lean();
     if (!user) {
       return res.status(404).json({ error: 'Doctor not found' });
     }
 
-    // Update allowed User fields
     const userUpdates = {};
     if (fullname) userUpdates.fullname = fullname;
     if (email) userUpdates.email = email;
@@ -502,7 +455,6 @@ exports.updateProfile = async (req, res) => {
       await User.findByIdAndUpdate(doctorId, { $set: userUpdates }, { runValidators: true, context: 'query' });
     }
 
-    // Upsert Doctor-specific fields
     const profile = await Doctor.findOneAndUpdate(
       { user: doctorId },
       { $set: doctorFields },
@@ -515,6 +467,142 @@ exports.updateProfile = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ error: 'Error updating profile', details: error.message });
+  }
+};
+
+/**
+ * @swagger
+ * /api/v1/doctors/dashboard-summary:
+ *   get:
+ *     summary: Get the logged-in doctor's dashboard summary
+ *     description: >-
+ *       Returns a real-time snapshot of activity scoped to the authenticated doctor.
+ *       Includes total and active patient counts, a full prescription status breakdown,
+ *       a task breakdown (total, completed, pending, and overdue tasks across all assigned
+ *       patients), and a count of care activity (patient logs) recorded against their
+ *       patients in the last 7 days. Requires a valid JWT issued to a user with the
+ *       **doctor** role.
+ *     tags: [Doctor]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Dashboard summary fetched successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 totalPatients:
+ *                   type: integer
+ *                   description: Total patients assigned to this doctor.
+ *                   example: 12
+ *                 totalActivePatients:
+ *                   type: integer
+ *                   description: Patients assigned to this doctor who have not been deleted.
+ *                   example: 10
+ *                 prescriptions:
+ *                   type: object
+ *                   description: Breakdown of prescriptions written by this doctor.
+ *                   properties:
+ *                     total:
+ *                       type: integer
+ *                       example: 30
+ *                     active:
+ *                       type: integer
+ *                       example: 18
+ *                     completed:
+ *                       type: integer
+ *                       example: 9
+ *                     discontinued:
+ *                       type: integer
+ *                       example: 3
+ *                 tasks:
+ *                   type: object
+ *                   description: Breakdown of tasks across this doctor's assigned patients.
+ *                   properties:
+ *                     total:
+ *                       type: integer
+ *                       example: 25
+ *                     completed:
+ *                       type: integer
+ *                       example: 14
+ *                     pending:
+ *                       type: integer
+ *                       description: Tasks that are not yet completed (includes in-progress).
+ *                       example: 8
+ *                     overdue:
+ *                       type: integer
+ *                       description: Incomplete tasks whose due date has already passed.
+ *                       example: 3
+ *                 recentLogsCount:
+ *                   type: integer
+ *                   description: Patient log entries recorded against this doctor's patients in the last 7 days.
+ *                   example: 5
+ *       500:
+ *         description: Unexpected server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                 details:
+ *                   type: string
+ */
+exports.getDashboardSummary = async (req, res) => {
+  try {
+    const doctorId = req.user._id;
+    const now = new Date();
+    const sevenDaysAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
+
+    // Resolve patient IDs for this doctor — needed for task and log queries
+    const patientIds = await Patient.find({ assignedDoctor: doctorId }).distinct('_id');
+
+    const [
+      totalPatients,
+      totalActivePatients,
+      totalPrescriptions,
+      activePrescriptions,
+      completedPrescriptions,
+      discontinuedPrescriptions,
+      totalTasks,
+      completedTasks,
+      overdueTasks,
+      recentLogsCount,
+    ] = await Promise.all([
+      Patient.countDocuments({ assignedDoctor: doctorId }),
+      Patient.countDocuments({ doctor: doctorId, isDeleted: false }),
+      Prescription.countDocuments({ prescriber: doctorId }),
+      Prescription.countDocuments({ prescriber: doctorId, status: 'active' }),
+      Prescription.countDocuments({ prescriber: doctorId, status: 'completed' }),
+      Prescription.countDocuments({ prescriber: doctorId, status: 'discontinued' }),
+      Task.countDocuments({ patient: { $in: patientIds } }),
+      Task.countDocuments({ patient: { $in: patientIds }, status: 'completed' }),
+      Task.countDocuments({ patient: { $in: patientIds }, status: { $ne: 'completed' }, dueDate: { $lt: now } }),
+      PatientLog.countDocuments({ patient: { $in: patientIds }, createdAt: { $gte: sevenDaysAgo } }),
+    ]);
+
+    res.status(200).json({
+      totalPatients,
+      totalActivePatients,
+      prescriptions: {
+        total: totalPrescriptions,
+        active: activePrescriptions,
+        completed: completedPrescriptions,
+        discontinued: discontinuedPrescriptions,
+      },
+      tasks: {
+        total: totalTasks,
+        completed: completedTasks,
+        pending: totalTasks - completedTasks,
+        overdue: overdueTasks,
+      },
+      recentLogsCount,
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Error fetching dashboard summary', details: error.message });
   }
 };
 
@@ -604,7 +692,7 @@ exports.listPatientsByDoctor = async (req, res) => {
   
       // Query patients assigned to this doctor
       const [items, total] = await Promise.all([
-        Patient.find({ doctor: doctorId })
+        Patient.find({ assignedDoctor: doctorId })
           .select('_id fullname dateOfBirth gender caretaker assignedNurses doctor created_at updated_at')
           .sort({ fullname: 1 })
           .skip(skip)
@@ -612,7 +700,7 @@ exports.listPatientsByDoctor = async (req, res) => {
           .populate('caretaker', 'fullname email')
           .populate('assignedNurses', 'fullname email')
           .lean(),
-        Patient.countDocuments({ doctor: doctorId })
+        Patient.countDocuments({ assignedDoctor: doctorId })
       ]);
   
       return res.status(200).json({
