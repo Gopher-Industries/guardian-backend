@@ -409,9 +409,18 @@ exports.getReportsByPatient = async (req, res) => {
  *                 completedTasks:
  *                   type: integer
  *                   description: Completed tasks for this caretaker
+ *                 inProgressTasks:
+ *                   type: integer
+ *                   description: Tasks currently in progress for this caretaker
  *                 pendingTasks:
  *                   type: integer
- *                   description: Pending tasks for this caretaker
+ *                   description: Tasks not yet started for this caretaker
+ *                 overdueTasks:
+ *                   type: integer
+ *                   description: Incomplete tasks whose due date has passed
+ *                 taskCompletionRate:
+ *                   type: integer
+ *                   description: Percentage of completed tasks
  *                 recentLogsCount:
  *                   type: integer
  *                   description: Logs created by this caretaker in the last 7 days
@@ -422,41 +431,38 @@ exports.getReportsByPatient = async (req, res) => {
 exports.getDashboardSummary = async (req, res) => {
   try {
     const caretakerId = req.user._id;
+    const now = new Date();
+    const sevenDaysAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
 
-    // Get Role _id for "caretaker"
-    const caretakerRole = await Role.findOne({ name: 'caretaker' }).lean();
-    if (!caretakerRole) {
-      return res.status(500).json({ error: 'Role "caretaker" not found' });
-    }
-
-    // Total patients assigned to this caretaker
-    const totalPatients = await Patient.countDocuments({ caretaker: caretakerId });
-
-    // Total active patients (not discharged or deceased)
-    const totalActivePatients = await Patient.countDocuments({ caretaker: caretakerId, isDeleted: false });
-
-    // Total pending tasks assigned to this caretaker
-    const totalTasks = await Task.countDocuments({ caretaker: caretakerId });
-    const completedTasks = await Task.countDocuments({ caretaker: caretakerId, status: 'completed' });
-    const pendingTasks = totalTasks - completedTasks;
-
-    // Total Patient Logs for this caretaker
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const recentLogsCount = await PatientLog.countDocuments({
-      createdBy: req.user._id,
-      createdAt: { $gte: sevenDaysAgo }
-    });
-
-    const summary = {
+    const [
       totalPatients,
       totalActivePatients,
       totalTasks,
       completedTasks,
-      pendingTasks,
-      recentLogsCount
-    };
+      inProgressTasks,
+      overdueTasks,
+      recentLogsCount,
+    ] = await Promise.all([
+      Patient.countDocuments({ caretaker: caretakerId }),
+      Patient.countDocuments({ caretaker: caretakerId, isDeleted: false }),
+      Task.countDocuments({ caretaker: caretakerId }),
+      Task.countDocuments({ caretaker: caretakerId, status: 'completed' }),
+      Task.countDocuments({ caretaker: caretakerId, status: 'in progress' }),
+      Task.countDocuments({ caretaker: caretakerId, status: { $ne: 'completed' }, dueDate: { $lt: now } }),
+      PatientLog.countDocuments({ createdBy: caretakerId, createdAt: { $gte: sevenDaysAgo } }),
+    ]);
 
-    res.status(200).json(summary);
+    res.status(200).json({
+      totalPatients,
+      totalActivePatients,
+      totalTasks,
+      completedTasks,
+      inProgressTasks,
+      pendingTasks: totalTasks - completedTasks - inProgressTasks,
+      overdueTasks,
+      taskCompletionRate: totalTasks ? Math.round((completedTasks / totalTasks) * 100) : 0,
+      recentLogsCount,
+    });
   } catch (error) {
     res.status(500).json({ error: 'Error fetching dashboard summary', details: error.message });
   }
