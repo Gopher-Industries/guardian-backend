@@ -1,17 +1,21 @@
 // routes/patientLogRoutes.js
 const express = require('express');
 const router = express.Router();
+
 const verifyToken = require('../middleware/verifyToken');
 const verifyRole = require('../middleware/verifyRole');
 const controller = require('../controllers/patientLogController');
 
-// add log
+// Create patient log
 router.post('/',verifyToken,verifyRole(['nurse', 'caretaker', 'doctor']),controller.createLog);
 
-// get log
-router.get('/:patientId',verifyToken,verifyRole(['nurse', 'caretaker', 'doctor', 'admin']),controller.getLogsByPatient);
+// Fetch logs by patient with pagination
+router.get('/:patientId',verifyToken,verifyRole(['admin', 'nurse', 'caretaker', 'doctor']),controller.getLogsByPatient);
 
-// deleting log
-router.delete('/:id', verifyToken, controller.deleteLog);
+// Update patient log
+router.put('/:id',verifyToken,verifyRole(['admin', 'nurse', 'caretaker', 'doctor']),controller.updateLog);
+
+// Delete patient log
+router.delete('/:id',verifyToken,verifyRole(['admin', 'nurse', 'caretaker', 'doctor']),controller.deleteLog);
 
 module.exports = router;

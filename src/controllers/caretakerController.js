@@ -380,7 +380,7 @@ exports.getReportsByPatient = async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: 'Error fetching reports', details: error.message });
   }
-
+}
 // Caretaker dashboard summary 
 /**
  * @swagger
