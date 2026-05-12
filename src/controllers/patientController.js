@@ -37,6 +37,7 @@ async function blockIndependentPatientWorkForApprovedOrgMember(userId) {
  *     description: Endpoints for independent patient management
  *   - name: EntryReport
  *     description: Endpoints for patient activity and entry reporting
+ */
 
 /**
  * @swagger
