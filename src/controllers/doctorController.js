@@ -199,7 +199,7 @@ exports.assignDoctorToPatient = async (req, res) => {
  *     description: >-
  *       Returns the full profile for the currently authenticated doctor, combining their
  *       User account details (name, email, role, organisation, assigned patients) with their
- *       Doctor-specific record (phone, gender, age, address) stored in a separate collection.
+ *       Doctor-specific record (specialization, licenseNumber) stored in a separate collection.
  *       The doctor is identified from the JWT — no query parameters are required.
  *       Requires a valid JWT issued to a user with the **doctor** role.
  *     tags: [Doctor]
@@ -255,22 +255,16 @@ exports.assignDoctorToPatient = async (req, res) => {
  *                   type: object
  *                   description: Doctor-specific data stored in the Doctor collection. Empty object if not yet set.
  *                   properties:
- *                     phone:
+ *                     specialization:
  *                       type: string
  *                       nullable: true
- *                       example: "04082234"
- *                     gender:
+ *                       example: "Geriatrics"
+ *                     licenseNumber:
  *                       type: string
  *                       nullable: true
- *                       example: "M"
- *                     age:
- *                       type: number
- *                       nullable: true
- *                       example: 35
- *                     address:
- *                       type: string
- *                       nullable: true
- *                       example: "123 Health St, Sydney NSW 2000"
+ *                       pattern: '^[A-Z]{2,4}-\d{4}-\d{3,}$'
+ *                       description: "Medical registration number. Format: {TYPE}-{YEAR}-{NUMBER} (e.g. MED-2024-001)"
+ *                       example: "MED-2024-001"
  *       404:
  *         description: The authenticated user's doctor record was not found.
  *         content:
@@ -325,7 +319,7 @@ exports.getProfile = async (req, res) => {
  *       Updates profile information for the currently authenticated doctor. The doctor is
  *       identified from the JWT — no `doctorId` is required in the body. Fields are written
  *       to two collections: `fullname` and `email` are updated on the **User** record;
- *       `phone`, `gender`, `age`, and `address` are upserted into the **Doctor** collection.
+ *       `specialization` and `licenseNumber` are upserted into the **Doctor** collection.
  *       The Doctor record is created automatically on the first update. Only fields included
  *       in the request body are changed; omitted fields are left as-is. Requires a valid JWT
  *       issued to a user with the **doctor** role.
@@ -346,38 +340,29 @@ exports.getProfile = async (req, res) => {
  *               email:
  *                 type: string
  *                 description: Updated email address. Written to the User record. Must be unique.
- *                 example: "johndoctor@example.com"
- *               phone:
+ *                 example: "dr.seed@guardian.com"
+ *               specialization:
  *                 type: string
- *                 description: Contact phone number. Stored in the Doctor record.
- *                 example: "04082234"
- *               gender:
+ *                 description: Medical specialty (e.g. Geriatrics, Cardiology). Stored in the Doctor record.
+ *                 example: "Geriatrics"
+ *               licenseNumber:
  *                 type: string
- *                 description: Gender. Stored in the Doctor record.
- *                 example: "M"
- *               age:
- *                 type: number
- *                 description: Age in years. Stored in the Doctor record.
- *                 example: 35
- *               address:
- *                 type: string
- *                 description: Physical address. Stored in the Doctor record.
- *                 example: "123 Health St, Sydney NSW 2000"
+ *                 pattern: '^[A-Z]{2,4}-\d{4}-\d{3,}$'
+ *                 description: "Medical registration number. Format: {TYPE}-{YEAR}-{NUMBER} (e.g. MED-2024-001). Stored in the Doctor record."
+ *                 example: "MED-2024-001"
  *           examples:
  *             full update:
  *               summary: Update all fields
  *               value:
  *                 fullname: "Dr. Seed"
- *                 email: "johndoctor@example.com"
- *                 phone: "04082234"
- *                 gender: "M"
- *                 age: 35
- *                 address: "123 Health St, Sydney NSW 2000"
+ *                 email: "dr.seed@guardian.com"
+ *                 specialization: "Geriatrics"
+ *                 licenseNumber: "MED-2024-001"
  *             partial update:
- *               summary: Update phone and address only
+ *               summary: Update doctor-specific fields only
  *               value:
- *                 phone: "0411999888"
- *                 address: "456 Care Ave, Melbourne VIC 3000"
+ *                 specialization: "General Practice"
+ *                 licenseNumber: "MED-2024-042"
  *     responses:
  *       200:
  *         description: Doctor profile updated successfully.
@@ -393,22 +378,16 @@ exports.getProfile = async (req, res) => {
  *                   type: object
  *                   description: The updated Doctor record.
  *                   properties:
- *                     phone:
+ *                     specialization:
  *                       type: string
  *                       nullable: true
- *                       example: "04082234"
- *                     gender:
+ *                       example: "Geriatrics"
+ *                     licenseNumber:
  *                       type: string
  *                       nullable: true
- *                       example: "M"
- *                     age:
- *                       type: number
- *                       nullable: true
- *                       example: 35
- *                     address:
- *                       type: string
- *                       nullable: true
- *                       example: "123 Health St, Sydney NSW 2000"
+ *                       pattern: '^[A-Z]{2,4}-\d{4}-\d{3,}$'
+ *                       description: "Medical registration number. Format: {TYPE}-{YEAR}-{NUMBER} (e.g. MED-2024-001)"
+ *                       example: "MED-2024-001"
  *                     createdAt:
  *                       type: string
  *                       format: date-time
@@ -425,6 +404,16 @@ exports.getProfile = async (req, res) => {
  *                 error:
  *                   type: string
  *                   example: "Doctor not found"
+ *       409:
+ *         description: The provided email is already in use by another account.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Email already in use"
  *       500:
  *         description: Unexpected server error.
  *         content:
@@ -440,7 +429,7 @@ exports.getProfile = async (req, res) => {
 exports.updateProfile = async (req, res) => {
   try {
     const doctorId = req.user._id;
-    const { fullname, email, ...doctorFields } = req.body;
+    const { fullname, email, specialization, licenseNumber } = req.body;
 
     const user = await User.findById(doctorId).select('_id').lean();
     if (!user) {
@@ -448,12 +437,24 @@ exports.updateProfile = async (req, res) => {
     }
 
     const userUpdates = {};
-    if (fullname) userUpdates.fullname = fullname;
-    if (email) userUpdates.email = email;
+    if (fullname) userUpdates.fullname = fullname.trim();
+    if (email) {
+      const normalized = email.toLowerCase().trim();
+      const conflict = await User.findOne({ email: normalized, _id: { $ne: doctorId } }).select('_id').lean();
+      if (conflict) {
+        return res.status(409).json({ error: 'Email already in use' });
+      }
+      userUpdates.email = normalized;
+    }
 
     if (Object.keys(userUpdates).length) {
       await User.findByIdAndUpdate(doctorId, { $set: userUpdates }, { runValidators: true, context: 'query' });
     }
+
+    // Whitelist doctor-specific fields — never allow `user` or other schema fields to be overwritten
+    const doctorFields = {};
+    if (specialization !== undefined) doctorFields.specialization = specialization;
+    if (licenseNumber !== undefined) doctorFields.licenseNumber = licenseNumber;
 
     const profile = await Doctor.findOneAndUpdate(
       { user: doctorId },
@@ -527,10 +528,14 @@ exports.updateProfile = async (req, res) => {
  *                     completed:
  *                       type: integer
  *                       example: 14
+ *                     inProgress:
+ *                       type: integer
+ *                       description: Tasks currently marked as in progress.
+ *                       example: 3
  *                     pending:
  *                       type: integer
- *                       description: Tasks that are not yet completed (includes in-progress).
- *                       example: 8
+ *                       description: Tasks not yet started (total − completed − inProgress).
+ *                       example: 5
  *                     overdue:
  *                       type: integer
  *                       description: Incomplete tasks whose due date has already passed.
@@ -569,17 +574,19 @@ exports.getDashboardSummary = async (req, res) => {
       discontinuedPrescriptions,
       totalTasks,
       completedTasks,
+      inProgressTasks,
       overdueTasks,
       recentLogsCount,
     ] = await Promise.all([
       Patient.countDocuments({ assignedDoctor: doctorId }),
-      Patient.countDocuments({ doctor: doctorId, isDeleted: false }),
+      Patient.countDocuments({ assignedDoctor: doctorId, isDeleted: false }),
       Prescription.countDocuments({ prescriber: doctorId }),
       Prescription.countDocuments({ prescriber: doctorId, status: 'active' }),
       Prescription.countDocuments({ prescriber: doctorId, status: 'completed' }),
       Prescription.countDocuments({ prescriber: doctorId, status: 'discontinued' }),
       Task.countDocuments({ patient: { $in: patientIds } }),
       Task.countDocuments({ patient: { $in: patientIds }, status: 'completed' }),
+      Task.countDocuments({ patient: { $in: patientIds }, status: 'in progress' }),
       Task.countDocuments({ patient: { $in: patientIds }, status: { $ne: 'completed' }, dueDate: { $lt: now } }),
       PatientLog.countDocuments({ patient: { $in: patientIds }, createdAt: { $gte: sevenDaysAgo } }),
     ]);
@@ -596,7 +603,8 @@ exports.getDashboardSummary = async (req, res) => {
       tasks: {
         total: totalTasks,
         completed: completedTasks,
-        pending: totalTasks - completedTasks,
+        inProgress: inProgressTasks,
+        pending: totalTasks - completedTasks - inProgressTasks,
         overdue: overdueTasks,
       },
       recentLogsCount,
@@ -611,7 +619,7 @@ exports.getDashboardSummary = async (req, res) => {
  * /api/v1/doctors/{doctorId}/patients:
  *   get:
  *     summary: Get patients assigned to a doctor
- *     description: Returns a paginated list of patients whose `doctor` equals the given doctorId. Allowed for the same doctor, admin, or caretaker.
+ *     description: Returns a paginated list of patients whose `assignedDoctor` equals the given doctorId. Allowed for the same doctor, admin, or caretaker.
  *     tags: [Doctor]
  *     security:
  *       - bearerAuth: []
@@ -693,7 +701,7 @@ exports.listPatientsByDoctor = async (req, res) => {
       // Query patients assigned to this doctor
       const [items, total] = await Promise.all([
         Patient.find({ assignedDoctor: doctorId })
-          .select('_id fullname dateOfBirth gender caretaker assignedNurses doctor created_at updated_at')
+          .select('_id fullname dateOfBirth gender caretaker assignedNurses assignedDoctor created_at updated_at')
           .sort({ fullname: 1 })
           .skip(skip)
           .limit(limit)

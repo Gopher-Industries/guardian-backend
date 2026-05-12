@@ -2,6 +2,7 @@
 
 const Role = require('./models/Role');
 const User = require('./models/User');
+const Doctor = require('./models/Doctor');
 const Patient = require('./models/Patient');
 const Prescription = require('./models/Prescription');
 const Task = require('./models/Task');
@@ -37,10 +38,23 @@ const seedDoctorData = async () => {
       console.log('🌱 Created seed doctor user.');
     }
 
+    // Remove legacy generic fields from every Doctor document (safe no-op if already absent)
+    await Doctor.updateMany(
+      {},
+      { $unset: { phone: '', gender: '', age: '', address: '' } }
+    );
+
+    // Always upsert the seed doctor profile with doctor-specific fields
+    await Doctor.findOneAndUpdate(
+      { user: doctor._id },
+      { $set: { specialization: 'Geriatrics', licenseNumber: 'MED-2024-001' } },
+      { upsert: true, new: true }
+    );
+
     // Guard on patients — if already seeded, skip data creation
     const existingPatients = await Patient.countDocuments({ assignedDoctor: doctor._id });
     if (existingPatients > 0) {
-      console.log('Doctor seed data already present — skipping.');
+      console.log('⚠️  Doctor seed data already present — skipping patient/prescription/task/log creation.');
       return;
     }
 
