@@ -44,10 +44,11 @@ const seedDoctorData = async () => {
       { $unset: { phone: '', gender: '', age: '', address: '' } }
     );
 
-    // Always upsert the seed doctor profile with doctor-specific fields
+    // Seed initial doctor-specific fields only on first insert — $setOnInsert
+    // means existing records (already updated via the API) are never overwritten.
     await Doctor.findOneAndUpdate(
       { user: doctor._id },
-      { $set: { specialization: 'Geriatrics', licenseNumber: 'MED-2024-001' } },
+      { $setOnInsert: { specialization: 'Geriatrics', licenseNumber: 'MED-2024-001' } },
       { upsert: true, new: true }
     );
 
