@@ -1,18 +1,15 @@
-# Use a specific version of the Node.js runtime as the base image
-FROM node:14
+FROM node:20-bookworm-slim
 
-# Set the working directory in the container
 WORKDIR /usr/src/app
 
-# Copy package.json and package-lock.json to the working directory
+ENV NODE_ENV=production
+ENV SCARF_ANALYTICS=false
+
 COPY package*.json ./
 
-# Install the dependencies specified in package.json
-RUN npm install
+RUN npm ci --omit=dev
 
-# Copy the rest of the application code to the working directory
 COPY . .
-
 
 EXPOSE 3000
 
