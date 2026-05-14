@@ -4,6 +4,18 @@ const mongoose = require('mongoose');
 const ActivityRecognition = require('../models/ActivityRecognition');
 const verifyToken = require('../middleware/verifyToken');
 
+function applyPatientFromBody(req, data) {
+  const { patientId } = req.body;
+  if (!patientId) return true;
+
+  if (!mongoose.Types.ObjectId.isValid(patientId)) {
+    return false;
+  }
+
+  data.patient = patientId;
+  return true;
+}
+
 /**
  * @swagger
  * /api/v1/activity-recognition:
@@ -19,16 +31,18 @@ const verifyToken = require('../middleware/verifyToken');
  *           schema:
  *             type: object
  *             required:
- *               - wifi_csi_id
  *               - activity_type
  *               - confidence
  *               - detected_at
  *             properties:
  *               patientId:
  *                 type: string
+ *                 example: 64f1a2b3c4d5e6f789012345
  *                 description: Optional patient ObjectId to link this activity record to a patient.
  *               wifi_csi_id:
  *                 type: string
+ *                 example: 64f1a2b3c4d5e6f789012346
+ *                 description: Optional WifiCSI ObjectId linked to this activity record.
  *               activity_type:
  *                 type: string
  *               confidence:
@@ -52,8 +66,8 @@ router.post('/', verifyToken, async (req, res) => {
       detected_at: req.body.detected_at
     };
 
-    if (req.body.patientId) {
-      activityData.patient = req.body.patientId;
+    if (!applyPatientFromBody(req, activityData)) {
+      return res.status(400).json({ error: 'Invalid patientId format' });
     }
 
     const newActivity = new ActivityRecognition(activityData);
