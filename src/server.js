@@ -225,7 +225,7 @@ app.get('/redoc', (req, res) => {
 });
 
 app.get('/openapi.json', (req, res) => {
-  res.sendFile(path.join(__dirname, 'openapi.json'));
+  res.json(swaggerSpec);
 });
 
 app.get('/', (req, res) => {
