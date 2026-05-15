@@ -146,7 +146,7 @@ const swaggerOptions = {
       },
     ],
   },
-  apis: ['./src/routes/*.js', './src/routes/**/*.js', './src/controllers/*.js'],
+  apis: ['./src/routes/*.js', './src/routes/**/*.js', './src/controllers/*.js', './src/swaggerDefinitions.js'],
 };
 
 
