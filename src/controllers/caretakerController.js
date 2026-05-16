@@ -1,11 +1,10 @@
-const User = require('../models/User');
-const Task = require('../models/Task');
-const Role = require('../models/Role');
-const DailyReport = require('../models/DailyReport');
-const Patient = require('../models/Patient'); 
-const PatientLog = require('../models/PatientLog'); 
-
-
+const User = require("../models/User");
+const Task = require("../models/Task");
+const Role = require("../models/Role");
+const DailyReport = require("../models/DailyReport");
+const Patient = require("../models/Patient");
+const PatientLog = require("../models/PatientLog");
+const notifyRules = require("../services/notifyRules");
 
 /**
  * @swagger
@@ -40,22 +39,29 @@ exports.getProfile = async (req, res) => {
 
     const query = caretakerId ? { _id: caretakerId } : email ? { email } : null;
     if (!query) {
-      return res.status(400).json({ error: 'Please provide either caretakerId or email' });
+      return res
+        .status(400)
+        .json({ error: "Please provide either caretakerId or email" });
     }
 
     const caretaker = await User.findOne(query)
-      .select('-password_hash -__v')
-      .populate('role', 'name')
-      .populate('organization', 'name')
-      .populate('assignedPatients', 'fullname age gender');
+      .select("-password_hash -__v")
+      .populate("role", "name")
+      .populate("organization", "name")
+      .populate("assignedPatients", "fullname age gender");
 
     if (!caretaker) {
-      return res.status(404).json({ error: 'Caretaker not found' });
+      return res.status(404).json({ error: "Caretaker not found" });
     }
 
     res.status(200).json(caretaker);
   } catch (error) {
-    res.status(500).json({ error: 'Error fetching caretaker profile', details: error.message });
+    res
+      .status(500)
+      .json({
+        error: "Error fetching caretaker profile",
+        details: error.message,
+      });
   }
 };
 
@@ -105,28 +111,30 @@ exports.updateProfile = async (req, res) => {
     const { caretakerId, ...updates } = req.body;
 
     if (!caretakerId) {
-      return res.status(400).json({ error: 'Missing caretakerId' });
+      return res.status(400).json({ error: "Missing caretakerId" });
     }
 
     const updatedCaretaker = await User.findByIdAndUpdate(
       caretakerId,
       { $set: updates },
-      { new: true, runValidators: true, context: 'query' }
+      { new: true, runValidators: true, context: "query" },
     )
-      .select('-password_hash -__v')
-      .populate('role', 'name')
-      .populate('assignedPatients', 'fullname age gender');
+      .select("-password_hash -__v")
+      .populate("role", "name")
+      .populate("assignedPatients", "fullname age gender");
 
     if (!updatedCaretaker) {
-      return res.status(404).json({ error: 'Caretaker not found' });
+      return res.status(404).json({ error: "Caretaker not found" });
     }
 
     res.status(200).json({
-      message: 'Caretaker profile updated successfully',
+      message: "Caretaker profile updated successfully",
       profile: updatedCaretaker,
     });
   } catch (error) {
-    res.status(500).json({ error: 'Error updating profile', details: error.message });
+    res
+      .status(500)
+      .json({ error: "Error updating profile", details: error.message });
   }
 };
 
@@ -186,7 +194,14 @@ exports.updateProfile = async (req, res) => {
  */
 exports.getTasks = async (req, res) => {
   try {
-    const { filter, dueDate, status, sort, page = '1', limit = '20' } = req.query;
+    const {
+      filter,
+      dueDate,
+      status,
+      sort,
+      page = "1",
+      limit = "20",
+    } = req.query;
 
     // IMPORTANT: tie to logged-in caretaker
     // If your JWT stores the caretaker document _id in req.user.id, this works directly.
@@ -194,20 +209,22 @@ exports.getTasks = async (req, res) => {
     // accept ?caretakerId override or map here as needed.
     const caretakerId = req.query.caretakerId || req.user?.id;
     if (!caretakerId) {
-      return res.status(400).json({ error: 'Missing caretaker context' });
+      return res.status(400).json({ error: "Missing caretaker context" });
     }
 
     // Build query
     const query = { caretaker: caretakerId };
 
-    if (filter === 'urgent') {
-      query.priority = 'high'; // maps from "urgent" to priority=high
+    if (filter === "urgent") {
+      query.priority = "high"; // maps from "urgent" to priority=high
     }
 
     if (dueDate) {
       const dt = new Date(dueDate);
       if (Number.isNaN(dt.getTime())) {
-        return res.status(400).json({ error: 'Invalid dueDate. Use YYYY-MM-DD.' });
+        return res
+          .status(400)
+          .json({ error: "Invalid dueDate. Use YYYY-MM-DD." });
       }
       // Tasks due on or before provided date (end of that day)
       const endOfDay = new Date(dt);
@@ -216,9 +233,9 @@ exports.getTasks = async (req, res) => {
     }
 
     if (status) {
-      const allowed = ['pending', 'in progress', 'completed'];
+      const allowed = ["pending", "in progress", "completed"];
       if (!allowed.includes(status)) {
-        return res.status(400).json({ error: 'Invalid status value' });
+        return res.status(400).json({ error: "Invalid status value" });
       }
       query.status = status;
     }
@@ -227,10 +244,10 @@ exports.getTasks = async (req, res) => {
     let sortSpec = { dueDate: 1 }; // default: soonest first
     if (sort) {
       // e.g., "dueDate", "-dueDate", "created_at", "-created_at"
-      const direction = sort.startsWith('-') ? -1 : 1;
-      const field = sort.replace(/^-/, '');
-      if (!['dueDate', 'created_at'].includes(field)) {
-        return res.status(400).json({ error: 'Invalid sort field' });
+      const direction = sort.startsWith("-") ? -1 : 1;
+      const field = sort.replace(/^-/, "");
+      if (!["dueDate", "created_at"].includes(field)) {
+        return res.status(400).json({ error: "Invalid sort field" });
       }
       sortSpec = { [field]: direction };
     }
@@ -245,7 +262,7 @@ exports.getTasks = async (req, res) => {
         .sort(sortSpec)
         .skip(skip)
         .limit(limitNum)
-        .populate('patient', 'fullname gender')
+        .populate("patient", "fullname gender")
         .lean(),
       Task.countDocuments(query),
     ]);
@@ -257,7 +274,130 @@ exports.getTasks = async (req, res) => {
       items,
     });
   } catch (error) {
-    return res.status(500).json({ error: 'Error fetching tasks', details: error.message });
+    return res
+      .status(500)
+      .json({ error: "Error fetching tasks", details: error.message });
+  }
+};
+/**
+ * @swagger
+ * /api/v1/caretaker/tasks:
+ *   post:
+ *     summary: Create a task for a patient assigned to the logged-in caretaker
+ *     tags: [Caretaker]
+ *     security:
+ *       - bearerAuth: []
+ *     description: >
+ *       Allows a caretaker to create a task only for their own assigned patient.
+ *       The caretaker field is automatically taken from the logged-in user's token.
+ *       Any caretakerId sent in the request body is ignored and cannot override the logged-in caretaker.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - description
+ *               - patientId
+ *               - dueDate
+ *             properties:
+ *               description:
+ *                 type: string
+ *                 example: "Help patient with morning medication"
+ *                 description: Task description
+ *               patientId:
+ *                 type: string
+ *                 example: "65f1a2b3c4d5e6f789012345"
+ *                 description: ID of the patient. Patient must be assigned to the logged-in caretaker.
+ *               dueDate:
+ *                 type: string
+ *                 format: date
+ *                 example: "2026-04-01"
+ *                 description: Due date for the task
+ *               nurseId:
+ *                 type: string
+ *                 example: "65f1a2b3c4d5e6f789012346"
+ *                 description: Optional nurse assigned to the task
+ *               priority:
+ *                 type: string
+ *                 enum: [low, medium, high]
+ *                 default: medium
+ *                 example: "medium"
+ *                 description: Task priority
+ *               caretakerId:
+ *                 type: string
+ *                 description: Ignored. Caretaker is always assigned from the logged-in token.
+ *     responses:
+ *       201:
+ *         description: Task created successfully
+ *       400:
+ *         description: Missing required fields
+ *       403:
+ *         description: Patient is not assigned to the logged-in caretaker
+ *       500:
+ *         description: Error creating task
+ */
+exports.createTask = async (req, res) => {
+  try {
+    const { description, patientId, dueDate, nurseId, priority } = req.body;
+
+    if (!description || !patientId || !dueDate) {
+      return res.status(400).json({
+        message: "description, patientId, and dueDate are required",
+      });
+    }
+
+    const caretakerId = req.user?._id || req.user?.id;
+    if (!caretakerId) {
+      return res.status(400).json({
+        message: "Missing caretaker context from token",
+      });
+    }
+
+    const patient = await Patient.findOne({
+      _id: patientId,
+      caretaker: caretakerId,
+    });
+
+    if (!patient) {
+      return res.status(403).json({
+        message:
+          "Forbidden. You can only create tasks for patients assigned to you.",
+      });
+    }
+
+    const newTask = new Task({
+      description,
+      patient: patientId,
+      dueDate,
+      caretaker: caretakerId,
+      nurse_id: nurseId,
+      priority: priority || "medium",
+    });
+
+    await newTask.save();
+
+    Promise.resolve(
+      notifyRules.taskCreated({
+        taskId: newTask._id,
+        patientId,
+        caretaker: newTask.caretaker,
+        nurse: newTask.nurse_id,
+        dueDate: newTask.dueDate,
+        actorId: req.user?._id,
+      }),
+    ).catch(() => {});
+
+    return res.status(201).json({
+      message: "Task created successfully",
+      task: newTask,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Error creating task",
+      details: error.message,
+    });
   }
 };
 /**
@@ -294,34 +434,39 @@ exports.getTasks = async (req, res) => {
 exports.getAllCaretakers = async (req, res) => {
   try {
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
-    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
+    const limit = Math.min(
+      Math.max(parseInt(req.query.limit, 10) || 20, 1),
+      100,
+    );
     const skip = (page - 1) * limit;
 
-    const { search, email, sort = '-created_at' } = req.query;
+    const { search, email, sort = "-created_at" } = req.query;
 
-    const role = await Role.findOne({ name: 'caretaker' });
+    const role = await Role.findOne({ name: "caretaker" });
     if (!role) {
-      return res.status(500).json({ message: 'Caretaker role not found in DB' });
+      return res
+        .status(500)
+        .json({ message: "Caretaker role not found in DB" });
     }
 
     const filter = { role: role._id };
 
     if (search) {
-      filter.fullname = { $regex: search, $options: 'i' };
+      filter.fullname = { $regex: search, $options: "i" };
     }
     if (email) {
-      filter.email = { $regex: email, $options: 'i' };
+      filter.email = { $regex: email, $options: "i" };
     }
 
     const [total, caretakers] = await Promise.all([
       User.countDocuments(filter),
       User.find(filter)
-        .select('-password_hash -__v')
-        .populate('role', 'name')
-        .populate('assignedPatients', 'fullname gender dateOfBirth')
+        .select("-password_hash -__v")
+        .populate("role", "name")
+        .populate("assignedPatients", "fullname gender dateOfBirth")
         .sort(sort)
         .skip(skip)
-        .limit(limit)
+        .limit(limit),
     ]);
 
     return res.status(200).json({
@@ -329,10 +474,12 @@ exports.getAllCaretakers = async (req, res) => {
       limit,
       total,
       totalPages: Math.ceil(total / limit),
-      data: caretakers
+      data: caretakers,
     });
   } catch (err) {
-    return res.status(500).json({ message: 'Error fetching caretakers', details: err.message });
+    return res
+      .status(500)
+      .json({ message: "Error fetching caretakers", details: err.message });
   }
 };
 
@@ -366,21 +513,22 @@ exports.getReportsByPatient = async (req, res) => {
     const { patientId } = req.params;
 
     if (!patientId) {
-      return res.status(400).json({ error: 'patientId is required' });
+      return res.status(400).json({ error: "patientId is required" });
     }
 
     const reports = await DailyReport.find({ patient: patientId })
-      .populate('patient', 'fullname gender')
-      .populate('caretaker', 'fullname email')
+      .populate("patient", "fullname gender")
+      .populate("caretaker", "fullname email")
       .sort({ createdAt: -1 });
 
     res.status(200).json(reports);
-
   } catch (error) {
-    res.status(500).json({ error: 'Error fetching reports', details: error.message });
+    res
+      .status(500)
+      .json({ error: "Error fetching reports", details: error.message });
   }
-}
-// Caretaker dashboard summary 
+};
+// Caretaker dashboard summary
 /**
  * @swagger
  * /api/v1/caretaker/dashboard-summary:
@@ -424,27 +572,35 @@ exports.getDashboardSummary = async (req, res) => {
     const caretakerId = req.user._id;
 
     // Get Role _id for "caretaker"
-    const caretakerRole = await Role.findOne({ name: 'caretaker' }).lean();
+    const caretakerRole = await Role.findOne({ name: "caretaker" }).lean();
     if (!caretakerRole) {
       return res.status(500).json({ error: 'Role "caretaker" not found' });
     }
 
     // Total patients assigned to this caretaker
-    const totalPatients = await Patient.countDocuments({ caretaker: caretakerId });
+    const totalPatients = await Patient.countDocuments({
+      caretaker: caretakerId,
+    });
 
     // Total active patients (not discharged or deceased)
-    const totalActivePatients = await Patient.countDocuments({ caretaker: caretakerId, isDeleted: false });
+    const totalActivePatients = await Patient.countDocuments({
+      caretaker: caretakerId,
+      isDeleted: false,
+    });
 
     // Total pending tasks assigned to this caretaker
     const totalTasks = await Task.countDocuments({ caretaker: caretakerId });
-    const completedTasks = await Task.countDocuments({ caretaker: caretakerId, status: 'completed' });
+    const completedTasks = await Task.countDocuments({
+      caretaker: caretakerId,
+      status: "completed",
+    });
     const pendingTasks = totalTasks - completedTasks;
 
     // Total Patient Logs for this caretaker
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const recentLogsCount = await PatientLog.countDocuments({
       createdBy: req.user._id,
-      createdAt: { $gte: sevenDaysAgo }
+      createdAt: { $gte: sevenDaysAgo },
     });
 
     const summary = {
@@ -453,11 +609,16 @@ exports.getDashboardSummary = async (req, res) => {
       totalTasks,
       completedTasks,
       pendingTasks,
-      recentLogsCount
+      recentLogsCount,
     };
 
     res.status(200).json(summary);
   } catch (error) {
-    res.status(500).json({ error: 'Error fetching dashboard summary', details: error.message });
+    res
+      .status(500)
+      .json({
+        error: "Error fetching dashboard summary",
+        details: error.message,
+      });
   }
 };
