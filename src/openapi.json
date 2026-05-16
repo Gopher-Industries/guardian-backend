@@ -58,7 +58,7 @@
         }
       }
     },
-    "/api/v1/admin/support-ticket": {
+    "/api/v1/admin/support-tickets": {
       "post": {
         "summary": "Create a support ticket",
         "tags": ["Admin"],
@@ -72,8 +72,7 @@
                 "required": ["subject", "description"],
                 "properties": {
                   "subject": { "type": "string" },
-                  "description": { "type": "string" },
-                  "status": { "type": "string", "default": "open" }
+                  "description": { "type": "string" }
                 }
               }
             }
@@ -81,6 +80,7 @@
         },
         "responses": {
           "201": { "description": "Support ticket created successfully" },
+          "400": { "description": "Invalid request body" },
           "500": { "description": "Error creating support ticket" }
         }
       }

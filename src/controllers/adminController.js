@@ -159,7 +159,7 @@ exports.getPatientOverview = async (req, res) => {
 
 /**
  * @swagger
- * /api/v1/admin/support-ticket:
+ * /api/v1/admin/support-tickets:
  *   post:
  *     summary: Create a support ticket
  *     tags: [Admin]
@@ -177,10 +177,6 @@ exports.getPatientOverview = async (req, res) => {
  *                 type: string
  *               description:
  *                 type: string
- *               status:
- *                 type: string
- *                 enum: [open, in_progress, resolved, closed]
- *                 default: open
  *     responses:
  *       201:
  *         description: Support ticket created successfully
@@ -191,22 +187,18 @@ exports.getPatientOverview = async (req, res) => {
  */
 exports.createSupportTicket = async (req, res) => {
   try {
-    const { subject, description, status } = req.body;
+    const { subject, description } = req.body;
     const normalizedSubject = String(subject || '').trim();
     const normalizedDescription = String(description || '').trim();
 
     if (!normalizedSubject || !normalizedDescription) {
       return res.status(400).json({ message: 'subject and description are required' });
     }
-    if (status !== undefined && !SUPPORT_TICKET_STATUSES.includes(status)) {
-      return res.status(400).json({ message: `status must be one of: ${SUPPORT_TICKET_STATUSES.join(', ')}` });
-    }
 
     const newTicket = new SupportTicket({
       user: req.user._id,
       subject: normalizedSubject,
       description: normalizedDescription,
-      status: status || 'open',
     });
 
     await newTicket.save();

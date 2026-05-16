@@ -93,11 +93,12 @@ describe('Support ticket flow', function () {
   it('supports creating, listing with pagination, and updating tickets', async function () {
     const createOneResponse = await chai
       .request(app)
-      .post('/api/v1/admin/support-ticket')
+      .post('/api/v1/admin/support-tickets')
       .set('Authorization', `Bearer ${requesterToken}`)
       .send({
         subject: 'Login issue',
         description: 'Unable to login from my tablet.',
+        status: 'resolved',
       });
 
     expect(createOneResponse).to.have.status(201);
@@ -109,7 +110,7 @@ describe('Support ticket flow', function () {
 
     const createTwoResponse = await chai
       .request(app)
-      .post('/api/v1/admin/support-ticket')
+      .post('/api/v1/admin/support-tickets')
       .set('Authorization', `Bearer ${requesterToken}`)
       .send({
         subject: 'Medication reminder bug',
@@ -159,7 +160,6 @@ describe('Support ticket flow', function () {
 
     const openApiResponse = await chai.request(app).get('/openapi.json');
     expect(openApiResponse).to.have.status(200);
-    expect(openApiResponse.body.paths).to.have.property('/api/v1/admin/support-ticket');
     expect(openApiResponse.body.paths).to.have.property('/api/v1/admin/support-tickets');
     expect(openApiResponse.body.paths).to.have.property('/api/v1/admin/support-tickets/{ticketId}');
 
