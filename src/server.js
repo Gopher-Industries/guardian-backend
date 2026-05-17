@@ -7,11 +7,26 @@ const multer = require('multer');
 const http = require('http');
 const socketIO = require('socket.io');
 
+const cors = require('cors');
+
+
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
 const { setEmit } = require('../socket');
 
 const app = express();
+//cors fix
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+app.options('*', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS,PATCH');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+  res.sendStatus(204);
+});
 
 // Create uploads directory locally only (Vercel filesystem is read-only)
 // if (!process.env.VERCEL) {
@@ -92,6 +107,7 @@ const blockScriptRequests = (req, res, next) => {
 };
 
 // app.use(blockScriptRequests);
+app.set('trust proxy', 1);
 
 const rateLimit = require('express-rate-limit');
 const limiter = rateLimit({
@@ -160,7 +176,7 @@ const orgRoutes = require('./routes/orgRoutes');
 const prescriptionRoutes = require('./routes/prescriptionRoutes');
 const taskRoutes = require('./routes/taskRoutes');
 const carePlanRoutes = require('./routes/carePlanRoutes');
-
+const resourceRoutes = require('./routes/resourceRoutes');
 app.use('/api/v1/auth', userRoutes);
 app.use('/api/v1/caretaker', caretakerRoutes);
 app.use('/api/v1/nurse', nurseRoutes);
@@ -179,6 +195,7 @@ app.use('/api/v1/admin', adminPatientRoutes);
 app.use('/api/v1/orgs', orgRoutes);
 app.use('/api/v1/tasks', taskRoutes);
 app.use('/api/v1/care-plans', carePlanRoutes);
+app.use('/api/v1/resources', resourceRoutes);
 
 app.use(
   '/swaggerDocs',
@@ -274,6 +291,8 @@ app.get('/', (req, res) => {
     </html>
   `);
 });
+
+
 
 const server = http.createServer(app);
 const io = socketIO(server, { cors: { origin: '*', methods: ['GET', 'POST'] } });

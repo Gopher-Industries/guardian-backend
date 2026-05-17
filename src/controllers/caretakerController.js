@@ -1,8 +1,9 @@
 const User = require('../models/User');
 const Task = require('../models/Task');
 const Role = require('../models/Role');
-const Patient = require('../models/Patient'); // only for population types
-const PatientLog = require('../models/PatientLog'); // only for population types
+const DailyReport = require('../models/DailyReport');
+const Patient = require('../models/Patient'); 
+const PatientLog = require('../models/PatientLog'); 
 
 
 
@@ -37,17 +38,16 @@ exports.getProfile = async (req, res) => {
   try {
     const { caretakerId, email } = req.query;
 
-    // Build the query based on provided parameters
     const query = caretakerId ? { _id: caretakerId } : email ? { email } : null;
     if (!query) {
       return res.status(400).json({ error: 'Please provide either caretakerId or email' });
     }
 
-    // Find the caretaker and populate role and assignedPatients
     const caretaker = await User.findOne(query)
-      .select('-password_hash -__v') // Exclude sensitive fields
-      .populate('role', 'name') // Populate role with name
-      .populate('assignedPatients', 'fullname age gender'); // Populate assignedPatients with full details
+      .select('-password_hash -__v')
+      .populate('role', 'name')
+      .populate('organization', 'name')
+      .populate('assignedPatients', 'fullname age gender');
 
     if (!caretaker) {
       return res.status(404).json({ error: 'Caretaker not found' });
@@ -327,7 +327,50 @@ exports.getAllCaretakers = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/v1/caretaker/reports/patient/{patientId}:
+ *   get:
+ *     summary: Get all daily reports for a specific patient
+ *     tags: [Caretaker]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: patientId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Patient ID
+ *     responses:
+ *       200:
+ *         description: List of reports for the patient
+ *       400:
+ *         description: Missing patientId
+ *       500:
+ *         description: Server error
+ */
 
+// GET reports by patient
+exports.getReportsByPatient = async (req, res) => {
+  try {
+    const { patientId } = req.params;
+
+    if (!patientId) {
+      return res.status(400).json({ error: 'patientId is required' });
+    }
+
+    const reports = await DailyReport.find({ patient: patientId })
+      .populate('patient', 'fullname gender')
+      .populate('caretaker', 'fullname email')
+      .sort({ createdAt: -1 });
+
+    res.status(200).json(reports);
+
+  } catch (error) {
+    res.status(500).json({ error: 'Error fetching reports', details: error.message });
+  }
+}
 // Caretaker dashboard summary 
 /**
  * @swagger

@@ -14,6 +14,11 @@ CarePlanSchema.pre('save', function(next) {
   next();
 });
 
+CarePlanSchema.pre('findOneAndUpdate', function(next) {
+  this.set({ updated_at: Date.now() });
+  next();
+});
+
 const CarePlan = mongoose.model('CarePlan', CarePlanSchema);
 
 module.exports = CarePlan;

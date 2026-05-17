@@ -16,6 +16,8 @@ const notifyRules = require('../services/notifyRules');
  *       properties:
  *         _id:
  *           type: string
+ *         title:
+ *           type: string
  *         description:
  *           type: string
  *         dueDate:
@@ -28,6 +30,8 @@ const notifyRules = require('../services/notifyRules');
  *           type: string
  *           enum: [pending, in progress, completed]
  *         patient:
+ *           type: string
+ *         assignee:
  *           type: string
  *         caretaker:
  *           type: string
@@ -307,8 +311,11 @@ exports.updateSupportTicket = async (req, res) => {
  *               - description
  *               - patientId
  *               - dueDate
- *               - caretakerId
+ *               - assigneeId
  *             properties:
+ *               title:
+ *                 type: string
+ *                 description: Task title. Defaults to description when omitted.
  *               description:
  *                 type: string
  *                 description: Task description
@@ -321,10 +328,13 @@ exports.updateSupportTicket = async (req, res) => {
  *                 example: '2026-04-01'
  *               caretakerId:
  *                 type: string
- *                 description: ID of the caretaker responsible for this task (required)
+ *                 description: Legacy assignee field. Used when assigneeId and nurseId are not provided.
  *               nurseId:
  *                 type: string
- *                 description: ID of the nurse assigned to carry out this task (optional)
+ *                 description: Legacy assignee field. Used when assigneeId is not provided.
+ *               assigneeId:
+ *                 type: string
+ *                 description: ID of the staff member assigned to this task
  *               priority:
  *                 type: string
  *                 enum: [low, medium, high]
@@ -347,17 +357,28 @@ exports.updateSupportTicket = async (req, res) => {
  */
 exports.createTask = async (req, res) => {
   try {
-    const { description, patientId, dueDate, caretakerId, nurseId, priority } = req.body;
+    const { title, description, patientId, dueDate, caretakerId, nurseId, assigneeId, priority } = req.body;
+    const assignee = assigneeId || nurseId || caretakerId;
 
-    const newTask = new Task({ description, patient: patientId, dueDate, caretaker: caretakerId, nurse_id: nurseId, priority });
+    if (!description || !patientId || !dueDate || !assignee) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+
+    const newTask = new Task({
+      title: title || description,
+      description,
+      patient: patientId,
+      dueDate,
+      assignee,
+      priority
+    });
     await newTask.save();
 
     Promise.resolve(
       notifyRules.taskCreated({
         taskId: newTask._id,
         patientId,
-        caretaker: newTask.caretaker,
-        nurse: newTask.nurse_id,
+        caretaker: newTask.assignee,
         dueDate: newTask.dueDate,
         actorId: req.user?._id
       })
@@ -400,6 +421,8 @@ exports.createTask = async (req, res) => {
  *                 type: string
  *               nurseId:
  *                 type: string
+ *               assigneeId:
+ *                 type: string
  *     responses:
  *       200:
  *         description: Task updated successfully
@@ -420,15 +443,16 @@ exports.createTask = async (req, res) => {
 exports.updateTask = async (req, res) => {
   try {
     const { taskId } = req.params;
-    const { caretakerId, nurseId, ...rest } = req.body;
+    const { caretakerId, nurseId, assigneeId, patientId, ...rest } = req.body;
 
     const updateData = {
       ...rest,
-      ...((caretakerId) && { caretaker: caretakerId }),
-      ...(nurseId && { nurse_id: nurseId })
+      ...(patientId && { patient: patientId }),
+      ...((assigneeId || nurseId || caretakerId) && { assignee: assigneeId || nurseId || caretakerId }),
+      updated_at: Date.now()
     };
 
-    const updatedTask = await Task.findByIdAndUpdate(taskId, updateData, { new: true });
+    const updatedTask = await Task.findByIdAndUpdate(taskId, updateData, { new: true, runValidators: true });
 
 
     if (!updatedTask) {
@@ -438,8 +462,7 @@ exports.updateTask = async (req, res) => {
       notifyRules.taskUpdated({
         taskId: updatedTask._id,
         patientId: updatedTask.patient,
-        caretaker: updatedTask.caretaker,
-        nurse: updatedTask.nurse_id,
+        caretaker: updatedTask.assignee,
         status: updatedTask.status,
         dueDate: updatedTask.dueDate,
         actorId: req.user?._id
@@ -492,8 +515,7 @@ exports.deleteTask = async (req, res) => {
     notifyRules.taskDeleted({
       taskId,
       patientId: deletedTask.patient,
-      caretaker: deletedTask.caretaker,
-      nurse: deletedTask.nurse_id,
+      caretaker: deletedTask.assignee,
       actorId: req.user?._id
     })
 

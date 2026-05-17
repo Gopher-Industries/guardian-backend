@@ -18,6 +18,11 @@ TaskSchema.pre('save', function (next) {
   next();
 });
 
+TaskSchema.pre('findOneAndUpdate', function (next) {
+  this.set({ updated_at: Date.now() });
+  next();
+});
+
 TaskSchema.index({ assignee: 1, dueDate: 1 });
 TaskSchema.index({ assignee: 1, priority: 1 });
 TaskSchema.index({ assignee: 1, status: 1 });
