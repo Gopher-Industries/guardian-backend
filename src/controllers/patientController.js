@@ -5,7 +5,7 @@ const notifyRules = require('../services/notifyRules');
 const Role = require('../models/Role');
 const { parseStringArray } = require('../utils/arrayUtils');
 
-/**
+/*
  * Restricts independent patient-management routes for approved organization-linked
  * nurses and caretakers. These users must use the organization-based workflow.
  */
@@ -37,6 +37,7 @@ async function blockIndependentPatientWorkForApprovedOrgMember(userId) {
  *     description: Endpoints for independent patient management
  *   - name: EntryReport
  *     description: Endpoints for patient activity and entry reporting
+ */
 
 /**
  * @swagger
