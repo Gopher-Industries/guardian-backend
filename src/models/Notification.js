@@ -9,7 +9,7 @@ const NotificationSchema = new mongoose.Schema({
 });
 
 
-NotificationSchema.index({ userId: 1, isRead: 1 });
-NotificationSchema.index({ userId: 1, createdAt: -1 });
+NotificationSchema.index({ userId: 1, isRead: 1, createdAt: -1 });
+
 
 module.exports = mongoose.model('Notification', NotificationSchema);

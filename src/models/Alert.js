@@ -9,8 +9,7 @@ const AlertSchema = new mongoose.Schema({
 });
 
 
-AlertSchema.index({ user_id: 1, is_read: 1 });
-AlertSchema.index({ user_id: 1, created_at: -1 });
+AlertSchema.index({ user_id: 1, is_read: 1, created_at: -1 });
 
 const Alert = mongoose.model('Alert', AlertSchema);
 

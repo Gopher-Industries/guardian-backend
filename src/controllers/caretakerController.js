@@ -46,6 +46,7 @@ exports.getProfile = async (req, res) => {
     const caretaker = await User.findOne(query)
       .select('-password_hash -__v') // Exclude sensitive fields
       .populate('role', 'name') // Populate role with name
+      .populate('organization', 'name') // Populate organization with name
       .populate('assignedPatients', 'fullname age gender')
       .lean(); // Populate assignedPatients with full details
 
