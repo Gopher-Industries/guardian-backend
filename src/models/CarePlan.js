@@ -1,13 +1,32 @@
 const mongoose = require('mongoose');
 
-
 const CarePlanSchema = new mongoose.Schema({
-  tasks: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Task' }], // List of tasks
+  title: { type: String, required: true, trim: true },
+  description: { type: String, default: '', trim: true },
+  tasks: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Task' }],
   patient: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient', required: true },
-  caretaker: { type: mongoose.Schema.Types.ObjectId, ref: 'Caretaker', required: true },
-  nurse: { type: mongoose.Schema.Types.ObjectId, ref: 'Nurse', required: true },
-  created_at: { type: Date, default: Date.now }
+  caretaker: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  nurse: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  status: { type: String, enum: ['active', 'inactive'], default: 'active' },
+  created_at: { type: Date, default: Date.now },
+  updated_at: { type: Date, default: Date.now }
 });
+
+CarePlanSchema.pre('save', function (next) {
+  this.updated_at = Date.now();
+  next();
+});
+
+CarePlanSchema.pre('findOneAndUpdate', function (next) {
+  this.set({ updated_at: Date.now() });
+  next();
+});
+
+CarePlanSchema.index(
+  { patient: 1, status: 1 },
+  { unique: true, partialFilterExpression: { status: 'active' } }
+);
+CarePlanSchema.index({ patient: 1, created_at: -1 });
 
 const CarePlan = mongoose.model('CarePlan', CarePlanSchema);
 
