@@ -1,5 +1,57 @@
 // controllers/patientLogController.js
+const mongoose = require('mongoose');
 const PatientLog = require('../models/PatientLog');
+const Patient = require('../models/Patient');
+const User = require('../models/User');
+const getUserId = (req) => req.user?._id || req.user?.id;
+const getRoleName = async (req) => {
+  if (req.user?.role?.name) {
+    return req.user.role.name;
+  }
+  if (req.user?.role && typeof req.user.role === 'string' && !mongoose.isValidObjectId(req.user.role)) {
+    return req.user.role;
+  }
+  const userId = getUserId(req);
+  const user = await User.findById(userId)
+    .populate('role', 'name')
+    .select('role')
+    .lean();
+  return user?.role?.name || user?.role;
+};
+const isSameId = (a, b) => { return a && b && a.toString() === b.toString();};
+
+const canModifyLog = async (log, req) => { 
+  const userId = getUserId(req);
+  const roleName = await getRoleName(req);
+  return isSameId(log.createdBy, userId) || roleName === 'admin';
+};
+
+const canAccessPatientLogs = async (patientId, req) => {
+  const userId = getUserId(req);
+  const roleName = await getRoleName(req);
+
+  if (roleName === 'admin') return true;
+
+  const patient = await Patient.findById(patientId)
+    .select('caretaker assignedNurses assignedDoctor')
+    .lean();
+
+  if (!patient) return false;
+
+  if (roleName === 'caretaker') {
+    return isSameId(patient.caretaker, userId);
+  }
+
+  if (roleName === 'nurse') {
+    return patient.assignedNurses?.some((nurseId) => isSameId(nurseId, userId));
+  }
+
+  if (roleName === 'doctor') {
+    return isSameId(patient.assignedDoctor, userId);
+  }
+
+  return false;
+};
 
 /**
  * @swagger
@@ -158,9 +210,26 @@ exports.getLogsByPatient = async (req, res) => {
   try {
     const { patientId } = req.params;
 
+    if (!mongoose.isValidObjectId(patientId)) {
+      return res.status(400).json({
+      error: 'Invalid patient ID.'
+      });
+    }
+
+    const hasAccess = await canAccessPatientLogs(patientId, req);
+
+    if (!hasAccess) {
+        return res.status(403).json({
+        error: 'Permission denied. You do not have access to this patient logs.'
+        });
+    }
+
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
-    const sort = req.query.sort || '-createdAt';
+    const allowedSortValues = ['createdAt', '-createdAt'];
+    const sort = allowedSortValues.includes(req.query.sort)
+      ? req.query.sort
+      : '-createdAt';
 
     const skip = (page - 1) * limit;
 
@@ -233,6 +302,11 @@ exports.updateLog = async (req, res) => {
   try {
     const { id } = req.params;
     const { title, description } = req.body;
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({
+      error: 'Invalid log ID.'
+      });
+    }
 
     if (!title && !description) {
       return res.status(400).json({
@@ -248,20 +322,17 @@ exports.updateLog = async (req, res) => {
       });
     }
 
-    const userId = req.user._id || req.user.id;
-    const userRole = req.user?.role?.name || req.user?.role;
-
-    const isCreator = log.createdBy.toString() === userId.toString();
-    const isAdmin = userRole === 'admin';
-
-    if (!isCreator && !isAdmin) {
+    if (!(await canModifyLog(log, req))) {
       return res.status(403).json({
-        error: 'Permission denied. Only the creator or admin can update this log.'
+      error: 'Permission denied. Only the creator or admin can update this log.'
       });
     }
 
     if (title) log.title = title;
     if (description) log.description = description;
+
+    log.updatedBy = getUserId(req);
+    log.updatedAt = new Date();
 
     const updatedLog = await log.save();
 
@@ -306,6 +377,11 @@ exports.updateLog = async (req, res) => {
 exports.deleteLog = async (req, res) => {
   try {
     const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({
+      error: 'Invalid log ID.'
+      });
+    }
 
     const log = await PatientLog.findById(id);
 
@@ -315,13 +391,7 @@ exports.deleteLog = async (req, res) => {
       });
     }
 
-    const userId = req.user._id || req.user.id;
-    const userRole = req.user?.role?.name || req.user?.role;
-
-    const isCreator = log.createdBy.toString() === userId.toString();
-    const isAdmin = userRole === 'admin';
-
-    if (!isCreator && !isAdmin) {
+    if (!(await canModifyLog(log, req))) {
       return res.status(403).json({
         error: 'Permission denied. Only the creator or admin can delete this log.'
       });
