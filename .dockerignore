@@ -4,6 +4,13 @@ npm-debug.log
 .github
 .DS_Store
 src/.DS_Store
-coverage
+
 .env
 *.log
+
+coverage
+.nyc_output
+.nycrc
+.nycrc.json
+
+src/test
