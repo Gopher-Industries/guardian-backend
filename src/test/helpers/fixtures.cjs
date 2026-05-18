@@ -60,8 +60,18 @@ async function createUser({
 }
 
 function signToken(user) {
+  const userId = String(user._id || user.id);
+  const organizationId = user.organization ? String(user.organization._id || user.organization) : undefined;
+
   return jwt.sign(
-    { _id: user._id, email: user.email },
+    {
+      _id: userId,
+      id: userId,
+      email: user.email,
+      role: user.role ? String(user.role._id || user.role) : undefined,
+      organization: organizationId,
+      organisation: organizationId,
+    },
     process.env.JWT_SECRET,
     { expiresIn: '1h', algorithm: 'HS256' }
   );

@@ -1,0 +1,27 @@
+{
+  "all": true,
+  "cache": false,
+  "extension": [".js"],
+  "include": [
+    "src/controllers/**/*.js",
+    "src/middleware/**/*.js",
+    "src/models/**/*.js",
+    "src/routes/**/*.js",
+    "src/services/**/*.js",
+    "src/utils/arrayUtils.js"
+  ],
+  "exclude": [
+    "src/test/**",
+    "src/views/**",
+    "src/server.js",
+    "src/seedData.js",
+    "src/seedRoles.js",
+    "src/updateSeedData.js",
+    "src/openapi.json",
+    "src/utils/mailer.js",
+    "socket.js",
+    "**/*.cjs"
+  ],
+  "reporter": ["text", "text-summary", "html", "lcov"],
+  "report-dir": "coverage"
+}

@@ -33,13 +33,16 @@
   "scripts": {
     "start": "nodemon src/server.js",
     "dev": "nodemon src/app.js",
-    "test": "NODE_ENV=test mocha 'src/test/**/*.cjs' --recursive --exit"
+    "test": "NODE_ENV=test mocha 'src/test/**/*.cjs' --recursive --exit",
+    "test:coverage": "NODE_ENV=test nyc mocha 'src/test/**/*.cjs' --recursive --exit",
+    "coverage:check": "NODE_ENV=test nyc --check-coverage --branches 65 --lines 79 --functions 80 --statements 77 mocha 'src/test/**/*.cjs' --recursive --exit"
   },
   "devDependencies": {
     "@types/socket.io": "^3.0.2",
     "chai": "^4.4.1",
     "chai-http": "^4.4.0",
-    "mocha": "^11.7.5",
-    "mongodb-memory-server": "^11.0.1"
+    "mocha": "^11.3.0",
+    "mongodb-memory-server": "^11.0.1",
+    "nyc": "^15.1.0"
   }
 }
