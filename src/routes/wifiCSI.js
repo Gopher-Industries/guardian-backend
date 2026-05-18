@@ -1,20 +1,24 @@
 const express = require('express');
 const router = express.Router();
-const mongoose = require('mongoose');
 const WifiCSI = require('../models/WifiCSI');
 const WifiCSIArchive = require('../models/WifiCSIArchive');
 const verifyToken = require('../middleware/verifyToken');
+const {
+  buildScopedRecordFilter,
+  validateAccessiblePatient
+} = require('../utils/patientAccess');
 
-function applyPatientFilter(req, filter) {
-  const { patientId } = req.query;
-  if (!patientId) return true;
+async function applyPatientFromBody(req, data) {
+  const { patientId } = req.body;
+  if (!patientId) return { ok: true };
 
-  if (!mongoose.Types.ObjectId.isValid(patientId)) {
-    return false;
+  const access = await validateAccessiblePatient(req.user._id, patientId);
+  if (!access.ok) {
+    return access;
   }
 
-  filter.patient = patientId;
-  return true;
+  data.patient = access.patient._id;
+  return { ok: true };
 }
 
 /**
@@ -37,7 +41,8 @@ function applyPatientFilter(req, filter) {
  *             properties:
  *               patientId:
  *                 type: string
- *                 description: Optional patient ObjectId to link this WifiCSI record to a patient.
+ *                 example: 64f1a2b3c4d5e6f789012345
+ *                 description: Optional accessible patient ObjectId to link this WifiCSI record to a patient.
  *               timestamp:
  *                 type: string
  *                 format: date-time
@@ -48,6 +53,10 @@ function applyPatientFilter(req, filter) {
  *         description: WifiCSI record created successfully.
  *       400:
  *         description: Invalid request.
+ *       403:
+ *         description: Patient is not accessible to the authenticated user.
+ *       404:
+ *         description: Patient not found.
  */
 router.post('/', verifyToken, async (req, res) => {
   try {
@@ -57,15 +66,16 @@ router.post('/', verifyToken, async (req, res) => {
       csi_data: req.body.csi_data
     };
 
-    if (req.body.patientId) {
-      wifiCSIData.patient = req.body.patientId;
+    const patientAccess = await applyPatientFromBody(req, wifiCSIData);
+    if (!patientAccess.ok) {
+      return res.status(patientAccess.status).json({ error: patientAccess.error });
     }
 
     const newWifiCSI = new WifiCSI(wifiCSIData);
     await newWifiCSI.save();
     res.status(201).json(newWifiCSI);
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    res.status(error.status || 400).json({ error: error.message });
   }
 });
 
@@ -83,24 +93,28 @@ router.post('/', verifyToken, async (req, res) => {
  *         schema:
  *           type: string
  *         required: false
- *         description: Optional patient ObjectId used to filter linked WifiCSI records.
+ *         description: Optional accessible patient ObjectId used to filter linked WifiCSI records.
  *     responses:
  *       200:
  *         description: List of WifiCSI records.
  *       400:
  *         description: Invalid patientId format.
+ *       403:
+ *         description: Patient is not accessible to the authenticated user.
+ *       404:
+ *         description: Patient not found.
  */
 router.get('/', verifyToken, async (req, res) => {
   try {
-    const filter = { user_id: req.user._id };
-    if (!applyPatientFilter(req, filter)) {
-      return res.status(400).json({ error: 'Invalid patientId format' });
+    const scopedFilter = await buildScopedRecordFilter(req.user._id, req.query.patientId);
+    if (!scopedFilter.ok) {
+      return res.status(scopedFilter.status).json({ error: scopedFilter.error });
     }
 
-    const data = await WifiCSI.find(filter);
+    const data = await WifiCSI.find(scopedFilter.filter);
     res.status(200).json(data);
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    res.status(error.status || 400).json({ error: error.message });
   }
 });
 
@@ -118,24 +132,28 @@ router.get('/', verifyToken, async (req, res) => {
  *         schema:
  *           type: string
  *         required: false
- *         description: Optional patient ObjectId used to filter linked archived WifiCSI records.
+ *         description: Optional accessible patient ObjectId used to filter linked archived WifiCSI records.
  *     responses:
  *       200:
  *         description: List of archived WifiCSI records.
  *       400:
  *         description: Invalid patientId format.
+ *       403:
+ *         description: Patient is not accessible to the authenticated user.
+ *       404:
+ *         description: Patient not found.
  */
 router.get('/archive', verifyToken, async (req, res) => {
   try {
-    const filter = { user_id: req.user._id };
-    if (!applyPatientFilter(req, filter)) {
-      return res.status(400).json({ error: 'Invalid patientId format' });
+    const scopedFilter = await buildScopedRecordFilter(req.user._id, req.query.patientId);
+    if (!scopedFilter.ok) {
+      return res.status(scopedFilter.status).json({ error: scopedFilter.error });
     }
 
-    const data = await WifiCSIArchive.find(filter);
+    const data = await WifiCSIArchive.find(scopedFilter.filter);
     res.status(200).json(data);
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    res.status(error.status || 400).json({ error: error.message });
   }
 });
 
