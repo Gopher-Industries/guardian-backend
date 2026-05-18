@@ -17,21 +17,21 @@ jobs:
       mongo:
         image: mongo:6
         env:
-          MONGO_INITDB_ROOT_USERNAME: admin
-          MONGO_INITDB_ROOT_PASSWORD: password
+          MONGO_INITDB_ROOT_USERNAME: ${{ secrets.TEST_MONGO_USERNAME }}
+          MONGO_INITDB_ROOT_PASSWORD: ${{ secrets.TEST_MONGO_PASSWORD }}
           MONGO_INITDB_DATABASE: guardian_test
         ports:
           - 27018:27017
         options: >-
-          --health-cmd "mongosh --quiet --eval 'db.adminCommand({ ping: 1 })' -u admin -p password --authenticationDatabase admin"
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand({ ping: 1 })' -u ${{ secrets.TEST_MONGO_USERNAME }} -p ${{ secrets.TEST_MONGO_PASSWORD }} --authenticationDatabase admin"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 10
 
     env:
       NODE_ENV: test
-      JWT_SECRET: gmproject
-      MONGODB_URI: mongodb://admin:password@127.0.0.1:27018/guardian_test?authSource=admin
+      JWT_SECRET: ${{ secrets.TEST_JWT_SECRET }}
+      MONGODB_URI: mongodb://${{ secrets.TEST_MONGO_USERNAME }}:${{ secrets.TEST_MONGO_PASSWORD }}@127.0.0.1:27018/guardian_test?authSource=admin
 
     steps:
       - name: Check out repository
@@ -48,6 +48,9 @@ jobs:
 
       - name: Run automated backend tests
         run: npm test
+
+      - name: Run backend coverage check
+        run: npm run coverage:check
 
       - name: Build backend Docker image
         run: docker build -t guardian-backend:test .
