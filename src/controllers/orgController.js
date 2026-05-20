@@ -231,7 +231,7 @@ exports.listMyOrgs = async (req, res) => {
 
     const orgs = await Organization.find({
       $or: [{ createdBy: req.user._id }, { staff: req.user._id }],
-    }).sort({ created_at: -1 }).lean();
+    }).sort({ created_at: -1 });
 
     res.status(200).json({ orgs });
   } catch (err) {
