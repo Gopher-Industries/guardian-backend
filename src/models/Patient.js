@@ -1,8 +1,8 @@
 'use strict';
 
 const mongoose = require('mongoose');
+const { randomUUID } = require('crypto');
 const { Schema, Types } = mongoose;
-const { v4: uuidv4 } = require('uuid');
 const User = require('./User');
 const Organization = require('./Organization');
 
@@ -43,7 +43,7 @@ const PatientSchema = new Schema(
     // uuid for external reference (not just mongo id)
     uuid: {
       type: String,
-      default: uuidv4,
+      default: randomUUID,
       unique: true,
       index: true,
       required: true,
