@@ -4,6 +4,7 @@ const Task = require('../models/Task');
 const CarePlan = require('../models/CarePlan');
 const User = require('../models/User');
 const Role = require('../models/Role');
+const PatientLog = require('../models/PatientLog');
 //const SupportTicket = require('../models/SupportTicket');
 const notifyRules = require('../services/notifyRules');
 
@@ -510,12 +511,18 @@ exports.deleteTask = async (req, res) => {
  * /api/v1/admin/dashboard-summary:
  *   get:
  *     summary: Get admin dashboard summary
+ *     description: >-
+ *       Returns a system-wide snapshot for administrators. Includes total and active
+ *       patient counts, a staff breakdown by role with pending approval count, a full
+ *       task breakdown (total, completed, in-progress, pending, and overdue) across
+ *       all staff, task completion rate, and a count of patient logs created
+ *       system-wide in the last 7 days. Requires a valid JWT with the **admin** role.
  *     tags: [Admin]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Admin dashboard summary
+ *         description: Admin dashboard summary fetched successfully.
  *         content:
  *           application/json:
  *             schema:
@@ -523,42 +530,129 @@ exports.deleteTask = async (req, res) => {
  *               properties:
  *                 totalPatients:
  *                   type: integer
+ *                   description: Total patients registered in the system (including deleted).
+ *                   example: 20
  *                 totalActivePatients:
  *                   type: integer
- *                 totalStaff:
- *                   type: integer
+ *                   description: Active (non-deleted) patients in the system.
+ *                   example: 18
+ *                 staff:
+ *                   type: object
+ *                   description: Breakdown of registered staff accounts.
+ *                   properties:
+ *                     total:
+ *                       type: integer
+ *                       description: Total staff across all clinical roles (doctors, nurses, caretakers).
+ *                       example: 12
+ *                     doctors:
+ *                       type: integer
+ *                       description: Number of users with the doctor role.
+ *                       example: 3
+ *                     nurses:
+ *                       type: integer
+ *                       description: Number of users with the nurse role.
+ *                       example: 5
+ *                     caretakers:
+ *                       type: integer
+ *                       description: Number of users with the caretaker role.
+ *                       example: 4
+ *                     pendingApprovals:
+ *                       type: integer
+ *                       description: Staff accounts with approvalStatus = "pending".
+ *                       example: 2
  *                 totalTasks:
  *                   type: integer
+ *                   description: Total tasks across all staff and patients in the system.
+ *                   example: 45
  *                 completedTasks:
  *                   type: integer
+ *                   description: Tasks marked as completed system-wide.
+ *                   example: 20
+ *                 inProgressTasks:
+ *                   type: integer
+ *                   description: Tasks currently marked as in progress system-wide.
+ *                   example: 8
  *                 pendingTasks:
  *                   type: integer
+ *                   description: Tasks not yet started (totalTasks − completed − inProgress).
+ *                   example: 17
+ *                 overdueTasks:
+ *                   type: integer
+ *                   description: Incomplete tasks whose due date has already passed, system-wide.
+ *                   example: 6
  *                 taskCompletionRate:
  *                   type: integer
- *                   description: Percentage of completed tasks
+ *                   description: Percentage of tasks completed system-wide (0–100).
+ *                   example: 44
+ *                 recentLogsCount:
+ *                   type: integer
+ *                   description: Patient log entries created system-wide in the last 7 days.
+ *                   example: 14
  *       500:
- *         description: Error fetching dashboard summary
+ *         description: Unexpected server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 details:
+ *                   type: string
  */
 exports.getDashboardSummary = async (req, res) => {
   try {
-    const totalPatients = await Patient.countDocuments();
-    const totalActivePatients = await Patient.countDocuments({ isDeleted: false });
-    const totalTasks = await Task.countDocuments();
-    const totalStaff = await User.countDocuments({ role: { $in: await Role.find({ name: { $in: ['nurse', 'caretaker', 'doctor'] } }).distinct('_id') } });
-    const completedTasks = await Task.countDocuments({ status: 'completed' });
-    const pendingTasks = await Task.countDocuments({ status: 'pending' });
+    const now = new Date();
+    const sevenDaysAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
 
-    const summary = {
+    const staffRoleIds = await Role.find({ name: { $in: ['nurse', 'caretaker', 'doctor'] } }).distinct('_id');
+
+    const [
       totalPatients,
       totalActivePatients,
       totalStaff,
+      totalDoctors,
+      totalNurses,
+      totalCaretakers,
+      pendingApprovals,
       totalTasks,
       completedTasks,
-      pendingTasks,
-      taskCompletionRate: totalTasks ? Math.round((completedTasks / totalTasks) * 100) : 0,
-    };
+      inProgressTasks,
+      overdueTasks,
+      recentLogsCount,
+    ] = await Promise.all([
+      Patient.countDocuments(),
+      Patient.countDocuments({ isDeleted: false }),
+      User.countDocuments({ role: { $in: staffRoleIds } }),
+      User.countDocuments({ role: (await Role.findOne({ name: 'doctor' }).select('_id').lean())?._id }),
+      User.countDocuments({ role: (await Role.findOne({ name: 'nurse' }).select('_id').lean())?._id }),
+      User.countDocuments({ role: (await Role.findOne({ name: 'caretaker' }).select('_id').lean())?._id }),
+      User.countDocuments({ approvalStatus: 'pending' }),
+      Task.countDocuments(),
+      Task.countDocuments({ status: 'completed' }),
+      Task.countDocuments({ status: 'in progress' }),
+      Task.countDocuments({ status: { $ne: 'completed' }, dueDate: { $lt: now } }),
+      PatientLog.countDocuments({ createdAt: { $gte: sevenDaysAgo } }),
+    ]);
 
-    res.status(200).json(summary);
+    res.status(200).json({
+      totalPatients,
+      totalActivePatients,
+      staff: {
+        total: totalStaff,
+        doctors: totalDoctors,
+        nurses: totalNurses,
+        caretakers: totalCaretakers,
+        pendingApprovals,
+      },
+      totalTasks,
+      completedTasks,
+      inProgressTasks,
+      pendingTasks: totalTasks - completedTasks - inProgressTasks,
+      overdueTasks,
+      taskCompletionRate: totalTasks ? Math.round((completedTasks / totalTasks) * 100) : 0,
+      recentLogsCount,
+    });
   } catch (error) {
     res.status(500).json({ message: 'Error fetching dashboard summary', details: error.message });
   }

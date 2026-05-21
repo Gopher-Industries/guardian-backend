@@ -18,6 +18,11 @@ router.param('doctorId', (req, res, next, id) => {
 // GET /api/v1/doctors -> list all doctors (supports ?search=&page=&limit=)
 router.get('/', verifyToken, doctorController.listDoctors);
 
+// Static /doctors/* routes must come before /:doctorId to avoid param capture
+router.get('/profile', verifyToken, verifyRole(['doctor']), doctorController.getProfile);
+router.put('/profile', verifyToken, verifyRole(['doctor']), doctorController.updateProfile);
+router.get('/dashboard-summary', verifyToken, verifyRole(['doctor']), doctorController.getDashboardSummary);;
+
 // GET /api/v1/doctors/:doctorId/patients -> patients assigned to a doctor
 router.get(
   '/:doctorId/patients',
