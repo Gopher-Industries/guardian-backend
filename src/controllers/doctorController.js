@@ -262,8 +262,10 @@ exports.assignDoctorToPatient = async (req, res) => {
  *                     licenseNumber:
  *                       type: string
  *                       nullable: true
- *                       pattern: '^[A-Z]{2,4}-\d{4}-\d{3,}$'
- *                       description: "Medical registration number. Format: {TYPE}-{YEAR}-{NUMBER} (e.g. MED-2024-001)"
+ *                       description: >-
+ *                         Medical registration number. Accepted as a free-form string for now.
+ *                         TODO: implement proper format and authority validation
+ *                         (e.g. verify against PRC/PMA registry or enforce a country-specific pattern).
  *                       example: "MED-2024-001"
  *       404:
  *         description: The authenticated user's doctor record was not found.
@@ -347,8 +349,10 @@ exports.getProfile = async (req, res) => {
  *                 example: "Geriatrics"
  *               licenseNumber:
  *                 type: string
- *                 pattern: '^[A-Z]{2,4}-\d{4}-\d{3,}$'
- *                 description: "Medical registration number. Format: {TYPE}-{YEAR}-{NUMBER} (e.g. MED-2024-001). Stored in the Doctor record."
+ *                 description: >-
+ *                   Medical registration number. Accepted as a free-form string for now.
+ *                   TODO: implement proper format and authority validation
+ *                   (e.g. verify against PRC/PMA registry or enforce a country-specific pattern).
  *                 example: "MED-2024-001"
  *           examples:
  *             full update:
@@ -385,8 +389,10 @@ exports.getProfile = async (req, res) => {
  *                     licenseNumber:
  *                       type: string
  *                       nullable: true
- *                       pattern: '^[A-Z]{2,4}-\d{4}-\d{3,}$'
- *                       description: "Medical registration number. Format: {TYPE}-{YEAR}-{NUMBER} (e.g. MED-2024-001)"
+ *                       description: >-
+ *                         Medical registration number. Accepted as a free-form string for now.
+ *                         TODO: implement proper format and authority validation
+ *                         (e.g. verify against PRC/PMA registry or enforce a country-specific pattern).
  *                       example: "MED-2024-001"
  *                     createdAt:
  *                       type: string
@@ -454,6 +460,7 @@ exports.updateProfile = async (req, res) => {
     // Whitelist doctor-specific fields — never allow `user` or other schema fields to be overwritten
     const doctorFields = {};
     if (specialization !== undefined) doctorFields.specialization = specialization;
+    // TODO: validate licenseNumber format and verify against official registry before saving
     if (licenseNumber !== undefined) doctorFields.licenseNumber = licenseNumber;
 
     const profile = await Doctor.findOneAndUpdate(
