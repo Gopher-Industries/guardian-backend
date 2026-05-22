@@ -91,7 +91,8 @@ exports.getPatientOverview = async (req, res) => {
 
     const patientDetails = await Patient.findById(patientId)
       .populate('caretaker')
-      .populate('assignedNurses');
+      .populate('assignedNurses')
+      .lean();
 
     if (!patientDetails) {
       return res.status(404).json({ message: 'Patient not found' });
@@ -99,7 +100,7 @@ exports.getPatientOverview = async (req, res) => {
 
     const healthRecords = await HealthRecord.find({ patient: patientId });
     const tasks = await Task.find({ patient: patientId });
-    const carePlan = await CarePlan.findOne({ patient: patientId }).populate('tasks');
+    const carePlan = await CarePlan.findOne({ patient: patientId }).populate('tasks').lean();
 
     const taskCompletionRate = tasks.length
       ? (tasks.filter(task => task.status === 'completed').length / tasks.length) * 100
@@ -212,7 +213,7 @@ exports.getSupportTickets = async (req, res) => {
     if (status) query.status = status;
     if (userId) query.user = userId;
 
-    const tickets = await SupportTicket.find(query).populate('user');
+    const tickets = await SupportTicket.find(query).populate('user').lean();
     res.status(200).json(tickets);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching support tickets', details: error.message });

@@ -9,4 +9,7 @@ const PatientLogSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
+PatientLogSchema.index({ patient: 1, createdAt: -1 });
+PatientLogSchema.index({ createdBy: 1, createdAt: -1 });
+
 module.exports = mongoose.model('PatientLog', PatientLogSchema);

@@ -133,7 +133,8 @@ exports.getLogsByPatient = async (req, res) => {
     const { patientId } = req.params;
     const logs = await PatientLog.find({ patient: patientId })
       .populate('createdBy', 'fullname role')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
     res.status(200).json(logs);
   } catch (err) {
