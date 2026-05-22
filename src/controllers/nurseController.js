@@ -158,12 +158,18 @@ exports.getAssignedPatientsForNurse = async (req, res) => {
  * /api/v1/nurse/dashboard-summary:
  *   get:
  *     summary: Get nurse dashboard summary
+ *     description: >-
+ *       Returns a real-time snapshot of activity scoped to the authenticated nurse.
+ *       Includes patient counts, a full task breakdown (total, completed, in-progress,
+ *       pending, and overdue), task completion rate, and a count of patient logs
+ *       created by this nurse in the last 7 days. Requires a valid JWT with the
+ *       **nurse** role.
  *     tags: [Nurse]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Nurse dashboard summary
+ *         description: Nurse dashboard summary fetched successfully.
  *         content:
  *           application/json:
  *             schema:
@@ -171,51 +177,87 @@ exports.getAssignedPatientsForNurse = async (req, res) => {
  *               properties:
  *                 totalPatients:
  *                   type: integer
- *                   description: Total patients assigned to the nurse
+ *                   description: Total patients assigned to this nurse (including deleted).
+ *                   example: 5
  *                 totalActivePatients:
  *                   type: integer
- *                   description: Active (non-deleted) patients assigned to the nurse
+ *                   description: Active (non-deleted) patients assigned to this nurse.
+ *                   example: 4
  *                 totalTasks:
  *                   type: integer
- *                   description: Total tasks assigned to the nurse
+ *                   description: Total tasks assigned to this nurse across all patients.
+ *                   example: 10
  *                 completedTasks:
  *                   type: integer
- *                   description: Completed tasks assigned to the nurse
+ *                   description: Tasks this nurse has marked as completed.
+ *                   example: 4
+ *                 inProgressTasks:
+ *                   type: integer
+ *                   description: Tasks currently marked as in progress.
+ *                   example: 2
  *                 pendingTasks:
  *                   type: integer
- *                   description: Pending tasks assigned to the nurse
+ *                   description: Tasks not yet started (totalTasks − completed − inProgress).
+ *                   example: 4
+ *                 overdueTasks:
+ *                   type: integer
+ *                   description: Incomplete tasks whose due date has already passed.
+ *                   example: 2
+ *                 taskCompletionRate:
+ *                   type: integer
+ *                   description: Percentage of tasks completed (0–100).
+ *                   example: 40
  *                 recentLogsCount:
  *                   type: integer
- *                   description: Patient logs created by the nurse in the last 7 days
+ *                   description: Patient log entries created by this nurse in the last 7 days.
+ *                   example: 3
  *       500:
- *         description: Error fetching nurse dashboard summary
+ *         description: Unexpected server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                 details:
+ *                   type: string
  */
 exports.getDashboardSummary = async (req, res) => {
   try {
     const nurseId = req.user._id;
+    const now = new Date();
+    const sevenDaysAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
 
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-
-    const [totalPatients, totalActivePatients, totalTasks, completedTasks, recentLogsCount] = await Promise.all([
-      Patient.countDocuments({ assignedNurses: nurseId }),
-      Patient.countDocuments({ assignedNurses: nurseId, isDeleted: false }),
-      Task.countDocuments({ nurse_id: nurseId }),
-      Task.countDocuments({ nurse_id: nurseId, status: 'completed' }),
-      PatientLog.countDocuments({ createdBy: req.user._id, createdAt: { $gte: sevenDaysAgo } })
-    ]);
-
-    const pendingTasks = totalTasks - completedTasks;
-
-    const summary = {
+    const [
       totalPatients,
       totalActivePatients,
       totalTasks,
       completedTasks,
-      pendingTasks,
-      recentLogsCount
-    };
+      inProgressTasks,
+      overdueTasks,
+      recentLogsCount,
+    ] = await Promise.all([
+      Patient.countDocuments({ assignedNurses: nurseId }),
+      Patient.countDocuments({ assignedNurses: nurseId, isDeleted: false }),
+      Task.countDocuments({ nurse_id: nurseId }),
+      Task.countDocuments({ nurse_id: nurseId, status: 'completed' }),
+      Task.countDocuments({ nurse_id: nurseId, status: 'in progress' }),
+      Task.countDocuments({ nurse_id: nurseId, status: { $ne: 'completed' }, dueDate: { $lt: now } }),
+      PatientLog.countDocuments({ createdBy: nurseId, createdAt: { $gte: sevenDaysAgo } }),
+    ]);
 
-    res.status(200).json(summary);
+    res.status(200).json({
+      totalPatients,
+      totalActivePatients,
+      totalTasks,
+      completedTasks,
+      inProgressTasks,
+      pendingTasks: totalTasks - completedTasks - inProgressTasks,
+      overdueTasks,
+      taskCompletionRate: totalTasks ? Math.round((completedTasks / totalTasks) * 100) : 0,
+      recentLogsCount,
+    });
   } catch (error) {
     res.status(500).json({ error: 'Error fetching dashboard summary', details: error.message });
   }
