@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const taskController = require('../controllers/taskController');
 const verifyToken = require('../middleware/verifyToken');
+const verifyRole = require('../middleware/verifyRole');
+
+router.use(verifyToken, verifyRole(['admin', 'caretaker', 'nurse', 'doctor']));
 
 /**
  * @swagger
@@ -51,7 +54,7 @@ const verifyToken = require('../middleware/verifyToken');
  *       404:
  *         description: Patient or assignee not found
  */
-router.post('/', verifyToken, taskController.createTask);
+router.post('/', taskController.createTask);
 
 /**
  * @swagger
@@ -94,7 +97,7 @@ router.post('/', verifyToken, taskController.createTask);
  *       200:
  *         description: Paged task list
  */
-router.get('/', verifyToken, taskController.getAllTasks);
+router.get('/', taskController.getAllTasks);
 
 /**
  * @swagger
@@ -140,7 +143,7 @@ router.get('/', verifyToken, taskController.getAllTasks);
  *       404:
  *         description: Task, patient, or assignee not found
  */
-router.put('/:taskId', verifyToken, taskController.updateTask);
+router.put('/:taskId', taskController.updateTask);
 
 /**
  * @swagger
@@ -162,7 +165,7 @@ router.put('/:taskId', verifyToken, taskController.updateTask);
  *       404:
  *         description: Task not found
  */
-router.delete('/:taskId', verifyToken, taskController.deleteTask);
+router.delete('/:taskId', taskController.deleteTask);
 
 /**
  * @swagger
@@ -182,7 +185,7 @@ router.delete('/:taskId', verifyToken, taskController.deleteTask);
  *       200:
  *         description: Task list for a patient
  */
-router.get('/patient/:patientId', verifyToken, taskController.getTasksByPatient);
+router.get('/patient/:patientId', taskController.getTasksByPatient);
 
 /**
  * @swagger
@@ -202,6 +205,6 @@ router.get('/patient/:patientId', verifyToken, taskController.getTasksByPatient)
  *       200:
  *         description: Task list for an assignee
  */
-router.get('/assignee/:assigneeId', verifyToken, taskController.getTasksByAssignee);
+router.get('/assignee/:assigneeId', taskController.getTasksByAssignee);
 
 module.exports = router;

@@ -5,6 +5,16 @@ const DailyReport = require('../models/DailyReport');
 const Patient = require('../models/Patient'); 
 const PatientLog = require('../models/PatientLog'); 
 
+function taskAssigneeQuery(userId) {
+  return {
+    $or: [
+      { assignee: userId },
+      { caretaker: userId },
+      { nurse_id: userId }
+    ]
+  };
+}
+
 
 
 /**
@@ -193,7 +203,7 @@ exports.getTasks = async (req, res) => {
       return res.status(400).json({ error: 'Missing caretaker context' });
     }
 
-    const query = { assignee: caretakerId };
+    const query = taskAssigneeQuery(caretakerId);
 
     if (filter === 'urgent') {
       query.priority = 'high';
@@ -460,10 +470,10 @@ exports.getDashboardSummary = async (req, res) => {
     ] = await Promise.all([
       Patient.countDocuments({ caretaker: caretakerId }),
       Patient.countDocuments({ caretaker: caretakerId, isDeleted: false }),
-      Task.countDocuments({ assignee: caretakerId }),
-      Task.countDocuments({ assignee: caretakerId, status: 'completed' }),
-      Task.countDocuments({ assignee: caretakerId, status: 'in progress' }),
-      Task.countDocuments({ assignee: caretakerId, status: { $ne: 'completed' }, dueDate: { $lt: now } }),
+      Task.countDocuments(taskAssigneeQuery(caretakerId)),
+      Task.countDocuments({ ...taskAssigneeQuery(caretakerId), status: 'completed' }),
+      Task.countDocuments({ ...taskAssigneeQuery(caretakerId), status: 'in progress' }),
+      Task.countDocuments({ ...taskAssigneeQuery(caretakerId), status: { $ne: 'completed' }, dueDate: { $lt: now } }),
       PatientLog.countDocuments({ createdBy: caretakerId, createdAt: { $gte: sevenDaysAgo } }),
     ]);
 

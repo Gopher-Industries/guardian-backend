@@ -8,9 +8,23 @@ const TaskSchema = new mongoose.Schema({
   status: { type: String, enum: ['pending', 'in progress', 'completed'], default: 'pending' },
   patient: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient', required: true },
   assignee: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  caretaker: { type: mongoose.Schema.Types.ObjectId, ref: 'User', select: false },
+  nurse_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', select: false },
   created_at: { type: Date, default: Date.now },
   report: { type: String },
   updated_at: { type: Date, default: Date.now }
+});
+
+TaskSchema.pre('validate', function (next) {
+  if (!this.title && this.description) {
+    this.title = this.description;
+  }
+
+  if (!this.assignee) {
+    this.assignee = this.nurse_id || this.caretaker;
+  }
+
+  next();
 });
 
 TaskSchema.pre('save', function (next) {

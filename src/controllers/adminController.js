@@ -365,6 +365,14 @@ exports.createTask = async (req, res) => {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
+    const [patient, assignedUser] = await Promise.all([
+      Patient.findById(patientId).select('_id').lean(),
+      User.findById(assignee).select('_id').lean()
+    ]);
+
+    if (!patient) return res.status(404).json({ message: 'Patient not found' });
+    if (!assignedUser) return res.status(404).json({ message: 'Assignee not found' });
+
     const newTask = new Task({
       title: title || description,
       description,
@@ -444,12 +452,28 @@ exports.createTask = async (req, res) => {
 exports.updateTask = async (req, res) => {
   try {
     const { taskId } = req.params;
-    const { caretakerId, nurseId, assigneeId, patientId, ...rest } = req.body;
+    const { title, description, dueDate, priority, status, report, caretakerId, nurseId, assigneeId, patientId } = req.body;
+    const nextAssignee = assigneeId || nurseId || caretakerId;
+
+    if (patientId) {
+      const patient = await Patient.findById(patientId).select('_id').lean();
+      if (!patient) return res.status(404).json({ message: 'Patient not found' });
+    }
+
+    if (nextAssignee) {
+      const assignedUser = await User.findById(nextAssignee).select('_id').lean();
+      if (!assignedUser) return res.status(404).json({ message: 'Assignee not found' });
+    }
 
     const updateData = {
-      ...rest,
+      ...(title !== undefined && { title }),
+      ...(description !== undefined && { description }),
+      ...(dueDate !== undefined && { dueDate }),
+      ...(priority !== undefined && { priority }),
+      ...(status !== undefined && { status }),
+      ...(report !== undefined && { report }),
       ...(patientId && { patient: patientId }),
-      ...((assigneeId || nurseId || caretakerId) && { assignee: assigneeId || nurseId || caretakerId }),
+      ...(nextAssignee && { assignee: nextAssignee }),
       updated_at: Date.now()
     };
 

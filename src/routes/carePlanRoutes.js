@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const carePlanController = require('../controllers/carePlanController');
 const verifyToken = require('../middleware/verifyToken');
+const verifyRole = require('../middleware/verifyRole');
+
+router.use(verifyToken, verifyRole(['admin', 'caretaker', 'nurse', 'doctor']));
 
 /**
  * @swagger
@@ -42,7 +45,7 @@ const verifyToken = require('../middleware/verifyToken');
  *       404:
  *         description: Patient not found
  */
-router.post('/', verifyToken, carePlanController.createCarePlan);
+router.post('/', carePlanController.createCarePlan);
 
 /**
  * @swagger
@@ -75,7 +78,7 @@ router.post('/', verifyToken, carePlanController.createCarePlan);
  *       200:
  *         description: Paged care plan list
  */
-router.get('/', verifyToken, carePlanController.getAllCarePlans);
+router.get('/', carePlanController.getAllCarePlans);
 
 /**
  * @swagger
@@ -112,7 +115,7 @@ router.get('/', verifyToken, carePlanController.getAllCarePlans);
  *       404:
  *         description: Care plan not found
  */
-router.put('/:carePlanId', verifyToken, carePlanController.updateCarePlan);
+router.put('/:carePlanId', carePlanController.updateCarePlan);
 
 /**
  * @swagger
@@ -134,7 +137,7 @@ router.put('/:carePlanId', verifyToken, carePlanController.updateCarePlan);
  *       404:
  *         description: Care plan not found
  */
-router.delete('/:carePlanId', verifyToken, carePlanController.deleteCarePlan);
+router.delete('/:carePlanId', carePlanController.deleteCarePlan);
 
 /**
  * @swagger
@@ -154,6 +157,6 @@ router.delete('/:carePlanId', verifyToken, carePlanController.deleteCarePlan);
  *       200:
  *         description: Care plans for a patient
  */
-router.get('/patient/:patientId', verifyToken, carePlanController.getCarePlanByPatient);
+router.get('/patient/:patientId', carePlanController.getCarePlanByPatient);
 
 module.exports = router;
