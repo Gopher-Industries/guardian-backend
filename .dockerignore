@@ -1,0 +1,7 @@
+.git
+.github
+node_modules
+npm-debug.log
+Dockerfile
+docker-compose.yaml
+Guardian-pr400

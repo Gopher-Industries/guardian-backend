@@ -44,10 +44,11 @@ exports.getProfile = async (req, res) => {
     }
 
     const caretaker = await User.findOne(query)
-      .select('-password_hash -__v')
-      .populate('role', 'name')
-      .populate('organization', 'name')
-      .populate('assignedPatients', 'fullname age gender');
+      .select('-password_hash -__v') // Exclude sensitive fields
+      .populate('role', 'name') // Populate role with name
+      .populate('organization', 'name') // Populate organization with name
+      .populate('assignedPatients', 'fullname age gender')
+      .lean(); // Populate assignedPatients with full details
 
     if (!caretaker) {
       return res.status(404).json({ error: 'Caretaker not found' });
@@ -115,7 +116,8 @@ exports.updateProfile = async (req, res) => {
     )
       .select('-password_hash -__v')
       .populate('role', 'name')
-      .populate('assignedPatients', 'fullname age gender');
+      .populate('assignedPatients', 'fullname age gender')
+      .lean();
 
     if (!updatedCaretaker) {
       return res.status(404).json({ error: 'Caretaker not found' });
@@ -322,6 +324,7 @@ exports.getAllCaretakers = async (req, res) => {
         .sort(sort)
         .skip(skip)
         .limit(limit)
+        .lean()
     ]);
 
     return res.status(200).json({
@@ -380,18 +383,24 @@ exports.getReportsByPatient = async (req, res) => {
     res.status(500).json({ error: 'Error fetching reports', details: error.message });
   }
 }
-// Caretaker dashboard summary 
+// Caretaker dashboard summary
 /**
  * @swagger
  * /api/v1/caretaker/dashboard-summary:
  *   get:
  *     summary: Get caretaker dashboard summary
+ *     description: >-
+ *       Returns a real-time snapshot of activity scoped to the authenticated caretaker.
+ *       Includes patient counts, a full task breakdown (total, completed, in-progress,
+ *       pending, and overdue), task completion rate, and a count of patient logs
+ *       created by this caretaker in the last 7 days. Requires a valid JWT with the
+ *       **caretaker** role.
  *     tags: [Caretaker]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Caretaker dashboard summary
+ *         description: Caretaker dashboard summary fetched successfully.
  *         content:
  *           application/json:
  *             schema:
@@ -399,64 +408,88 @@ exports.getReportsByPatient = async (req, res) => {
  *               properties:
  *                 totalPatients:
  *                   type: integer
- *                   description: Total patients under this caretaker
+ *                   description: Total patients under this caretaker (including deleted).
+ *                   example: 3
  *                 totalActivePatients:
  *                   type: integer
- *                   description: Active (non-deleted) patients under this caretaker
+ *                   description: Active (non-deleted) patients under this caretaker.
+ *                   example: 3
  *                 totalTasks:
  *                   type: integer
- *                   description: Total tasks assigned to this caretaker
+ *                   description: Total tasks assigned to this caretaker across all patients.
+ *                   example: 11
  *                 completedTasks:
  *                   type: integer
- *                   description: Completed tasks for this caretaker
+ *                   description: Tasks this caretaker has marked as completed.
+ *                   example: 3
+ *                 inProgressTasks:
+ *                   type: integer
+ *                   description: Tasks currently marked as in progress.
+ *                   example: 2
  *                 pendingTasks:
  *                   type: integer
- *                   description: Pending tasks for this caretaker
+ *                   description: Tasks not yet started (totalTasks − completed − inProgress).
+ *                   example: 6
+ *                 overdueTasks:
+ *                   type: integer
+ *                   description: Incomplete tasks whose due date has already passed.
+ *                   example: 4
+ *                 taskCompletionRate:
+ *                   type: integer
+ *                   description: Percentage of tasks completed (0–100).
+ *                   example: 27
  *                 recentLogsCount:
  *                   type: integer
- *                   description: Logs created by this caretaker in the last 7 days
+ *                   description: Patient log entries created by this caretaker in the last 7 days.
+ *                   example: 2
  *       500:
- *         description: Error fetching caretaker dashboard summary
+ *         description: Unexpected server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                 details:
+ *                   type: string
  */
 
 exports.getDashboardSummary = async (req, res) => {
   try {
     const caretakerId = req.user._id;
+    const now = new Date();
+    const sevenDaysAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
 
-    // Get Role _id for "caretaker"
-    const caretakerRole = await Role.findOne({ name: 'caretaker' }).lean();
-    if (!caretakerRole) {
-      return res.status(500).json({ error: 'Role "caretaker" not found' });
-    }
-
-    // Total patients assigned to this caretaker
-    const totalPatients = await Patient.countDocuments({ caretaker: caretakerId });
-
-    // Total active patients (not discharged or deceased)
-    const totalActivePatients = await Patient.countDocuments({ caretaker: caretakerId, isDeleted: false });
-
-    // Total pending tasks assigned to this caretaker
-    const totalTasks = await Task.countDocuments({ caretaker: caretakerId });
-    const completedTasks = await Task.countDocuments({ caretaker: caretakerId, status: 'completed' });
-    const pendingTasks = totalTasks - completedTasks;
-
-    // Total Patient Logs for this caretaker
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const recentLogsCount = await PatientLog.countDocuments({
-      createdBy: req.user._id,
-      createdAt: { $gte: sevenDaysAgo }
-    });
-
-    const summary = {
+    const [
       totalPatients,
       totalActivePatients,
       totalTasks,
       completedTasks,
-      pendingTasks,
-      recentLogsCount
-    };
+      inProgressTasks,
+      overdueTasks,
+      recentLogsCount,
+    ] = await Promise.all([
+      Patient.countDocuments({ caretaker: caretakerId }),
+      Patient.countDocuments({ caretaker: caretakerId, isDeleted: false }),
+      Task.countDocuments({ caretaker: caretakerId }),
+      Task.countDocuments({ caretaker: caretakerId, status: 'completed' }),
+      Task.countDocuments({ caretaker: caretakerId, status: 'in progress' }),
+      Task.countDocuments({ caretaker: caretakerId, status: { $ne: 'completed' }, dueDate: { $lt: now } }),
+      PatientLog.countDocuments({ createdBy: caretakerId, createdAt: { $gte: sevenDaysAgo } }),
+    ]);
 
-    res.status(200).json(summary);
+    res.status(200).json({
+      totalPatients,
+      totalActivePatients,
+      totalTasks,
+      completedTasks,
+      inProgressTasks,
+      pendingTasks: totalTasks - completedTasks - inProgressTasks,
+      overdueTasks,
+      taskCompletionRate: totalTasks ? Math.round((completedTasks / totalTasks) * 100) : 0,
+      recentLogsCount,
+    });
   } catch (error) {
     res.status(500).json({ error: 'Error fetching dashboard summary', details: error.message });
   }

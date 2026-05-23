@@ -5,7 +5,7 @@ const notifyRules = require('../services/notifyRules');
 const Role = require('../models/Role');
 const { parseStringArray } = require('../utils/arrayUtils');
 
-/**
+/*
  * Restricts independent patient-management routes for approved organization-linked
  * nurses and caretakers. These users must use the organization-based workflow.
  */
@@ -37,6 +37,7 @@ async function blockIndependentPatientWorkForApprovedOrgMember(userId) {
  *     description: Endpoints for independent patient management
  *   - name: EntryReport
  *     description: Endpoints for patient activity and entry reporting
+ */
 
 /**
  * @swagger
@@ -823,10 +824,7 @@ exports.getAssignedPatients = async (req, res) => {
       return res.status(403).json({ message: 'Unauthorized role' });
     }
 
-    const patients = await Patient.find(query)
-      .populate('assignedNurses', 'fullname email')
-      .populate('caretaker', 'fullname email');
-
+    const patients = await Patient.find(query).populate('assignedNurses', 'fullname email').populate('caretaker', 'fullname email');
     res.status(200).json(patients);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching assigned patients', details: error.message });
