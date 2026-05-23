@@ -4,9 +4,12 @@ const Task = require('../models/Task');
 const CarePlan = require('../models/CarePlan');
 const User = require('../models/User');
 const Role = require('../models/Role');
+const mongoose = require('mongoose');
+const SupportTicket = require('../models/SupportTicket');
 const PatientLog = require('../models/PatientLog');
 //const SupportTicket = require('../models/SupportTicket');
 const notifyRules = require('../services/notifyRules');
+const SUPPORT_TICKET_STATUSES = ['open', 'in_progress', 'resolved', 'closed'];
 
 /**
  * @swagger
@@ -42,6 +45,43 @@ const notifyRules = require('../services/notifyRules');
  *         updated_at:
  *           type: string
  *           format: date-time
+ *     SupportTicket:
+ *       type: object
+ *       properties:
+ *         _id:
+ *           type: string
+ *         user:
+ *           type: string
+ *         subject:
+ *           type: string
+ *         description:
+ *           type: string
+ *         status:
+ *           type: string
+ *           enum: [open, in_progress, resolved, closed]
+ *         adminResponse:
+ *           type: string
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *         updated_at:
+ *           type: string
+ *           format: date-time
+ *     PaginatedSupportTickets:
+ *       type: object
+ *       properties:
+ *         page:
+ *           type: integer
+ *         limit:
+ *           type: integer
+ *         total:
+ *           type: integer
+ *         totalPages:
+ *           type: integer
+ *         tickets:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/SupportTicket'
  */
 
 /**
@@ -122,7 +162,7 @@ exports.getPatientOverview = async (req, res) => {
 
 /**
  * @swagger
- * /api/v1/admin/support-ticket:
+ * /api/v1/admin/support-tickets:
  *   post:
  *     summary: Create a support ticket
  *     tags: [Admin]
@@ -140,24 +180,28 @@ exports.getPatientOverview = async (req, res) => {
  *                 type: string
  *               description:
  *                 type: string
- *               status:
- *                 type: string
- *                 default: open
  *     responses:
  *       201:
  *         description: Support ticket created successfully
+ *       400:
+ *         description: Invalid request body
  *       500:
  *         description: Error creating support ticket
  */
 exports.createSupportTicket = async (req, res) => {
   try {
-    const { subject, description, status } = req.body;
+    const { subject, description } = req.body;
+    const normalizedSubject = String(subject || '').trim();
+    const normalizedDescription = String(description || '').trim();
+
+    if (!normalizedSubject || !normalizedDescription) {
+      return res.status(400).json({ message: 'subject and description are required' });
+    }
 
     const newTicket = new SupportTicket({
       user: req.user._id,
-      subject,
-      description,
-      status: status || 'open',
+      subject: normalizedSubject,
+      description: normalizedDescription,
     });
 
     await newTicket.save();
@@ -193,26 +237,68 @@ exports.createSupportTicket = async (req, res) => {
  *         schema:
  *           type: string
  *         description: Filter tickets by user ID
+ *       - in: query
+ *         name: page
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of tickets per page
  *     responses:
  *       200:
  *         description: List of support tickets
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/SupportTicket'
+ *               $ref: '#/components/schemas/PaginatedSupportTickets'
+ *       400:
+ *         description: Invalid query parameters
  *       500:
  *         description: Error fetching support tickets
  */
 exports.getSupportTickets = async (req, res) => {
   try {
     const { status, userId } = req.query;
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 100);
 
     const query = {};
-    if (status) query.status = status;
-    if (userId) query.user = userId;
+    if (status) {
+      if (!SUPPORT_TICKET_STATUSES.includes(status)) {
+        return res.status(400).json({ message: `status must be one of: ${SUPPORT_TICKET_STATUSES.join(', ')}` });
+      }
+      query.status = status;
+    }
+    if (userId) {
+      if (!mongoose.Types.ObjectId.isValid(userId)) {
+        return res.status(400).json({ message: 'Invalid userId filter' });
+      }
+      query.user = userId;
+    }
 
+    const [tickets, total] = await Promise.all([
+      SupportTicket.find(query)
+        .populate('user', 'fullname email role')
+        .sort({ created_at: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit),
+      SupportTicket.countDocuments(query),
+    ]);
+
+    res.status(200).json({
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit) || 1,
+      tickets,
+    });
     const tickets = await SupportTicket.find(query).populate('user').lean();
     res.status(200).json(tickets);
   } catch (error) {
@@ -222,7 +308,7 @@ exports.getSupportTickets = async (req, res) => {
 
 /**
  * @swagger
- * /api/v1/admin/support-ticket/{ticketId}:
+ * /api/v1/admin/support-tickets/{ticketId}:
  *   put:
  *     summary: Update a support ticket
  *     tags: [Admin]
@@ -242,7 +328,8 @@ exports.getSupportTickets = async (req, res) => {
  *             properties:
  *               status:
  *                 type: string
- *                 description: New status of the support ticket (e.g., open, closed)
+ *                 enum: [open, in_progress, resolved, closed]
+ *                 description: New status of the support ticket
  *               adminResponse:
  *                 type: string
  *                 description: Response or comments from the admin
@@ -258,6 +345,8 @@ exports.getSupportTickets = async (req, res) => {
  *                   type: string
  *                 ticket:
  *                   $ref: '#/components/schemas/SupportTicket'
+ *       400:
+ *         description: Invalid ticket ID or empty update body
  *       404:
  *         description: Support ticket not found
  *       500:
@@ -267,11 +356,27 @@ exports.updateSupportTicket = async (req, res) => {
   try {
     const { ticketId } = req.params;
     const { status, adminResponse } = req.body;
+    if (!mongoose.Types.ObjectId.isValid(ticketId)) {
+      return res.status(400).json({ message: 'Invalid ticketId' });
+    }
+
+    const updateData = {};
+    if (status !== undefined) {
+      if (!SUPPORT_TICKET_STATUSES.includes(status)) {
+        return res.status(400).json({ message: `status must be one of: ${SUPPORT_TICKET_STATUSES.join(', ')}` });
+      }
+      updateData.status = status;
+    }
+    if (adminResponse !== undefined) updateData.adminResponse = String(adminResponse).trim();
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ message: 'Provide at least one field to update' });
+    }
 
     const updatedTicket = await SupportTicket.findByIdAndUpdate(
       ticketId,
-      { status, adminResponse },
-      { new: true }
+      updateData,
+      { new: true, runValidators: true }
     );
 
     if (!updatedTicket) {
