@@ -11,14 +11,14 @@ const idsEqual = (a, b) => a && b && String(a) === String(b);
 function toId(x) {
   if (!x) return undefined;
 
-  // already valid ObjectId / 24-hex
-  if (mongoose.isValidObjectId(x)) return String(x);
-
   // mongoose doc or plain object
   if (typeof x === 'object') {
     const v = x._id ?? x.id ?? x.orgId ?? x.userId;
     if (mongoose.isValidObjectId(v)) return String(v);
   }
+
+  // already valid ObjectId / 24-hex
+  if (mongoose.isValidObjectId(x)) return String(x);
 
   // string representations (ObjectId("..."), new ObjectId("..."), raw hex)
   if (typeof x === 'string') {
@@ -37,7 +37,7 @@ const userHasOrgField = () => Boolean(User?.schema?.path?.('organization'));
 
 /* -------------------------- Org resolution (admin) ------------------------ */
 
-// find org for admin → by query orgId or by staff/createdBy
+// find org for admin -> by query orgId or by staff/createdBy
 async function resolveAdminOrg({ adminUserId, orgIdFromQuery }) {
   if (!adminUserId) {
     const e = new Error('resolveAdminOrg: adminUserId is required');
@@ -48,16 +48,21 @@ async function resolveAdminOrg({ adminUserId, orgIdFromQuery }) {
   // if orgId is explicitly passed
   if (orgIdFromQuery) {
     const id = toId(orgIdFromQuery);
-    const org = id ? await Organization.findById(id) : null;
+    const org = id
+      ? await Organization.findOne({
+          _id: id,
+          $or: [{ createdBy: adminUserId }, { staff: adminUserId }],
+        })
+      : null;
     if (!org) {
-      const e = new Error('Organization not found by orgId');
+      const e = new Error('Organization not found for admin');
       e.status = 404;
       throw e;
     }
     return org;
   }
 
-  // fallback → find org where admin is creator or staff
+  // fallback -> find org where admin is creator or staff
   const org = await Organization.findOne({
     $or: [{ createdBy: adminUserId }, { staff: adminUserId }],
   });
@@ -106,8 +111,8 @@ function isUserInOrg(userDoc, orgDoc) {
   return Array.isArray(orgDoc.staff) && orgDoc.staff.some((id) => idsEqual(id, userId));
 }
 
-// if caretaker has no org → link them to this org
-async function linkCaretakerToOrgIfFreelance(caretakerDoc, orgDoc) {
+// if caretaker has no org -> link them to this org
+async function linkCaretakerToOrgIfFreelance(caretakerDoc, orgDoc, options = {}) {
   if (!caretakerDoc) {
     const e = new Error('linkCaretakerToOrgIfFreelance: caretaker is required');
     e.status = 400;
@@ -120,25 +125,32 @@ async function linkCaretakerToOrgIfFreelance(caretakerDoc, orgDoc) {
   }
 
   if (!userHasOrgField()) {
-    return { linked: false, alreadyInOrg: false, movedFromOtherOrg: false };
+    return { linked: false, alreadyInOrg: false, movedFromOtherOrg: false, needsOrgLink: false };
   }
 
   const orgId = toId(orgDoc);
   const currentOrgId = toId(caretakerDoc.organization);
 
-  // freelance caretaker → assign org
+  // no org yet -> bind now
   if (!currentOrgId) {
-    await User.updateOne({ _id: caretakerDoc._id }, { $set: { organization: orgId } });
-    return { linked: true, alreadyInOrg: false, movedFromOtherOrg: false };
+    if (options.applyLink) {
+      await User.updateOne({ _id: caretakerDoc._id }, { $set: { organization: orgId } });
+    }
+    return {
+      linked: Boolean(options.applyLink),
+      alreadyInOrg: false,
+      movedFromOtherOrg: false,
+      needsOrgLink: true,
+    };
   }
 
-  // already in same org
+  // already same org
   if (idsEqual(currentOrgId, orgId)) {
-    return { linked: false, alreadyInOrg: true, movedFromOtherOrg: false };
+    return { linked: false, alreadyInOrg: true, movedFromOtherOrg: false, needsOrgLink: false };
   }
 
   // caretaker already belongs elsewhere
-  return { linked: false, alreadyInOrg: false, movedFromOtherOrg: true };
+  return { linked: false, alreadyInOrg: false, movedFromOtherOrg: true, needsOrgLink: false };
 }
 
 /* ------------------------- Staff add/remove helpers ------------------------ */

@@ -8,6 +8,46 @@ const UserSchema = new mongoose.Schema({
   role: { type: mongoose.Schema.Types.ObjectId, ref: 'Role' },
   assignedPatients: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Patient' }], // Assigned patients
   organization: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', index: true },
+  
+  // approval flow for org-based nurse/caretaker users
+  approvalStatus: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected', 'deactivated'],
+    default: 'pending',
+    index: true
+  },
+  approvedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  approvedAt: {
+    type: Date,
+    default: null
+  },
+  rejectedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  rejectedAt: {
+    type: Date,
+    default: null
+  },
+  rejectionReason: {
+    type: String,
+    default: ''
+  },
+  deactivatedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  deactivatedAt: {
+    type: Date,
+    default: null
+  },
+
   lastPasswordChange: { type: Date, default: Date.now },
   failedLoginAttempts: { type: Number, default: 0 },
   created_at: { type: Date, default: Date.now },
@@ -22,6 +62,10 @@ UserSchema.pre('save', async function (next) {
   this.password_hash = await bcrypt.hash(this.password_hash, salt);
   next();
 });
+
+
+UserSchema.index({ role: 1 });
+UserSchema.index({ organization: 1, role: 1 });
 
 // Create the User model from the schema
 const User = mongoose.model('User', UserSchema);

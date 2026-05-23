@@ -7,11 +7,25 @@ const multer = require('multer');
 const http = require('http');
 const socketIO = require('socket.io');
 
+const cors = require('cors');
+
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
 const { setEmit } = require('../socket');
 
 const app = express();
+//cors fix
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+app.options('*', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS,PATCH');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+  res.sendStatus(204);
+});
 
 // Create uploads directory locally only (Vercel filesystem is read-only)
 // if (!process.env.VERCEL) {
@@ -92,6 +106,7 @@ const blockScriptRequests = (req, res, next) => {
 };
 
 // app.use(blockScriptRequests);
+app.set('trust proxy', 1);
 
 const rateLimit = require('express-rate-limit');
 const limiter = rateLimit({
@@ -103,7 +118,6 @@ const limiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
-
 
 app.use(limiter);
 
@@ -130,9 +144,8 @@ const swaggerOptions = {
       },
     ],
   },
-  apis: ['./src/routes/*.js', './src/routes/**/*.js', './src/controllers/*.js'],
+  apis: ['./src/routes/*.js', './src/routes/**/*.js', './src/controllers/*.js', './src/swaggerDefinitions.js'],
 };
-
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
@@ -158,6 +171,7 @@ const adminPatientRoutes = require('./routes/adminPatientRoutes');
 const adminStaffRoutes = require('./routes/adminStaffRoutes');
 const orgRoutes = require('./routes/orgRoutes');
 const prescriptionRoutes = require('./routes/prescriptionRoutes');
+const resourceRoutes = require('./routes/resourceRoutes');
 
 app.use('/api/v1/auth', userRoutes);
 app.use('/api/v1/caretaker', caretakerRoutes);
@@ -175,6 +189,7 @@ app.use('/api/v1/prescriptions', prescriptionRoutes);
 app.use('/api/v1/admin', adminStaffRoutes);
 app.use('/api/v1/admin', adminPatientRoutes);
 app.use('/api/v1/orgs', orgRoutes);
+app.use('/api/v1/resources', resourceRoutes);
 
 app.use(
   '/swaggerDocs',
@@ -295,7 +310,6 @@ function emitToUser(userId, event, payload) {
   if (sid) io.to(sid).emit(event, payload);
 }
 setEmit(emitToUser);
-
 
 const PORT = process.env.PORT || 3000;
 
