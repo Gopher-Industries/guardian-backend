@@ -9,7 +9,6 @@ const socketIO = require('socket.io');
 
 const cors = require('cors');
 
-
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
 const { setEmit } = require('../socket');
@@ -120,7 +119,6 @@ const limiter = rateLimit({
   legacyHeaders: false,
 });
 
-
 app.use(limiter);
 
 const swaggerOptions = {
@@ -146,9 +144,8 @@ const swaggerOptions = {
       },
     ],
   },
-  apis: ['./src/routes/*.js', './src/routes/**/*.js', './src/controllers/*.js'],
+  apis: ['./src/routes/*.js', './src/routes/**/*.js', './src/controllers/*.js', './src/swaggerDefinitions.js'],
 };
-
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
@@ -175,6 +172,7 @@ const adminStaffRoutes = require('./routes/adminStaffRoutes');
 const orgRoutes = require('./routes/orgRoutes');
 const prescriptionRoutes = require('./routes/prescriptionRoutes');
 const resourceRoutes = require('./routes/resourceRoutes');
+
 app.use('/api/v1/auth', userRoutes);
 app.use('/api/v1/caretaker', caretakerRoutes);
 app.use('/api/v1/nurse', nurseRoutes);
@@ -288,8 +286,6 @@ app.get('/', (req, res) => {
   `);
 });
 
-
-
 const server = http.createServer(app);
 const io = socketIO(server, { cors: { origin: '*', methods: ['GET', 'POST'] } });
 const connectedUsers = Object.create(null);
@@ -314,7 +310,6 @@ function emitToUser(userId, event, payload) {
   if (sid) io.to(sid).emit(event, payload);
 }
 setEmit(emitToUser);
-
 
 const PORT = process.env.PORT || 3000;
 
