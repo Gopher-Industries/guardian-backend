@@ -824,10 +824,7 @@ exports.getAssignedPatients = async (req, res) => {
       return res.status(403).json({ message: 'Unauthorized role' });
     }
 
-    const patients = await Patient.find(query)
-      .populate('assignedNurses', 'fullname email')
-      .populate('caretaker', 'fullname email');
-
+    const patients = await Patient.find(query).populate('assignedNurses', 'fullname email').populate('caretaker', 'fullname email');
     res.status(200).json(patients);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching assigned patients', details: error.message });

@@ -4,8 +4,12 @@ const Task = require('../models/Task');
 const CarePlan = require('../models/CarePlan');
 const User = require('../models/User');
 const Role = require('../models/Role');
+const mongoose = require('mongoose');
+const SupportTicket = require('../models/SupportTicket');
+const PatientLog = require('../models/PatientLog');
 //const SupportTicket = require('../models/SupportTicket');
 const notifyRules = require('../services/notifyRules');
+const SUPPORT_TICKET_STATUSES = ['open', 'in_progress', 'resolved', 'closed'];
 
 /**
  * @swagger
@@ -41,6 +45,43 @@ const notifyRules = require('../services/notifyRules');
  *         updated_at:
  *           type: string
  *           format: date-time
+ *     SupportTicket:
+ *       type: object
+ *       properties:
+ *         _id:
+ *           type: string
+ *         user:
+ *           type: string
+ *         subject:
+ *           type: string
+ *         description:
+ *           type: string
+ *         status:
+ *           type: string
+ *           enum: [open, in_progress, resolved, closed]
+ *         adminResponse:
+ *           type: string
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *         updated_at:
+ *           type: string
+ *           format: date-time
+ *     PaginatedSupportTickets:
+ *       type: object
+ *       properties:
+ *         page:
+ *           type: integer
+ *         limit:
+ *           type: integer
+ *         total:
+ *           type: integer
+ *         totalPages:
+ *           type: integer
+ *         tickets:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/SupportTicket'
  */
 
 /**
@@ -90,7 +131,8 @@ exports.getPatientOverview = async (req, res) => {
 
     const patientDetails = await Patient.findById(patientId)
       .populate('caretaker')
-      .populate('assignedNurses');
+      .populate('assignedNurses')
+      .lean();
 
     if (!patientDetails) {
       return res.status(404).json({ message: 'Patient not found' });
@@ -98,7 +140,7 @@ exports.getPatientOverview = async (req, res) => {
 
     const healthRecords = await HealthRecord.find({ patient: patientId });
     const tasks = await Task.find({ patient: patientId });
-    const carePlan = await CarePlan.findOne({ patient: patientId }).populate('tasks');
+    const carePlan = await CarePlan.findOne({ patient: patientId }).populate('tasks').lean();
 
     const taskCompletionRate = tasks.length
       ? (tasks.filter(task => task.status === 'completed').length / tasks.length) * 100
@@ -120,7 +162,7 @@ exports.getPatientOverview = async (req, res) => {
 
 /**
  * @swagger
- * /api/v1/admin/support-ticket:
+ * /api/v1/admin/support-tickets:
  *   post:
  *     summary: Create a support ticket
  *     tags: [Admin]
@@ -138,24 +180,28 @@ exports.getPatientOverview = async (req, res) => {
  *                 type: string
  *               description:
  *                 type: string
- *               status:
- *                 type: string
- *                 default: open
  *     responses:
  *       201:
  *         description: Support ticket created successfully
+ *       400:
+ *         description: Invalid request body
  *       500:
  *         description: Error creating support ticket
  */
 exports.createSupportTicket = async (req, res) => {
   try {
-    const { subject, description, status } = req.body;
+    const { subject, description } = req.body;
+    const normalizedSubject = String(subject || '').trim();
+    const normalizedDescription = String(description || '').trim();
+
+    if (!normalizedSubject || !normalizedDescription) {
+      return res.status(400).json({ message: 'subject and description are required' });
+    }
 
     const newTicket = new SupportTicket({
       user: req.user._id,
-      subject,
-      description,
-      status: status || 'open',
+      subject: normalizedSubject,
+      description: normalizedDescription,
     });
 
     await newTicket.save();
@@ -191,27 +237,69 @@ exports.createSupportTicket = async (req, res) => {
  *         schema:
  *           type: string
  *         description: Filter tickets by user ID
+ *       - in: query
+ *         name: page
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of tickets per page
  *     responses:
  *       200:
  *         description: List of support tickets
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/SupportTicket'
+ *               $ref: '#/components/schemas/PaginatedSupportTickets'
+ *       400:
+ *         description: Invalid query parameters
  *       500:
  *         description: Error fetching support tickets
  */
 exports.getSupportTickets = async (req, res) => {
   try {
     const { status, userId } = req.query;
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 100);
 
     const query = {};
-    if (status) query.status = status;
-    if (userId) query.user = userId;
+    if (status) {
+      if (!SUPPORT_TICKET_STATUSES.includes(status)) {
+        return res.status(400).json({ message: `status must be one of: ${SUPPORT_TICKET_STATUSES.join(', ')}` });
+      }
+      query.status = status;
+    }
+    if (userId) {
+      if (!mongoose.Types.ObjectId.isValid(userId)) {
+        return res.status(400).json({ message: 'Invalid userId filter' });
+      }
+      query.user = userId;
+    }
 
-    const tickets = await SupportTicket.find(query).populate('user');
+    const [tickets, total] = await Promise.all([
+      SupportTicket.find(query)
+        .populate('user', 'fullname email role')
+        .sort({ created_at: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit),
+      SupportTicket.countDocuments(query),
+    ]);
+
+    res.status(200).json({
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit) || 1,
+      tickets,
+    });
+    const tickets = await SupportTicket.find(query).populate('user').lean();
     res.status(200).json(tickets);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching support tickets', details: error.message });
@@ -220,7 +308,7 @@ exports.getSupportTickets = async (req, res) => {
 
 /**
  * @swagger
- * /api/v1/admin/support-ticket/{ticketId}:
+ * /api/v1/admin/support-tickets/{ticketId}:
  *   put:
  *     summary: Update a support ticket
  *     tags: [Admin]
@@ -240,7 +328,8 @@ exports.getSupportTickets = async (req, res) => {
  *             properties:
  *               status:
  *                 type: string
- *                 description: New status of the support ticket (e.g., open, closed)
+ *                 enum: [open, in_progress, resolved, closed]
+ *                 description: New status of the support ticket
  *               adminResponse:
  *                 type: string
  *                 description: Response or comments from the admin
@@ -256,6 +345,8 @@ exports.getSupportTickets = async (req, res) => {
  *                   type: string
  *                 ticket:
  *                   $ref: '#/components/schemas/SupportTicket'
+ *       400:
+ *         description: Invalid ticket ID or empty update body
  *       404:
  *         description: Support ticket not found
  *       500:
@@ -265,11 +356,27 @@ exports.updateSupportTicket = async (req, res) => {
   try {
     const { ticketId } = req.params;
     const { status, adminResponse } = req.body;
+    if (!mongoose.Types.ObjectId.isValid(ticketId)) {
+      return res.status(400).json({ message: 'Invalid ticketId' });
+    }
+
+    const updateData = {};
+    if (status !== undefined) {
+      if (!SUPPORT_TICKET_STATUSES.includes(status)) {
+        return res.status(400).json({ message: `status must be one of: ${SUPPORT_TICKET_STATUSES.join(', ')}` });
+      }
+      updateData.status = status;
+    }
+    if (adminResponse !== undefined) updateData.adminResponse = String(adminResponse).trim();
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ message: 'Provide at least one field to update' });
+    }
 
     const updatedTicket = await SupportTicket.findByIdAndUpdate(
       ticketId,
-      { status, adminResponse },
-      { new: true }
+      updateData,
+      { new: true, runValidators: true }
     );
 
     if (!updatedTicket) {
@@ -510,12 +617,18 @@ exports.deleteTask = async (req, res) => {
  * /api/v1/admin/dashboard-summary:
  *   get:
  *     summary: Get admin dashboard summary
+ *     description: >-
+ *       Returns a system-wide snapshot for administrators. Includes total and active
+ *       patient counts, a staff breakdown by role with pending approval count, a full
+ *       task breakdown (total, completed, in-progress, pending, and overdue) across
+ *       all staff, task completion rate, and a count of patient logs created
+ *       system-wide in the last 7 days. Requires a valid JWT with the **admin** role.
  *     tags: [Admin]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Admin dashboard summary
+ *         description: Admin dashboard summary fetched successfully.
  *         content:
  *           application/json:
  *             schema:
@@ -523,42 +636,129 @@ exports.deleteTask = async (req, res) => {
  *               properties:
  *                 totalPatients:
  *                   type: integer
+ *                   description: Total patients registered in the system (including deleted).
+ *                   example: 20
  *                 totalActivePatients:
  *                   type: integer
- *                 totalStaff:
- *                   type: integer
+ *                   description: Active (non-deleted) patients in the system.
+ *                   example: 18
+ *                 staff:
+ *                   type: object
+ *                   description: Breakdown of registered staff accounts.
+ *                   properties:
+ *                     total:
+ *                       type: integer
+ *                       description: Total staff across all clinical roles (doctors, nurses, caretakers).
+ *                       example: 12
+ *                     doctors:
+ *                       type: integer
+ *                       description: Number of users with the doctor role.
+ *                       example: 3
+ *                     nurses:
+ *                       type: integer
+ *                       description: Number of users with the nurse role.
+ *                       example: 5
+ *                     caretakers:
+ *                       type: integer
+ *                       description: Number of users with the caretaker role.
+ *                       example: 4
+ *                     pendingApprovals:
+ *                       type: integer
+ *                       description: Staff accounts with approvalStatus = "pending".
+ *                       example: 2
  *                 totalTasks:
  *                   type: integer
+ *                   description: Total tasks across all staff and patients in the system.
+ *                   example: 45
  *                 completedTasks:
  *                   type: integer
+ *                   description: Tasks marked as completed system-wide.
+ *                   example: 20
+ *                 inProgressTasks:
+ *                   type: integer
+ *                   description: Tasks currently marked as in progress system-wide.
+ *                   example: 8
  *                 pendingTasks:
  *                   type: integer
+ *                   description: Tasks not yet started (totalTasks − completed − inProgress).
+ *                   example: 17
+ *                 overdueTasks:
+ *                   type: integer
+ *                   description: Incomplete tasks whose due date has already passed, system-wide.
+ *                   example: 6
  *                 taskCompletionRate:
  *                   type: integer
- *                   description: Percentage of completed tasks
+ *                   description: Percentage of tasks completed system-wide (0–100).
+ *                   example: 44
+ *                 recentLogsCount:
+ *                   type: integer
+ *                   description: Patient log entries created system-wide in the last 7 days.
+ *                   example: 14
  *       500:
- *         description: Error fetching dashboard summary
+ *         description: Unexpected server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 details:
+ *                   type: string
  */
 exports.getDashboardSummary = async (req, res) => {
   try {
-    const totalPatients = await Patient.countDocuments();
-    const totalActivePatients = await Patient.countDocuments({ isDeleted: false });
-    const totalTasks = await Task.countDocuments();
-    const totalStaff = await User.countDocuments({ role: { $in: await Role.find({ name: { $in: ['nurse', 'caretaker', 'doctor'] } }).distinct('_id') } });
-    const completedTasks = await Task.countDocuments({ status: 'completed' });
-    const pendingTasks = await Task.countDocuments({ status: 'pending' });
+    const now = new Date();
+    const sevenDaysAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
 
-    const summary = {
+    const staffRoleIds = await Role.find({ name: { $in: ['nurse', 'caretaker', 'doctor'] } }).distinct('_id');
+
+    const [
       totalPatients,
       totalActivePatients,
       totalStaff,
+      totalDoctors,
+      totalNurses,
+      totalCaretakers,
+      pendingApprovals,
       totalTasks,
       completedTasks,
-      pendingTasks,
-      taskCompletionRate: totalTasks ? Math.round((completedTasks / totalTasks) * 100) : 0,
-    };
+      inProgressTasks,
+      overdueTasks,
+      recentLogsCount,
+    ] = await Promise.all([
+      Patient.countDocuments(),
+      Patient.countDocuments({ isDeleted: false }),
+      User.countDocuments({ role: { $in: staffRoleIds } }),
+      User.countDocuments({ role: (await Role.findOne({ name: 'doctor' }).select('_id').lean())?._id }),
+      User.countDocuments({ role: (await Role.findOne({ name: 'nurse' }).select('_id').lean())?._id }),
+      User.countDocuments({ role: (await Role.findOne({ name: 'caretaker' }).select('_id').lean())?._id }),
+      User.countDocuments({ approvalStatus: 'pending' }),
+      Task.countDocuments(),
+      Task.countDocuments({ status: 'completed' }),
+      Task.countDocuments({ status: 'in progress' }),
+      Task.countDocuments({ status: { $ne: 'completed' }, dueDate: { $lt: now } }),
+      PatientLog.countDocuments({ createdAt: { $gte: sevenDaysAgo } }),
+    ]);
 
-    res.status(200).json(summary);
+    res.status(200).json({
+      totalPatients,
+      totalActivePatients,
+      staff: {
+        total: totalStaff,
+        doctors: totalDoctors,
+        nurses: totalNurses,
+        caretakers: totalCaretakers,
+        pendingApprovals,
+      },
+      totalTasks,
+      completedTasks,
+      inProgressTasks,
+      pendingTasks: totalTasks - completedTasks - inProgressTasks,
+      overdueTasks,
+      taskCompletionRate: totalTasks ? Math.round((completedTasks / totalTasks) * 100) : 0,
+      recentLogsCount,
+    });
   } catch (error) {
     res.status(500).json({ message: 'Error fetching dashboard summary', details: error.message });
   }
