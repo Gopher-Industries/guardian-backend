@@ -45,11 +45,11 @@ exports.getProfile = async (req, res) => {
     }
 
     const caretaker = await User.findOne(query)
-      .select("-password_hash -__v")
-      .populate("role", "name")
-      .populate("organization", "name")
-      .populate("assignedPatients", "fullname age gender")
-      .lean();
+  .select("-password_hash -__v")
+  .populate("role", "name")
+  .populate("organization", "name")
+  .populate("assignedPatients", "fullname age gender")
+  .lean();
 
     if (!caretaker) {
       return res.status(404).json({ error: "Caretaker not found" });
@@ -114,14 +114,15 @@ exports.updateProfile = async (req, res) => {
     }
 
     const updatedCaretaker = await User.findByIdAndUpdate(
-      caretakerId,
-      { $set: updates },
-      { new: true, runValidators: true, context: "query" }
-    )
-      .select("-password_hash -__v")
-      .populate("role", "name")
-      .populate("assignedPatients", "fullname age gender")
-      .lean();
+  caretakerId,
+  { $set: updates },
+  { new: true, runValidators: true, context: "query" }
+)
+  .select("-password_hash -__v")
+  .populate("role", "name")
+  .populate("assignedPatients", "fullname age gender")
+  .lean();
+    
 
     if (!updatedCaretaker) {
       return res.status(404).json({ error: "Caretaker not found" });
@@ -457,17 +458,16 @@ exports.getAllCaretakers = async (req, res) => {
     }
 
     const [total, caretakers] = await Promise.all([
-      User.countDocuments(filter),
-      User.find(filter)
-        .select("-password_hash -__v")
-        .populate("role", "name")
-        .populate("assignedPatients", "fullname gender dateOfBirth")
-        .sort(sort)
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-    ]);
-
+  User.countDocuments(filter),
+  User.find(filter)
+    .select("-password_hash -__v")
+    .populate("role", "name")
+    .populate("assignedPatients", "fullname gender dateOfBirth")
+    .sort(sort)
+    .skip(skip)
+    .limit(limit)
+    .lean(),
+]);
     return res.status(200).json({
       page,
       limit,
@@ -520,14 +520,13 @@ exports.getReportsByPatient = async (req, res) => {
       .sort({ createdAt: -1 });
 
     res.status(200).json(reports);
-  } catch (error) {
+    } catch (error) {
     res.status(500).json({
       error: "Error fetching reports",
       details: error.message,
     });
   }
 };
-
 /**
  * @swagger
  * /api/v1/caretaker/dashboard-summary:
@@ -545,8 +544,58 @@ exports.getReportsByPatient = async (req, res) => {
  *     responses:
  *       200:
  *         description: Caretaker dashboard summary fetched successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 totalPatients:
+ *                   type: integer
+ *                   description: Total patients under this caretaker (including deleted).
+ *                   example: 3
+ *                 totalActivePatients:
+ *                   type: integer
+ *                   description: Active (non-deleted) patients under this caretaker.
+ *                   example: 3
+ *                 totalTasks:
+ *                   type: integer
+ *                   description: Total tasks assigned to this caretaker across all patients.
+ *                   example: 11
+ *                 completedTasks:
+ *                   type: integer
+ *                   description: Tasks this caretaker has marked as completed.
+ *                   example: 3
+ *                 inProgressTasks:
+ *                   type: integer
+ *                   description: Tasks currently marked as in progress.
+ *                   example: 2
+ *                 pendingTasks:
+ *                   type: integer
+ *                   description: Tasks not yet started (totalTasks − completed − inProgress).
+ *                   example: 6
+ *                 overdueTasks:
+ *                   type: integer
+ *                   description: Incomplete tasks whose due date has already passed.
+ *                   example: 4
+ *                 taskCompletionRate:
+ *                   type: integer
+ *                   description: Percentage of tasks completed (0–100).
+ *                   example: 27
+ *                 recentLogsCount:
+ *                   type: integer
+ *                   description: Patient log entries created by this caretaker in the last 7 days.
+ *                   example: 2
  *       500:
  *         description: Unexpected server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                 details:
+ *                   type: string
  */
 exports.getDashboardSummary = async (req, res) => {
   try {

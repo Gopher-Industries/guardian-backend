@@ -170,7 +170,8 @@ exports.getHealthRecords = async (req, res) => {
       .sort({ created_at: -1 })
       .populate('patient', 'fullname')
       .populate('nurse', 'fullname email')
-      .populate('caretaker', 'fullname email');
+      .populate('caretaker', 'fullname email')
+      .lean();
     if (!healthRecords.length) {
       return res.status(404).json({ error: 'No health records found for this patient' });
     }
@@ -270,7 +271,8 @@ exports.createHealthRecords = async (req, res) => {
     const populatedHealthRecord = await HealthRecord.findById(healthRecord._id)
       .populate('patient', 'fullname')
       .populate('nurse', 'fullname email')
-      .populate('caretaker', 'fullname email');
+      .populate('caretaker', 'fullname email')
+      .lean();
 
     return res.status(201).json(populatedHealthRecord);
   } catch (error) {
@@ -327,7 +329,8 @@ exports.getPatientReport = async (req, res) => {
       .sort({ created_at: -1 })
       .populate('patient', 'fullname')
       .populate('nurse', 'fullname email')
-      .populate('caretaker', 'fullname email');
+      .populate('caretaker', 'fullname email')
+      .lean();
     if (!report.length) {
       return res.status(404).json({ error: 'No report available for this patient' });
     }

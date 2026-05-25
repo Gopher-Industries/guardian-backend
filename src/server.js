@@ -6,21 +6,21 @@ const database = require('./config/db');
 const multer = require('multer');
 const http = require('http');
 const socketIO = require('socket.io');
-
 const cors = require('cors');
-
 
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
 const { setEmit } = require('../socket');
 
 const app = express();
-//cors fix
+
+// CORS fix
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
+
 app.options('*', (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS,PATCH');
@@ -81,26 +81,35 @@ const blockScriptRequests = (req, res, next) => {
 
   if (!userAgent || disallowedUserAgents.some(ua => normalizedUserAgent.includes(ua))) {
     console.log('Blocked Request - Disallowed User-Agent Detected');
-    return res.status(403).json({ error: 'Forbidden: CLI or script-based requests are not allowed.' });
+    return res.status(403).json({
+      error: 'Forbidden: CLI or script-based requests are not allowed.'
+    });
   }
 
   for (const [header, pattern] of Object.entries(requiredBrowserHeaders)) {
     const headerValue = req.headers[header];
+
     if (['sec-fetch-site', 'sec-fetch-mode', 'sec-fetch-dest'].includes(header) && !headerValue) {
       continue;
     }
+
     if (header === 'referer' && !headerValue) {
       continue;
     }
+
     if (!headerValue || !pattern.test(headerValue)) {
       console.log(`Blocked Request - Missing or Invalid Header: ${header}`);
-      return res.status(403).json({ error: `Forbidden: Missing or invalid ${header} header.` });
+      return res.status(403).json({
+        error: `Forbidden: Missing or invalid ${header} header.`
+      });
     }
   }
 
   if (!req.headers['cookie']) {
     console.log('Blocked Request - Missing Cookie Header');
-    return res.status(403).json({ error: 'Forbidden: Missing browser-specific cookie header.' });
+    return res.status(403).json({
+      error: 'Forbidden: Missing browser-specific cookie header.'
+    });
   }
 
   next();
@@ -110,6 +119,7 @@ const blockScriptRequests = (req, res, next) => {
 app.set('trust proxy', 1);
 
 const rateLimit = require('express-rate-limit');
+
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
@@ -119,7 +129,6 @@ const limiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
-
 
 app.use(limiter);
 
@@ -146,9 +155,13 @@ const swaggerOptions = {
       },
     ],
   },
-  apis: ['./src/routes/*.js', './src/routes/**/*.js', './src/controllers/*.js'],
+  apis: [
+    './src/routes/*.js',
+    './src/routes/**/*.js',
+    './src/controllers/*.js',
+    './src/swaggerDefinitions.js'
+  ],
 };
-
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
@@ -174,6 +187,7 @@ const adminPatientRoutes = require('./routes/adminPatientRoutes');
 const adminStaffRoutes = require('./routes/adminStaffRoutes');
 const orgRoutes = require('./routes/orgRoutes');
 const prescriptionRoutes = require('./routes/prescriptionRoutes');
+const resourceRoutes = require('./routes/resourceRoutes');
 
 app.use('/api/v1/auth', userRoutes);
 app.use('/api/v1/caretaker', caretakerRoutes);
@@ -191,6 +205,7 @@ app.use('/api/v1/prescriptions', prescriptionRoutes);
 app.use('/api/v1/admin', adminStaffRoutes);
 app.use('/api/v1/admin', adminPatientRoutes);
 app.use('/api/v1/orgs', orgRoutes);
+app.use('/api/v1/resources', resourceRoutes);
 
 app.use(
   '/swaggerDocs',
@@ -287,10 +302,14 @@ app.get('/', (req, res) => {
   `);
 });
 
-
-
 const server = http.createServer(app);
-const io = socketIO(server, { cors: { origin: '*', methods: ['GET', 'POST'] } });
+const io = socketIO(server, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST']
+  }
+});
+
 const connectedUsers = Object.create(null);
 
 io.on('connection', socket => {
@@ -298,6 +317,7 @@ io.on('connection', socket => {
     if (!userId) return;
     connectedUsers[String(userId)] = socket.id;
   });
+
   socket.on('disconnect', () => {
     for (const [uid, sid] of Object.entries(connectedUsers)) {
       if (sid === socket.id) {
@@ -310,10 +330,12 @@ io.on('connection', socket => {
 
 function emitToUser(userId, event, payload) {
   const sid = connectedUsers[String(userId)];
-  if (sid) io.to(sid).emit(event, payload);
+  if (sid) {
+    io.to(sid).emit(event, payload);
+  }
 }
-setEmit(emitToUser);
 
+setEmit(emitToUser);
 
 const PORT = process.env.PORT || 3000;
 

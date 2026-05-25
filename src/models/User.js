@@ -63,6 +63,10 @@ UserSchema.pre('save', async function (next) {
   next();
 });
 
+
+UserSchema.index({ role: 1 });
+UserSchema.index({ organization: 1, role: 1 });
+
 // Create the User model from the schema
 const User = mongoose.model('User', UserSchema);
 
