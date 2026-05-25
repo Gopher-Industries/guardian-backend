@@ -5,10 +5,8 @@ const notifyRules = require('../services/notifyRules');
 const Role = require('../models/Role');
 const { parseStringArray } = require('../utils/arrayUtils');
 
-/*
- * Restricts independent patient-management routes for approved organization-linked
- * nurses and caretakers. These users must use the organization-based workflow.
- */
+// Restricts independent patient-management routes for approved organization-linked
+// nurses and caretakers. These users must use the organization-based workflow.
 async function blockIndependentPatientWorkForApprovedOrgMember(userId) {
   const user = await User.findById(userId).populate('role', 'name');
   if (!user) {
