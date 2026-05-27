@@ -5,6 +5,7 @@ const CarePlanSchema = new mongoose.Schema({
   description: { type: String, default: '', trim: true },
   tasks: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Task' }],
   patient: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient', required: true },
+  author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   caretaker: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   nurse: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   status: { type: String, enum: ['active', 'inactive'], default: 'active' },
@@ -27,6 +28,9 @@ CarePlanSchema.index(
   { unique: true, partialFilterExpression: { status: 'active' } }
 );
 CarePlanSchema.index({ patient: 1, created_at: -1 });
+CarePlanSchema.index({ caretaker: 1, status: 1 });
+CarePlanSchema.index({ nurse: 1, status: 1 });
+CarePlanSchema.index({ author: 1, created_at: -1 });
 
 const CarePlan = mongoose.model('CarePlan', CarePlanSchema);
 

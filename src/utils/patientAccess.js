@@ -123,5 +123,6 @@ async function buildScopedRecordFilter(userId, patientId) {
 
 module.exports = {
   buildScopedRecordFilter,
+  getAccessiblePatientIds,
   validateAccessiblePatient
 };

@@ -1,6 +1,6 @@
 // src/services/notifyRules.js]
 
-const { createAndEmit } = require('./notificationService'); 
+const { createAndEmit } = require('./notificationService');
 const Task = require('../models/Task'); // used only in getTaskPatientId (optional convenience)
 const Patient = require('../models/Patient');
 
@@ -87,7 +87,7 @@ async function taskUpdated({ taskId, patientId, caretaker, nurse, status, dueDat
   const title = 'Task updated';
   const patient = await Patient.findById(patientId).select('fullname').lean();
   const details = [
-    patientId ? `patient: ${patient.fullname}` : null,
+    patient?.fullname ? `patient: ${patient.fullname}` : null,
     status ? `status: ${status}` : null,
     dueDate ? `due: ${new Date(dueDate).toDateString()}` : null,
   ]
@@ -95,14 +95,12 @@ async function taskUpdated({ taskId, patientId, caretaker, nurse, status, dueDat
     .join(', ');
   const msgForAssignee = `Task (${taskId}) was updated ${details ? ` (${details})` : ''}.`;
   await safeNotify(caretaker, title, msgForAssignee);
-  
+
   if (nurse && toId(nurse) !== toId(caretaker)) {
-    console.log('Notifying nurse about task update:', { nurse, title, msgForAssignee });
     await safeNotify(nurse, title, msgForAssignee);
   }
 
   if (actorId && toId(actorId) !== toId(caretaker)) {
-    console.log('Notifying actor about task update:', { actorId, title: 'Task updated', message: `You updated task (${taskId}).` });
     await safeNotify(actorId, 'Task updated', `You updated task (${taskId}).`);
   }
 }
@@ -125,9 +123,93 @@ async function taskDeleted({ taskId, patientId, caretaker, nurse, actorId }) {
     await safeNotify(actorId, 'Task removed', `You deleted task (${taskId}).`);
   }
 }
-// Make sure at top of notifyRules.js:
-// const Patient = require('../models/Patient');
 
+async function assigneeTaskCreated({ taskId, patientId, assigneeId, dueDate, actorId }) {
+  await taskCreated({
+    taskId,
+    patientId,
+    caretaker: assigneeId,
+    dueDate,
+    actorId
+  });
+}
+
+async function assigneeTaskUpdated({ taskId, patientId, assigneeId, status, dueDate, actorId }) {
+  await taskUpdated({
+    taskId,
+    patientId,
+    caretaker: assigneeId,
+    status,
+    dueDate,
+    actorId
+  });
+}
+
+async function assigneeTaskDeleted({ taskId, patientId, assigneeId, actorId }) {
+  await taskDeleted({
+    taskId,
+    patientId,
+    caretaker: assigneeId,
+    actorId
+  });
+}
+
+async function carePlanCreated({ carePlanId, patientId, authorId, taskAssigneeIds = [], actorId }) {
+  const patient = await Patient.findById(patientId).select('fullname caretaker assignedNurses').lean();
+  const title = 'Care plan created';
+  const patientName = patient?.fullname ? ` for ${patient.fullname}` : '';
+  const message = `A care plan${patientName} has been created.`;
+  const recipients = new Set([
+    toId(authorId),
+    toId(patient?.caretaker),
+    ...(patient?.assignedNurses || []).map(toId),
+    ...taskAssigneeIds.map(toId)
+  ].filter(Boolean));
+
+  await Promise.all([...recipients].map(userId => safeNotify(userId, title, message)));
+
+  if (actorId && !recipients.has(toId(actorId))) {
+    await safeNotify(actorId, 'Care plan created', `You created care plan (${carePlanId}).`);
+  }
+}
+
+async function carePlanUpdated({ carePlanId, patientId, authorId, taskAssigneeIds = [], actorId }) {
+  const patient = await Patient.findById(patientId).select('fullname caretaker assignedNurses').lean();
+  const title = 'Care plan updated';
+  const patientName = patient?.fullname ? ` for ${patient.fullname}` : '';
+  const message = `Care plan (${carePlanId})${patientName} was updated.`;
+  const recipients = new Set([
+    toId(authorId),
+    toId(patient?.caretaker),
+    ...(patient?.assignedNurses || []).map(toId),
+    ...taskAssigneeIds.map(toId)
+  ].filter(Boolean));
+
+  await Promise.all([...recipients].map(userId => safeNotify(userId, title, message)));
+
+  if (actorId && !recipients.has(toId(actorId))) {
+    await safeNotify(actorId, 'Care plan updated', `You updated care plan (${carePlanId}).`);
+  }
+}
+
+async function carePlanDeleted({ carePlanId, patientId, authorId, taskAssigneeIds = [], actorId }) {
+  const patient = await Patient.findById(patientId).select('fullname caretaker assignedNurses').lean();
+  const title = 'Care plan removed';
+  const patientName = patient?.fullname ? ` for ${patient.fullname}` : '';
+  const message = `Care plan (${carePlanId})${patientName} was deleted.`;
+  const recipients = new Set([
+    toId(authorId),
+    toId(patient?.caretaker),
+    ...(patient?.assignedNurses || []).map(toId),
+    ...taskAssigneeIds.map(toId)
+  ].filter(Boolean));
+
+  await Promise.all([...recipients].map(userId => safeNotify(userId, title, message)));
+
+  if (actorId && !recipients.has(toId(actorId))) {
+    await safeNotify(actorId, 'Care plan removed', `You deleted care plan (${carePlanId}).`);
+  }
+}
 async function patientCreated({ patientId, actorId, caretakerId }) {
   const title = 'Patient added';
   let name = String(patientId);
@@ -172,6 +254,12 @@ module.exports = {
   taskCreated,
   taskUpdated,
   taskDeleted,
+  assigneeTaskCreated,
+  assigneeTaskUpdated,
+  assigneeTaskDeleted,
+  carePlanCreated,
+  carePlanUpdated,
+  carePlanDeleted,
   patientCreated,
 
   // Optional utility
