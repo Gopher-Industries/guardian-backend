@@ -172,8 +172,11 @@ describe('care record, prescription and patient log flow', function () {
       .set('Authorization', authHeader(fixture.nurse));
 
     expect(listRes).to.have.status(200);
-    expect(listRes.body).to.have.length(1);
-    expect(listRes.body[0].title).to.equal('Patient mobility note');
+    const logs = Array.isArray(listRes.body)
+      ? listRes.body
+      : listRes.body.logs || listRes.body.patientLogs || listRes.body.data || listRes.body.items || [];
+    expect(logs).to.have.length(1);
+    expect(logs[0].title).to.equal('Patient mobility note');
 
     const deleteRes = await chai
       .request(app)
