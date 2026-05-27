@@ -143,3 +143,8 @@ dist
 .env
 .env.*
 node_modules/
+
+# macOS system files
+.DS_Store
+src/.DS_Store
+**/.DS_Store

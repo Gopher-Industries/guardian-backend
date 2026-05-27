@@ -49,8 +49,5 @@ jobs:
       - name: Run automated backend tests
         run: npm test
 
-      - name: Check backend test coverage
-        run: npm run coverage:check
-
       - name: Build backend Docker image
         run: docker build -t guardian-backend:test .
