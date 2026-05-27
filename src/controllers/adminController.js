@@ -4,8 +4,12 @@ const Task = require('../models/Task');
 const CarePlan = require('../models/CarePlan');
 const User = require('../models/User');
 const Role = require('../models/Role');
-//const SupportTicket = require('../models/SupportTicket');
+const mongoose = require('mongoose');
+const SupportTicket = require('../models/SupportTicket');
+const PatientLog = require('../models/PatientLog');
 const notifyRules = require('../services/notifyRules');
+
+const SUPPORT_TICKET_STATUSES = ['open', 'in_progress', 'resolved', 'closed'];
 
 /**
  * @swagger
@@ -41,6 +45,43 @@ const notifyRules = require('../services/notifyRules');
  *         updated_at:
  *           type: string
  *           format: date-time
+ *     SupportTicket:
+ *       type: object
+ *       properties:
+ *         _id:
+ *           type: string
+ *         user:
+ *           type: string
+ *         subject:
+ *           type: string
+ *         description:
+ *           type: string
+ *         status:
+ *           type: string
+ *           enum: [open, in_progress, resolved, closed]
+ *         adminResponse:
+ *           type: string
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *         updated_at:
+ *           type: string
+ *           format: date-time
+ *     PaginatedSupportTickets:
+ *       type: object
+ *       properties:
+ *         page:
+ *           type: integer
+ *         limit:
+ *           type: integer
+ *         total:
+ *           type: integer
+ *         totalPages:
+ *           type: integer
+ *         tickets:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/SupportTicket'
  */
 
 /**
@@ -59,26 +100,6 @@ const notifyRules = require('../services/notifyRules');
  *     responses:
  *       200:
  *         description: Detailed patient overview
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 patient:
- *                   $ref: '#/components/schemas/Patient'
- *                 healthRecords:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/HealthRecord'
- *                 carePlan:
- *                   $ref: '#/components/schemas/CarePlan'
- *                 tasks:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Task'
- *                 taskCompletionRate:
- *                   type: number
- *                   description: Percentage of completed tasks
  *       404:
  *         description: Patient not found
  *       500:
@@ -90,7 +111,8 @@ exports.getPatientOverview = async (req, res) => {
 
     const patientDetails = await Patient.findById(patientId)
       .populate('caretaker')
-      .populate('assignedNurses');
+      .populate('assignedNurses')
+      .lean();
 
     if (!patientDetails) {
       return res.status(404).json({ message: 'Patient not found' });
@@ -100,77 +122,81 @@ exports.getPatientOverview = async (req, res) => {
     const tasks = await Task.find({ patient: patientId });
     const carePlan = await CarePlan.findOne({ patient: patientId, status: 'active' })
       .sort({ created_at: -1 })
-      .populate('tasks');
+      .populate('tasks')
+      .lean();
 
     const taskCompletionRate = tasks.length
       ? (tasks.filter(task => task.status === 'completed').length / tasks.length) * 100
       : 0;
 
-    const response = {
+    return res.status(200).json({
       patient: patientDetails,
       healthRecords,
       carePlan,
       tasks,
       taskCompletionRate,
-    };
-
-    res.status(200).json(response);
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching patient overview', details: error.message });
+    return res.status(500).json({
+      message: 'Error fetching patient overview',
+      details: error.message,
+    });
   }
 };
 
 /**
  * @swagger
- * /api/v1/admin/support-ticket:
+ * /api/v1/admin/support-tickets:
  *   post:
  *     summary: Create a support ticket
  *     tags: [Admin]
  *     requestBody:
  *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - subject
- *               - description
- *             properties:
- *               subject:
- *                 type: string
- *               description:
- *                 type: string
- *               status:
- *                 type: string
- *                 default: open
  *     responses:
  *       201:
  *         description: Support ticket created successfully
+ *       400:
+ *         description: Invalid request body
  *       500:
  *         description: Error creating support ticket
  */
 exports.createSupportTicket = async (req, res) => {
   try {
-    const { subject, description, status } = req.body;
+    const { subject, description } = req.body;
+    const normalizedSubject = String(subject || '').trim();
+    const normalizedDescription = String(description || '').trim();
+
+    if (!normalizedSubject || !normalizedDescription) {
+      return res.status(400).json({
+        message: 'subject and description are required',
+      });
+    }
 
     const newTicket = new SupportTicket({
       user: req.user._id,
-      subject,
-      description,
-      status: status || 'open',
+      subject: normalizedSubject,
+      description: normalizedDescription,
     });
 
     await newTicket.save();
+
     Promise.resolve(
       notifyRules.supportTicketCreated({
         ticketId: newTicket._id,
         userId: newTicket.user,
-        actorId: req.user?._id
+        actorId: req.user?._id,
       })
-    ).catch(() => { });
-    res.status(201).json({ message: 'Support ticket created', ticket: newTicket });
+    ).catch(() => {});
+
+    return res.status(201).json({
+      message: 'Support ticket created',
+      ticket: newTicket,
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Error creating support ticket', details: error.message });
+    return res.status(500).json({
+      message: 'Error creating support ticket',
+      details: error.message,
+    });
   }
 };
 
@@ -186,43 +212,90 @@ exports.createSupportTicket = async (req, res) => {
  *         required: false
  *         schema:
  *           type: string
- *         description: Filter tickets by status (e.g., open, closed)
+ *         description: Filter tickets by status
  *       - in: query
  *         name: userId
  *         required: false
  *         schema:
  *           type: string
  *         description: Filter tickets by user ID
+ *       - in: query
+ *         name: page
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of tickets per page
  *     responses:
  *       200:
  *         description: List of support tickets
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/SupportTicket'
+ *       400:
+ *         description: Invalid query parameters
  *       500:
  *         description: Error fetching support tickets
  */
 exports.getSupportTickets = async (req, res) => {
   try {
     const { status, userId } = req.query;
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(
+      Math.max(parseInt(req.query.limit, 10) || 10, 1),
+      100
+    );
 
     const query = {};
-    if (status) query.status = status;
-    if (userId) query.user = userId;
 
-    const tickets = await SupportTicket.find(query).populate('user');
-    res.status(200).json(tickets);
+    if (status) {
+      if (!SUPPORT_TICKET_STATUSES.includes(status)) {
+        return res.status(400).json({
+          message: `status must be one of: ${SUPPORT_TICKET_STATUSES.join(', ')}`,
+        });
+      }
+      query.status = status;
+    }
+
+    if (userId) {
+      if (!mongoose.Types.ObjectId.isValid(userId)) {
+        return res.status(400).json({ message: 'Invalid userId filter' });
+      }
+      query.user = userId;
+    }
+
+    const [tickets, total] = await Promise.all([
+      SupportTicket.find(query)
+        .populate('user', 'fullname email role')
+        .sort({ created_at: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
+      SupportTicket.countDocuments(query),
+    ]);
+
+    return res.status(200).json({
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit) || 1,
+      tickets,
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching support tickets', details: error.message });
+    return res.status(500).json({
+      message: 'Error fetching support tickets',
+      details: error.message,
+    });
   }
 };
 
 /**
  * @swagger
- * /api/v1/admin/support-ticket/{ticketId}:
+ * /api/v1/admin/support-tickets/{ticketId}:
  *   put:
  *     summary: Update a support ticket
  *     tags: [Admin]
@@ -235,29 +308,11 @@ exports.getSupportTickets = async (req, res) => {
  *         description: ID of the support ticket to be updated
  *     requestBody:
  *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               status:
- *                 type: string
- *                 description: New status of the support ticket (e.g., open, closed)
- *               adminResponse:
- *                 type: string
- *                 description: Response or comments from the admin
  *     responses:
  *       200:
  *         description: Support ticket updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 ticket:
- *                   $ref: '#/components/schemas/SupportTicket'
+ *       400:
+ *         description: Invalid ticket ID or empty update body
  *       404:
  *         description: Support ticket not found
  *       500:
@@ -268,26 +323,59 @@ exports.updateSupportTicket = async (req, res) => {
     const { ticketId } = req.params;
     const { status, adminResponse } = req.body;
 
+    if (!mongoose.Types.ObjectId.isValid(ticketId)) {
+      return res.status(400).json({ message: 'Invalid ticketId' });
+    }
+
+    const updateData = {};
+
+    if (status !== undefined) {
+      if (!SUPPORT_TICKET_STATUSES.includes(status)) {
+        return res.status(400).json({
+          message: `status must be one of: ${SUPPORT_TICKET_STATUSES.join(', ')}`,
+        });
+      }
+      updateData.status = status;
+    }
+
+    if (adminResponse !== undefined) {
+      updateData.adminResponse = String(adminResponse).trim();
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({
+        message: 'Provide at least one field to update',
+      });
+    }
+
     const updatedTicket = await SupportTicket.findByIdAndUpdate(
       ticketId,
-      { status, adminResponse },
-      { new: true }
+      updateData,
+      { new: true, runValidators: true }
     );
 
     if (!updatedTicket) {
       return res.status(404).json({ message: 'Support ticket not found' });
     }
+
     Promise.resolve(
       notifyRules.supportTicketUpdated({
         ticketId: updatedTicket._id,
         userId: updatedTicket.user,
         status: updatedTicket.status,
-        actorId: req.user?._id
+        actorId: req.user?._id,
       })
-    ).catch(() => { });
-    res.status(200).json({ message: 'Support ticket updated', ticket: updatedTicket });
+    ).catch(() => {});
+
+    return res.status(200).json({
+      message: 'Support ticket updated',
+      ticket: updatedTicket,
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Error updating support ticket', details: error.message });
+    return res.status(500).json({
+      message: 'Error updating support ticket',
+      details: error.message,
+    });
   }
 };
 
@@ -301,57 +389,32 @@ exports.updateSupportTicket = async (req, res) => {
  *       - bearerAuth: []
  *     requestBody:
  *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - description
- *               - patientId
- *               - dueDate
- *               - caretakerId
- *             properties:
- *               description:
- *                 type: string
- *                 description: Task description
- *               patientId:
- *                 type: string
- *                 description: ID of the patient this task is for
- *               dueDate:
- *                 type: string
- *                 format: date
- *                 example: '2026-04-01'
- *               caretakerId:
- *                 type: string
- *                 description: ID of the caretaker responsible for this task (required)
- *               nurseId:
- *                 type: string
- *                 description: ID of the nurse assigned to carry out this task (optional)
- *               priority:
- *                 type: string
- *                 enum: [low, medium, high]
- *                 default: medium
- *                 description: Task priority level
  *     responses:
  *       201:
  *         description: Task created successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 task:
- *                   $ref: '#/components/schemas/Task'
  *       500:
  *         description: Error creating task
  */
 exports.createTask = async (req, res) => {
   try {
-    const { description, patientId, dueDate, caretakerId, nurseId, priority } = req.body;
+    const {
+      description,
+      patientId,
+      dueDate,
+      caretakerId,
+      nurseId,
+      priority,
+    } = req.body;
 
-    const newTask = new Task({ description, patient: patientId, dueDate, caretaker: caretakerId, nurse_id: nurseId, priority });
+    const newTask = new Task({
+      description,
+      patient: patientId,
+      dueDate,
+      caretaker: caretakerId,
+      nurse_id: nurseId,
+      priority,
+    });
+
     await newTask.save();
 
     Promise.resolve(
@@ -361,13 +424,19 @@ exports.createTask = async (req, res) => {
         caretaker: newTask.caretaker,
         nurse: newTask.nurse_id,
         dueDate: newTask.dueDate,
-        actorId: req.user?._id
+        actorId: req.user?._id,
       })
-    ).catch(() => { });
+    ).catch(() => {});
 
-    res.status(201).json({ message: 'Task created successfully', task: newTask });
+    return res.status(201).json({
+      message: 'Task created successfully',
+      task: newTask,
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Error creating task', details: error.message });
+    return res.status(500).json({
+      message: 'Error creating task',
+      details: error.message,
+    });
   }
 };
 
@@ -386,34 +455,9 @@ exports.createTask = async (req, res) => {
  *         description: ID of the task to update
  *     requestBody:
  *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               title:
- *                 type: string
- *               description:
- *                 type: string
- *               dueDate:
- *                 type: string
- *                 format: date
- *               caretakerId:
- *                 type: string
- *               nurseId:
- *                 type: string
  *     responses:
  *       200:
  *         description: Task updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 task:
- *                   $ref: '#/components/schemas/Task'
  *       404:
  *         description: Task not found
  *       500:
@@ -426,16 +470,18 @@ exports.updateTask = async (req, res) => {
 
     const updateData = {
       ...rest,
-      ...((caretakerId) && { caretaker: caretakerId }),
-      ...(nurseId && { nurse_id: nurseId })
+      ...(caretakerId && { caretaker: caretakerId }),
+      ...(nurseId && { nurse_id: nurseId }),
     };
 
-    const updatedTask = await Task.findByIdAndUpdate(taskId, updateData, { new: true });
-
+    const updatedTask = await Task.findByIdAndUpdate(taskId, updateData, {
+      new: true,
+    });
 
     if (!updatedTask) {
       return res.status(404).json({ message: 'Task not found' });
     }
+
     Promise.resolve(
       notifyRules.taskUpdated({
         taskId: updatedTask._id,
@@ -444,13 +490,19 @@ exports.updateTask = async (req, res) => {
         nurse: updatedTask.nurse_id,
         status: updatedTask.status,
         dueDate: updatedTask.dueDate,
-        actorId: req.user?._id
+        actorId: req.user?._id,
       })
-    ).catch(() => { });
+    ).catch(() => {});
 
-    res.status(200).json({ message: 'Task updated successfully', task: updatedTask });
+    return res.status(200).json({
+      message: 'Task updated successfully',
+      task: updatedTask,
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Error updating task', details: error.message });
+    return res.status(500).json({
+      message: 'Error updating task',
+      details: error.message,
+    });
   }
 };
 
@@ -470,13 +522,6 @@ exports.updateTask = async (req, res) => {
  *     responses:
  *       200:
  *         description: Task deleted successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
  *       404:
  *         description: Task not found
  *       500:
@@ -491,77 +536,121 @@ exports.deleteTask = async (req, res) => {
     if (!deletedTask) {
       return res.status(404).json({ message: 'Task not found' });
     }
-    notifyRules.taskDeleted({
-      taskId,
-      patientId: deletedTask.patient,
-      caretaker: deletedTask.caretaker,
-      nurse: deletedTask.nurse_id,
-      actorId: req.user?._id
-    })
 
-    res.status(200).json({ message: 'Task deleted successfully' });
+    Promise.resolve(
+      notifyRules.taskDeleted({
+        taskId,
+        patientId: deletedTask.patient,
+        caretaker: deletedTask.caretaker,
+        nurse: deletedTask.nurse_id,
+        actorId: req.user?._id,
+      })
+    ).catch(() => {});
+
+    return res.status(200).json({
+      message: 'Task deleted successfully',
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Error deleting task', details: error.message });
+    return res.status(500).json({
+      message: 'Error deleting task',
+      details: error.message,
+    });
   }
 };
-
-// Admin Dashboard Summary API
 
 /**
  * @swagger
  * /api/v1/admin/dashboard-summary:
  *   get:
  *     summary: Get admin dashboard summary
+ *     description: >-
+ *       Returns a system-wide snapshot for administrators. Includes total and active
+ *       patient counts, a staff breakdown by role with pending approval count, a full
+ *       task breakdown, task completion rate, and a count of patient logs created
+ *       system-wide in the last 7 days.
  *     tags: [Admin]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Admin dashboard summary
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 totalPatients:
- *                   type: integer
- *                 totalActivePatients:
- *                   type: integer
- *                 totalStaff:
- *                   type: integer
- *                 totalTasks:
- *                   type: integer
- *                 completedTasks:
- *                   type: integer
- *                 pendingTasks:
- *                   type: integer
- *                 taskCompletionRate:
- *                   type: integer
- *                   description: Percentage of completed tasks
+ *         description: Admin dashboard summary fetched successfully.
  *       500:
- *         description: Error fetching dashboard summary
+ *         description: Unexpected server error.
  */
 exports.getDashboardSummary = async (req, res) => {
   try {
-    const totalPatients = await Patient.countDocuments();
-    const totalActivePatients = await Patient.countDocuments({ isDeleted: false });
-    const totalTasks = await Task.countDocuments();
-    const totalStaff = await User.countDocuments({ role: { $in: await Role.find({ name: { $in: ['nurse', 'caretaker', 'doctor'] } }).distinct('_id') } });
-    const completedTasks = await Task.countDocuments({ status: 'completed' });
-    const pendingTasks = await Task.countDocuments({ status: 'pending' });
+    const now = new Date();
+    const sevenDaysAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
 
-    const summary = {
+    const [doctorRole, nurseRole, caretakerRole] = await Promise.all([
+      Role.findOne({ name: 'doctor' }).select('_id').lean(),
+      Role.findOne({ name: 'nurse' }).select('_id').lean(),
+      Role.findOne({ name: 'caretaker' }).select('_id').lean(),
+    ]);
+
+    const staffRoleIds = [
+      doctorRole?._id,
+      nurseRole?._id,
+      caretakerRole?._id,
+    ].filter(Boolean);
+
+    const [
       totalPatients,
       totalActivePatients,
       totalStaff,
+      totalDoctors,
+      totalNurses,
+      totalCaretakers,
+      pendingApprovals,
       totalTasks,
       completedTasks,
-      pendingTasks,
-      taskCompletionRate: totalTasks ? Math.round((completedTasks / totalTasks) * 100) : 0,
-    };
+      inProgressTasks,
+      overdueTasks,
+      recentLogsCount,
+    ] = await Promise.all([
+      Patient.countDocuments(),
+      Patient.countDocuments({ isDeleted: false }),
+      User.countDocuments({ role: { $in: staffRoleIds } }),
+      User.countDocuments({ role: doctorRole?._id }),
+      User.countDocuments({ role: nurseRole?._id }),
+      User.countDocuments({ role: caretakerRole?._id }),
+      User.countDocuments({ approvalStatus: 'pending' }),
+      Task.countDocuments(),
+      Task.countDocuments({ status: 'completed' }),
+      Task.countDocuments({ status: 'in progress' }),
+      Task.countDocuments({
+        status: { $ne: 'completed' },
+        dueDate: { $lt: now },
+      }),
+      PatientLog.countDocuments({
+        createdAt: { $gte: sevenDaysAgo },
+      }),
+    ]);
 
-    res.status(200).json(summary);
+    return res.status(200).json({
+      totalPatients,
+      totalActivePatients,
+      staff: {
+        total: totalStaff,
+        doctors: totalDoctors,
+        nurses: totalNurses,
+        caretakers: totalCaretakers,
+        pendingApprovals,
+      },
+      totalTasks,
+      completedTasks,
+      inProgressTasks,
+      pendingTasks: totalTasks - completedTasks - inProgressTasks,
+      overdueTasks,
+      taskCompletionRate: totalTasks
+        ? Math.round((completedTasks / totalTasks) * 100)
+        : 0,
+      recentLogsCount,
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching dashboard summary', details: error.message });
+    return res.status(500).json({
+      message: 'Error fetching dashboard summary',
+      details: error.message,
+    });
   }
 };

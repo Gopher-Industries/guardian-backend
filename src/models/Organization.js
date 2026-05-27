@@ -80,4 +80,7 @@ OrganizationSchema.virtual('staffCount').get(function () {
 OrganizationSchema.set('toJSON', { virtuals: true });
 OrganizationSchema.set('toObject', { virtuals: true });
 
+OrganizationSchema.index({ createdBy: 1 });
+OrganizationSchema.index({ staff: 1 });
+
 module.exports = mongoose.model('Organization', OrganizationSchema);
