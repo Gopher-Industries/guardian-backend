@@ -1,0 +1,56 @@
+name: Backend CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+jobs:
+  test-and-docker-build:
+    name: Run backend tests and Docker build
+    runs-on: ubuntu-latest
+
+    services:
+      mongo:
+        image: mongo:6
+        env:
+          MONGO_INITDB_ROOT_USERNAME: admin
+          MONGO_INITDB_ROOT_PASSWORD: password
+          MONGO_INITDB_DATABASE: guardian_test
+        ports:
+          - 27018:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand({ ping: 1 })' -u admin -p password --authenticationDatabase admin"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      NODE_ENV: test
+      JWT_SECRET: gmproject
+      MONGODB_URI: mongodb://admin:password@127.0.0.1:27018/guardian_test?authSource=admin
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run automated backend tests
+        run: npm test
+
+      - name: Check backend test coverage
+        run: npm run coverage:check
+
+      - name: Build backend Docker image
+        run: docker build -t guardian-backend:test .
