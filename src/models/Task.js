@@ -41,6 +41,11 @@ TaskSchema.index({ assignee: 1, dueDate: 1 });
 TaskSchema.index({ assignee: 1, priority: 1 });
 TaskSchema.index({ assignee: 1, status: 1 });
 TaskSchema.index({ patient: 1 });
+TaskSchema.index({ caretaker: 1, dueDate: 1 });
+TaskSchema.index({ caretaker: 1, priority: 1 });
+TaskSchema.index({ caretaker: 1, status: 1 });
+TaskSchema.index({ nurse_id: 1, status: 1 });
+TaskSchema.index({ status: 1 });
 
 const Task = mongoose.model('Task', TaskSchema);
 

@@ -261,6 +261,7 @@ exports.createPrescription = async (req, res) => {
  */
 exports.getPrescriptionById = async (req, res) => {
   try {
+
     if (!req.user?._id) {
       return res.status(401).json({
         error: 'Unauthorized: missing user context'
@@ -268,13 +269,12 @@ exports.getPrescriptionById = async (req, res) => {
     }
 
     const prescription = await Prescription.findById(req.params.id)
-      .populate('patient', 'fullname gender dateOfBirth organisation')
-      .populate('prescriber', 'fullname email organisation');
+      .populate('patient', 'fullname gender dateOfBirth')
+      .populate('prescriber', 'fullname email')   // <-- FIX here
+      .lean();
 
     if (!prescription) {
-      return res.status(404).json({
-        error: 'Prescription not found'
-      });
+      return res.status(404).json({ error: 'Prescription not found' });
     }
 
     const userId = String(req.user._id);
@@ -522,7 +522,8 @@ exports.listPrescriptionsForPatient = async (req, res) => {
       Prescription.find(filter)
         .populate('prescriber', 'fullname email')
         .skip((parsedPage - 1) * parsedLimit)
-        .limit(parsedLimit),
+        .limit(parsedLimit)
+        .lean(),
       Prescription.countDocuments(filter)
     ]);
 

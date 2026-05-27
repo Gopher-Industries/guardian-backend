@@ -48,7 +48,8 @@ exports.getProfile = async (req, res) => {
       .select('-password_hash -__v')
       .populate('role', 'name')
       .populate('organization', 'name')
-      .populate('assignedPatients', 'fullname gender dateOfBirth');
+      .populate('assignedPatients', 'fullname gender dateOfBirth')
+      .lean();
 
     if (!nurse) return res.status(404).json({ error: 'Nurse not found' });
 

@@ -64,7 +64,7 @@ router.get('/nurses', verifyToken, verifyRole(['admin']), async (req, res) => {
 // Patient Overview API
 router.get('/patient-overview/:patientId', verifyToken, verifyRole(['admin']), adminController.getPatientOverview);
 // Support Tickets APIs
-router.post('/support-ticket', verifyToken, adminController.createSupportTicket);
+router.post('/support-tickets', verifyToken, adminController.createSupportTicket);
 router.get('/support-tickets', verifyToken, verifyRole(['admin']), adminController.getSupportTickets);
 router.put('/support-tickets/:ticketId', verifyToken, verifyRole(['admin']), adminController.updateSupportTicket);
 
