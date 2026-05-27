@@ -4,6 +4,16 @@ const Patient = require('../models/Patient'); // only for population types
 const Task = require('../models/Task'); // only for dashboard summary
 const PatientLog = require('../models/PatientLog'); // only for population types
 
+function taskAssigneeQuery(userId) {
+  return {
+    $or: [
+      { assignee: userId },
+      { caretaker: userId },
+      { nurse_id: userId }
+    ]
+  };
+}
+
 /**
  * @swagger
  * /api/v1/nurse/profile:
@@ -240,10 +250,10 @@ exports.getDashboardSummary = async (req, res) => {
     ] = await Promise.all([
       Patient.countDocuments({ assignedNurses: nurseId }),
       Patient.countDocuments({ assignedNurses: nurseId, isDeleted: false }),
-      Task.countDocuments({ nurse_id: nurseId }),
-      Task.countDocuments({ nurse_id: nurseId, status: 'completed' }),
-      Task.countDocuments({ nurse_id: nurseId, status: 'in progress' }),
-      Task.countDocuments({ nurse_id: nurseId, status: { $ne: 'completed' }, dueDate: { $lt: now } }),
+      Task.countDocuments(taskAssigneeQuery(nurseId)),
+      Task.countDocuments({ ...taskAssigneeQuery(nurseId), status: 'completed' }),
+      Task.countDocuments({ ...taskAssigneeQuery(nurseId), status: 'in progress' }),
+      Task.countDocuments({ ...taskAssigneeQuery(nurseId), status: { $ne: 'completed' }, dueDate: { $lt: now } }),
       PatientLog.countDocuments({ createdBy: nurseId, createdAt: { $gte: sevenDaysAgo } }),
     ]);
 

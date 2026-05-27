@@ -20,6 +20,8 @@ const SUPPORT_TICKET_STATUSES = ['open', 'in_progress', 'resolved', 'closed'];
  *       properties:
  *         _id:
  *           type: string
+ *         title:
+ *           type: string
  *         description:
  *           type: string
  *         dueDate:
@@ -32,6 +34,8 @@ const SUPPORT_TICKET_STATUSES = ['open', 'in_progress', 'resolved', 'closed'];
  *           type: string
  *           enum: [pending, in progress, completed]
  *         patient:
+ *           type: string
+ *         assignee:
  *           type: string
  *         caretaker:
  *           type: string
@@ -388,6 +392,43 @@ exports.updateSupportTicket = async (req, res) => {
  *       - bearerAuth: []
  *     requestBody:
  *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - description
+ *               - patientId
+ *               - dueDate
+ *               - assigneeId
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 description: Task title. Defaults to description when omitted.
+ *               description:
+ *                 type: string
+ *                 description: Task description
+ *               patientId:
+ *                 type: string
+ *                 description: ID of the patient this task is for
+ *               dueDate:
+ *                 type: string
+ *                 format: date
+ *                 example: '2026-04-01'
+ *               caretakerId:
+ *                 type: string
+ *                 description: Legacy assignee field. Used when assigneeId and nurseId are not provided.
+ *               nurseId:
+ *                 type: string
+ *                 description: Legacy assignee field. Used when assigneeId is not provided.
+ *               assigneeId:
+ *                 type: string
+ *                 description: ID of the staff member assigned to this task
+ *               priority:
+ *                 type: string
+ *                 enum: [low, medium, high]
+ *                 default: medium
+ *                 description: Task priority level
  *     responses:
  *       201:
  *         description: Task created successfully
@@ -396,32 +437,36 @@ exports.updateSupportTicket = async (req, res) => {
  */
 exports.createTask = async (req, res) => {
   try {
-    const {
-      description,
-      patientId,
-      dueDate,
-      caretakerId,
-      nurseId,
-      priority,
-    } = req.body;
+    const { title, description, patientId, dueDate, caretakerId, nurseId, assigneeId, priority } = req.body;
+    const assignee = assigneeId || nurseId || caretakerId;
+
+    if (!description || !patientId || !dueDate || !assignee) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+
+    const [patient, assignedUser] = await Promise.all([
+      Patient.findById(patientId).select('_id').lean(),
+      User.findById(assignee).select('_id').lean()
+    ]);
+
+    if (!patient) return res.status(404).json({ message: 'Patient not found' });
+    if (!assignedUser) return res.status(404).json({ message: 'Assignee not found' });
 
     const newTask = new Task({
+      title: title || description,
       description,
       patient: patientId,
       dueDate,
-      caretaker: caretakerId,
-      nurse_id: nurseId,
-      priority,
+      assignee,
+      priority
     });
-
     await newTask.save();
 
     Promise.resolve(
       notifyRules.taskCreated({
         taskId: newTask._id,
         patientId,
-        caretaker: newTask.caretaker,
-        nurse: newTask.nurse_id,
+        caretaker: newTask.assignee,
         dueDate: newTask.dueDate,
         actorId: req.user?._id,
       })
@@ -454,6 +499,24 @@ exports.createTask = async (req, res) => {
  *         description: ID of the task to update
  *     requestBody:
  *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               dueDate:
+ *                 type: string
+ *                 format: date
+ *               caretakerId:
+ *                 type: string
+ *               nurseId:
+ *                 type: string
+ *               assigneeId:
+ *                 type: string
  *     responses:
  *       200:
  *         description: Task updated successfully
@@ -465,17 +528,32 @@ exports.createTask = async (req, res) => {
 exports.updateTask = async (req, res) => {
   try {
     const { taskId } = req.params;
-    const { caretakerId, nurseId, ...rest } = req.body;
+    const { title, description, dueDate, priority, status, report, caretakerId, nurseId, assigneeId, patientId } = req.body;
+    const nextAssignee = assigneeId || nurseId || caretakerId;
+
+    if (patientId) {
+      const patient = await Patient.findById(patientId).select('_id').lean();
+      if (!patient) return res.status(404).json({ message: 'Patient not found' });
+    }
+
+    if (nextAssignee) {
+      const assignedUser = await User.findById(nextAssignee).select('_id').lean();
+      if (!assignedUser) return res.status(404).json({ message: 'Assignee not found' });
+    }
 
     const updateData = {
-      ...rest,
-      ...(caretakerId && { caretaker: caretakerId }),
-      ...(nurseId && { nurse_id: nurseId }),
+      ...(title !== undefined && { title }),
+      ...(description !== undefined && { description }),
+      ...(dueDate !== undefined && { dueDate }),
+      ...(priority !== undefined && { priority }),
+      ...(status !== undefined && { status }),
+      ...(report !== undefined && { report }),
+      ...(patientId && { patient: patientId }),
+      ...(nextAssignee && { assignee: nextAssignee }),
+      updated_at: Date.now()
     };
 
-    const updatedTask = await Task.findByIdAndUpdate(taskId, updateData, {
-      new: true,
-    });
+    const updatedTask = await Task.findByIdAndUpdate(taskId, updateData, { new: true, runValidators: true });
 
     if (!updatedTask) {
       return res.status(404).json({ message: 'Task not found' });
@@ -485,8 +563,7 @@ exports.updateTask = async (req, res) => {
       notifyRules.taskUpdated({
         taskId: updatedTask._id,
         patientId: updatedTask.patient,
-        caretaker: updatedTask.caretaker,
-        nurse: updatedTask.nurse_id,
+        caretaker: updatedTask.assignee,
         status: updatedTask.status,
         dueDate: updatedTask.dueDate,
         actorId: req.user?._id,
@@ -540,7 +617,7 @@ exports.deleteTask = async (req, res) => {
       notifyRules.taskDeleted({
         taskId,
         patientId: deletedTask.patient,
-        caretaker: deletedTask.caretaker,
+        caretaker: deletedTask.assignee || deletedTask.caretaker,
         nurse: deletedTask.nurse_id,
         actorId: req.user?._id,
       })

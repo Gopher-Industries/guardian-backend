@@ -1,10 +1,20 @@
-const User = require("../models/User");
-const Task = require("../models/Task");
-const Role = require("../models/Role");
-const DailyReport = require("../models/DailyReport");
-const Patient = require("../models/Patient");
-const PatientLog = require("../models/PatientLog");
-const notifyRules = require("../services/notifyRules");
+const User = require('../models/User');
+const Task = require('../models/Task');
+const Role = require('../models/Role');
+const DailyReport = require('../models/DailyReport');
+const Patient = require('../models/Patient');
+const PatientLog = require('../models/PatientLog');
+const notifyRules = require('../services/notifyRules');
+
+function taskAssigneeQuery(userId) {
+  return {
+    $or: [
+      { assignee: userId },
+      { caretaker: userId },
+      { nurse_id: userId }
+    ]
+  };
+}
 
 /**
  * @swagger
@@ -122,7 +132,7 @@ exports.updateProfile = async (req, res) => {
   .populate("role", "name")
   .populate("assignedPatients", "fullname age gender")
   .lean();
-    
+
 
     if (!updatedCaretaker) {
       return res.status(404).json({ error: "Caretaker not found" });
@@ -210,10 +220,10 @@ exports.getTasks = async (req, res) => {
       return res.status(400).json({ error: "Missing caretaker context" });
     }
 
-    const query = { caretaker: caretakerId };
+    const query = taskAssigneeQuery(caretakerId);
 
-    if (filter === "urgent") {
-      query.priority = "high";
+    if (filter === 'urgent') {
+      query.priority = 'high';
     }
 
     if (dueDate) {
@@ -223,7 +233,6 @@ exports.getTasks = async (req, res) => {
           .status(400)
           .json({ error: "Invalid dueDate. Use YYYY-MM-DD." });
       }
-
       const endOfDay = new Date(dt);
       endOfDay.setHours(23, 59, 59, 999);
       query.dueDate = { $lte: endOfDay };
@@ -239,11 +248,10 @@ exports.getTasks = async (req, res) => {
 
     let sortSpec = { dueDate: 1 };
     if (sort) {
-      const direction = sort.startsWith("-") ? -1 : 1;
-      const field = sort.replace(/^-/, "");
-
-      if (!["dueDate", "created_at"].includes(field)) {
-        return res.status(400).json({ error: "Invalid sort field" });
+      const direction = sort.startsWith('-') ? -1 : 1;
+      const field = sort.replace(/^-/, '');
+      if (!['dueDate', 'created_at'].includes(field)) {
+        return res.status(400).json({ error: 'Invalid sort field' });
       }
 
       sortSpec = { [field]: direction };
@@ -614,18 +622,11 @@ exports.getDashboardSummary = async (req, res) => {
     ] = await Promise.all([
       Patient.countDocuments({ caretaker: caretakerId }),
       Patient.countDocuments({ caretaker: caretakerId, isDeleted: false }),
-      Task.countDocuments({ caretaker: caretakerId }),
-      Task.countDocuments({ caretaker: caretakerId, status: "completed" }),
-      Task.countDocuments({ caretaker: caretakerId, status: "in progress" }),
-      Task.countDocuments({
-        caretaker: caretakerId,
-        status: { $ne: "completed" },
-        dueDate: { $lt: now },
-      }),
-      PatientLog.countDocuments({
-        createdBy: caretakerId,
-        createdAt: { $gte: sevenDaysAgo },
-      }),
+      Task.countDocuments(taskAssigneeQuery(caretakerId)),
+      Task.countDocuments({ ...taskAssigneeQuery(caretakerId), status: 'completed' }),
+      Task.countDocuments({ ...taskAssigneeQuery(caretakerId), status: 'in progress' }),
+      Task.countDocuments({ ...taskAssigneeQuery(caretakerId), status: { $ne: 'completed' }, dueDate: { $lt: now } }),
+      PatientLog.countDocuments({ createdBy: caretakerId, createdAt: { $gte: sevenDaysAgo } }),
     ]);
 
     res.status(200).json({
