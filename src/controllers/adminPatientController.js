@@ -941,7 +941,7 @@ exports.patientOverview = async (req, res) => {
 
     const [healthRecords, carePlan, tasks, logs] = await Promise.all([
       HealthRecord.find({ patient: id }).sort({ created_at: -1 }).lean(),
-      CarePlan.findOne({ patient: id }).populate('tasks').lean(),
+      CarePlan.findOne({ patient: id, status: 'active' }).sort({ created_at: -1 }).populate('tasks').lean(),
       Task.find({ patient: id }).lean(),
       EntryReport.find({ patient: id }).sort({ activityTimestamp: -1 }).lean(),
     ]);

@@ -11,6 +11,27 @@ router.use(verifyToken, verifyRole(['admin', 'caretaker', 'nurse', 'doctor']));
  * tags:
  *   - name: Care Plans
  *     description: Care plan management endpoints
+ *
+ * components:
+ *   schemas:
+ *     CarePlan:
+ *       type: object
+ *       properties:
+ *         _id: { type: string }
+ *         title: { type: string }
+ *         description: { type: string }
+ *         patient: { type: string }
+ *         author: { type: string }
+ *         caretaker: { type: string }
+ *         nurse: { type: string, nullable: true }
+ *         status:
+ *           type: string
+ *           enum: [active, inactive]
+ *         tasks:
+ *           type: array
+ *           items: { type: string }
+ *         created_at: { type: string, format: date-time }
+ *         updated_at: { type: string, format: date-time }
  */
 
 /**
@@ -29,21 +50,26 @@ router.use(verifyToken, verifyRole(['admin', 'caretaker', 'nurse', 'doctor']));
  *             type: object
  *             required: [title, patientId]
  *             properties:
- *               title:
+ *               title: { type: string }
+ *               description: { type: string }
+ *               patientId: { type: string }
+ *               caretakerId:
  *                 type: string
- *               patientId:
+ *                 description: Optional when the patient already has a caretaker.
+ *               nurseId: { type: string, nullable: true }
+ *               status:
  *                 type: string
+ *                 enum: [active, inactive]
  *               tasks:
  *                 type: array
- *                 items:
- *                   type: string
+ *                 items: { type: string }
  *     responses:
  *       201:
  *         description: Care plan created
  *       400:
- *         description: Missing required fields
- *       404:
- *         description: Patient not found
+ *         description: Invalid request body
+ *       409:
+ *         description: Patient already has an active care plan
  */
 router.post('/', carePlanController.createCarePlan);
 
@@ -51,34 +77,69 @@ router.post('/', carePlanController.createCarePlan);
  * @swagger
  * /api/v1/care-plans:
  *   get:
- *     summary: Get all care plans
+ *     summary: Get all care plans visible to the current user
  *     tags: [Care Plans]
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: patientId
- *         schema:
- *           type: string
+ *         schema: { type: string }
  *       - in: query
  *         name: authorId
- *         schema:
- *           type: string
+ *         schema: { type: string }
+ *       - in: query
+ *         name: status
+ *         schema: { type: string, enum: [active, inactive] }
  *       - in: query
  *         name: page
- *         schema:
- *           type: integer
- *           default: 1
+ *         schema: { type: integer, default: 1 }
  *       - in: query
  *         name: limit
- *         schema:
- *           type: integer
- *           default: 20
+ *         schema: { type: integer, default: 20 }
  *     responses:
  *       200:
  *         description: Paged care plan list
  */
 router.get('/', carePlanController.getAllCarePlans);
+
+/**
+ * @swagger
+ * /api/v1/care-plans/patient/{patientId}:
+ *   get:
+ *     summary: Get care plans by patient
+ *     tags: [Care Plans]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: patientId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Care plans for a patient
+ */
+router.get('/patient/:patientId', carePlanController.getCarePlanByPatient);
+
+/**
+ * @swagger
+ * /api/v1/care-plans/{carePlanId}:
+ *   get:
+ *     summary: Get one care plan
+ *     tags: [Care Plans]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: carePlanId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Care plan details
+ */
+router.get('/:carePlanId', carePlanController.getCarePlanById);
 
 /**
  * @swagger
@@ -92,28 +153,12 @@ router.get('/', carePlanController.getAllCarePlans);
  *       - in: path
  *         name: carePlanId
  *         required: true
- *         schema:
- *           type: string
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               title:
- *                 type: string
- *               patient:
- *                 type: string
- *               tasks:
- *                 type: array
- *                 items:
- *                   type: string
+ *         schema: { type: string }
  *     responses:
  *       200:
  *         description: Care plan updated
- *       404:
- *         description: Care plan not found
+ *       409:
+ *         description: Another active care plan already exists for the patient
  */
 router.put('/:carePlanId', carePlanController.updateCarePlan);
 
@@ -129,34 +174,11 @@ router.put('/:carePlanId', carePlanController.updateCarePlan);
  *       - in: path
  *         name: carePlanId
  *         required: true
- *         schema:
- *           type: string
+ *         schema: { type: string }
  *     responses:
  *       200:
  *         description: Care plan deleted
- *       404:
- *         description: Care plan not found
  */
 router.delete('/:carePlanId', carePlanController.deleteCarePlan);
-
-/**
- * @swagger
- * /api/v1/care-plans/patient/{patientId}:
- *   get:
- *     summary: Get care plans by patient
- *     tags: [Care Plans]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: patientId
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Care plans for a patient
- */
-router.get('/patient/:patientId', carePlanController.getCarePlanByPatient);
 
 module.exports = router;

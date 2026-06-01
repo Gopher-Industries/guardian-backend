@@ -1,6 +1,6 @@
 // src/services/notifyRules.js]
 
-const { createAndEmit } = require('./notificationService'); 
+const { createAndEmit } = require('./notificationService');
 const Task = require('../models/Task'); // used only in getTaskPatientId (optional convenience)
 const Patient = require('../models/Patient');
 
@@ -95,7 +95,7 @@ async function taskUpdated({ taskId, patientId, caretaker, nurse, status, dueDat
     .join(', ');
   const msgForAssignee = `Task (${taskId}) was updated ${details ? ` (${details})` : ''}.`;
   await safeNotify(caretaker, title, msgForAssignee);
-  
+
   if (nurse && toId(nurse) !== toId(caretaker)) {
     await safeNotify(nurse, title, msgForAssignee);
   }

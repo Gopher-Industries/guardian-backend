@@ -124,7 +124,8 @@ exports.getPatientOverview = async (req, res) => {
 
     const healthRecords = await HealthRecord.find({ patient: patientId });
     const tasks = await Task.find({ patient: patientId });
-    const carePlan = await CarePlan.findOne({ patient: patientId })
+    const carePlan = await CarePlan.findOne({ patient: patientId, status: 'active' })
+      .sort({ created_at: -1 })
       .populate('tasks')
       .lean();
 

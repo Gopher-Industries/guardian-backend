@@ -90,7 +90,7 @@ async function validateAssigneeForPatient(patient, assigneeId) {
 exports.createTask = async (req, res) => {
   try {
     const { title, description, dueDate, priority, status, patientId, assigneeId } = req.body;
-    
+
     if (!title || !description || !dueDate || !patientId || !assigneeId) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
