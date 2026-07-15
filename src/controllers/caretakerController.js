@@ -215,7 +215,7 @@ exports.getTasks = async (req, res) => {
       limit = "20",
     } = req.query;
 
-    const caretakerId = req.query.caretakerId || req.user?.id;
+    const caretakerId = req.query.caretakerId || req.user?._id;
     if (!caretakerId) {
       return res.status(400).json({ error: "Missing caretaker context" });
     }
