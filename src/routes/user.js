@@ -68,7 +68,7 @@ router.post('/register', validationMiddleware(registerSchema), userController.re
  *   post:
  *     tags:
  *       - Authentication
- *     summary: Log in a user
+ *     summary: Log in a user!
  *     description: >
  *       Authenticates a user and returns a JWT bearer token.
  *       Use the token in the Authorization header for all protected endpoints.
