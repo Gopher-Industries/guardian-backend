@@ -8,7 +8,8 @@ const UserSchema = new mongoose.Schema({
   role: { type: mongoose.Schema.Types.ObjectId, ref: 'Role' },
   assignedPatients: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Patient' }], // Assigned patients
   organization: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', index: true },
-  
+  phone: {type: String, required: false, unique: false},  
+
   // approval flow for org-based nurse/caretaker users
   approvalStatus: {
     type: String,
