@@ -109,7 +109,7 @@ exports.registerUser = async (req, res) => {
  * @swagger
  * /api/v1/auth/login:
  *   post:
- *     summary: Log in a user
+ *     summary: Log in a user!
  *     description: Authenticates a user with the provided email and password.
  *     tags:
  *       - Authentication
