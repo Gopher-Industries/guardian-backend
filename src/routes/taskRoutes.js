@@ -27,7 +27,7 @@ router.use(verifyToken, verifyRole(['admin', 'caretaker', 'nurse', 'doctor']));
  *         application/json:
  *           schema:
  *             type: object
- *             required: [title, description, dueDate, patientId, assigneeId]
+ *             required: [title, description, dueDate, assigneeId]
  *             properties:
  *               title:
  *                 type: string
@@ -44,13 +44,33 @@ router.use(verifyToken, verifyRole(['admin', 'caretaker', 'nurse', 'doctor']));
  *                 enum: [pending, in progress, completed]
  *               patientId:
  *                 type: string
+ *                 nullable: true
+ *                 description: Optional patient linked to the task
  *               assigneeId:
  *                 type: string
+ *                 description: The one staff member responsible for the task. Admins may assign any staff member; other staff may only assign themselves.
+ *               relatedStaffIds:
+ *                 type: array
+ *                 description: Optional IDs of other staff associated with the task; these are not additional assignees
+ *                 items:
+ *                   type: string
+ *               objectives:
+ *                 type: array
+ *                 description: One or more task objectives
+ *                 items:
+ *                   type: string
+ *               deliverables:
+ *                 type: array
+ *                 description: Optional list of one or more expected deliverables
+ *                 items:
+ *                   type: string
  *     responses:
  *       201:
- *         description: Task created
+ *         description: Task created. The response includes setBy and created_at, which records when the task was set.
  *       400:
- *         description: Missing required fields
+ *         description: Missing required fields or invalid care-team assignment
+ *       403:
+ *         description: Staff member attempted to assign the task to another person
  *       404:
  *         description: Patient or assignee not found
  */
@@ -135,8 +155,25 @@ router.get('/', taskController.getAllTasks);
  *                 enum: [pending, in progress, completed]
  *               patientId:
  *                 type: string
+ *                 nullable: true
+ *                 description: Set to null to remove the patient from the task
  *               assigneeId:
  *                 type: string
+ *                 description: Replace the one primary task assignee
+ *               relatedStaffIds:
+ *                 type: array
+ *                 description: Replace the list of other staff associated with the task
+ *                 items:
+ *                   type: string
+ *               objectives:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               deliverables:
+ *                 type: array
+ *                 description: Use an empty array to remove all deliverables
+ *                 items:
+ *                   type: string
  *     responses:
  *       200:
  *         description: Task updated

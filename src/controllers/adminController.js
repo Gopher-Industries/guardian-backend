@@ -10,6 +10,64 @@ const PatientLog = require('../models/PatientLog');
 const notifyRules = require('../services/notifyRules');
 
 const SUPPORT_TICKET_STATUSES = ['open', 'in_progress', 'resolved', 'closed'];
+const TASK_STAFF_ROLES = ['admin', 'caretaker', 'nurse', 'doctor'];
+
+function normalizeTaskTextList(value, fieldName) {
+  if (value === undefined) return { ok: true, value: undefined };
+  if (!Array.isArray(value)) {
+    return { ok: false, message: `${fieldName} must be an array of text values` };
+  }
+
+  const normalized = value.map(item => (typeof item === 'string' ? item.trim() : ''));
+  if (normalized.some(item => !item)) {
+    return { ok: false, message: `${fieldName} must contain only non-empty text values` };
+  }
+
+  return { ok: true, value: [...new Set(normalized)] };
+}
+
+function normalizeRelatedStaffIds(value) {
+  if (value === undefined) return { ok: true, value: undefined };
+  if (!Array.isArray(value)) {
+    return { ok: false, message: 'relatedStaffIds must be an array of user IDs' };
+  }
+
+  const normalized = [...new Set(value.map(id => String(id)))];
+  if (normalized.some(id => !mongoose.isValidObjectId(id))) {
+    return { ok: false, message: 'relatedStaffIds contains an invalid user ID' };
+  }
+
+  return { ok: true, value: normalized };
+}
+
+async function validateAdminRelatedStaff(relatedStaffIds, assigneeId) {
+  if (relatedStaffIds.some(staffId => String(staffId) === String(assigneeId))) {
+    return {
+      ok: false,
+      status: 400,
+      message: 'The primary assignee must not be repeated in relatedStaffIds'
+    };
+  }
+
+  const users = await User.find({ _id: { $in: relatedStaffIds } })
+    .select('_id role')
+    .populate('role', 'name')
+    .lean();
+
+  if (users.length !== relatedStaffIds.length) {
+    return { ok: false, status: 404, message: 'Related staff member not found' };
+  }
+
+  const invalidRole = users.some(user => {
+    const role = user.role?.name ? String(user.role.name).toLowerCase() : null;
+    return !TASK_STAFF_ROLES.includes(role);
+  });
+  if (invalidRole) {
+    return { ok: false, status: 400, message: 'Related users must be staff members' };
+  }
+
+  return { ok: true };
+}
 
 /**
  * @swagger
@@ -37,6 +95,24 @@ const SUPPORT_TICKET_STATUSES = ['open', 'in_progress', 'resolved', 'closed'];
  *           type: string
  *         assignee:
  *           type: string
+ *           description: The one staff member responsible for the task
+ *         relatedStaff:
+ *           type: array
+ *           description: Other staff associated with the task; these users are not additional assignees
+ *           items:
+ *             type: string
+ *         objectives:
+ *           type: array
+ *           items:
+ *             type: string
+ *         deliverables:
+ *           type: array
+ *           description: Optional outputs expected from the task
+ *           items:
+ *             type: string
+ *         setBy:
+ *           type: string
+ *           description: Authenticated user who set the task
  *         caretaker:
  *           type: string
  *         nurse_id:
@@ -46,6 +122,7 @@ const SUPPORT_TICKET_STATUSES = ['open', 'in_progress', 'resolved', 'closed'];
  *         created_at:
  *           type: string
  *           format: date-time
+ *           description: Exact date and time the task was set
  *         updated_at:
  *           type: string
  *           format: date-time
@@ -399,7 +476,6 @@ exports.updateSupportTicket = async (req, res) => {
  *             type: object
  *             required:
  *               - description
- *               - patientId
  *               - dueDate
  *               - assigneeId
  *             properties:
@@ -411,7 +487,8 @@ exports.updateSupportTicket = async (req, res) => {
  *                 description: Task description
  *               patientId:
  *                 type: string
- *                 description: ID of the patient this task is for
+ *                 nullable: true
+ *                 description: Optional ID of the patient this task is for
  *               dueDate:
  *                 type: string
  *                 format: date
@@ -424,7 +501,22 @@ exports.updateSupportTicket = async (req, res) => {
  *                 description: Legacy assignee field. Used when assigneeId is not provided.
  *               assigneeId:
  *                 type: string
- *                 description: ID of the staff member assigned to this task
+ *                 description: ID of the one staff member responsible for this task
+ *               relatedStaffIds:
+ *                 type: array
+ *                 description: Optional IDs of other staff associated with the task
+ *                 items:
+ *                   type: string
+ *               objectives:
+ *                 type: array
+ *                 description: One or more task objectives
+ *                 items:
+ *                   type: string
+ *               deliverables:
+ *                 type: array
+ *                 description: Optional list of one or more expected deliverables
+ *                 items:
+ *                   type: string
  *               priority:
  *                 type: string
  *                 enum: [low, medium, high]
@@ -432,34 +524,75 @@ exports.updateSupportTicket = async (req, res) => {
  *                 description: Task priority level
  *     responses:
  *       201:
- *         description: Task created successfully
+ *         description: Task created successfully. The response includes setBy and created_at.
  *       500:
  *         description: Error creating task
  */
 exports.createTask = async (req, res) => {
   try {
-    const { title, description, patientId, dueDate, caretakerId, nurseId, assigneeId, priority } = req.body;
+    const {
+      title,
+      description,
+      patientId,
+      dueDate,
+      caretakerId,
+      nurseId,
+      assigneeId,
+      priority,
+      relatedStaffIds,
+      objectives,
+      deliverables
+    } = req.body;
     const assignee = assigneeId || nurseId || caretakerId;
 
-    if (!description || !patientId || !dueDate || !assignee) {
+    if (!description || !dueDate || !assignee) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
+    const normalizedRelatedStaff = normalizeRelatedStaffIds(relatedStaffIds);
+    if (!normalizedRelatedStaff.ok) {
+      return res.status(400).json({ message: normalizedRelatedStaff.message });
+    }
+
+    const normalizedObjectives = normalizeTaskTextList(objectives, 'objectives');
+    if (!normalizedObjectives.ok) {
+      return res.status(400).json({ message: normalizedObjectives.message });
+    }
+
+    const normalizedDeliverables = normalizeTaskTextList(deliverables, 'deliverables');
+    if (!normalizedDeliverables.ok) {
+      return res.status(400).json({ message: normalizedDeliverables.message });
+    }
+
     const [patient, assignedUser] = await Promise.all([
-      Patient.findById(patientId).select('_id').lean(),
+      patientId
+        ? Patient.findById(patientId).select('_id').lean()
+        : Promise.resolve(null),
       User.findById(assignee).select('_id').lean()
     ]);
 
-    if (!patient) return res.status(404).json({ message: 'Patient not found' });
+    if (patientId && !patient) return res.status(404).json({ message: 'Patient not found' });
     if (!assignedUser) return res.status(404).json({ message: 'Assignee not found' });
+
+    const relatedStaffAccess = await validateAdminRelatedStaff(
+      normalizedRelatedStaff.value || [],
+      assignee
+    );
+    if (!relatedStaffAccess.ok) {
+      return res.status(relatedStaffAccess.status).json({ message: relatedStaffAccess.message });
+    }
 
     const newTask = new Task({
       title: title || description,
       description,
-      patient: patientId,
+      patient: patientId || null,
       dueDate,
       assignee,
-      priority
+      priority,
+      relatedStaff: normalizedRelatedStaff.value || [],
+      objectives: normalizedObjectives.value || [],
+      deliverables: normalizedDeliverables.value || [],
+      setBy: req.user?._id || req.user?.id || null
     });
     await newTask.save();
 
@@ -512,12 +645,31 @@ exports.createTask = async (req, res) => {
  *               dueDate:
  *                 type: string
  *                 format: date
+ *               patientId:
+ *                 type: string
+ *                 nullable: true
+ *                 description: Set to null to remove the patient from the task
  *               caretakerId:
  *                 type: string
  *               nurseId:
  *                 type: string
  *               assigneeId:
  *                 type: string
+ *                 description: Replace the one primary task assignee
+ *               relatedStaffIds:
+ *                 type: array
+ *                 description: Replace the list of other staff associated with the task
+ *                 items:
+ *                   type: string
+ *               objectives:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               deliverables:
+ *                 type: array
+ *                 description: Use an empty array to remove all deliverables
+ *                 items:
+ *                   type: string
  *     responses:
  *       200:
  *         description: Task updated successfully
@@ -529,10 +681,45 @@ exports.createTask = async (req, res) => {
 exports.updateTask = async (req, res) => {
   try {
     const { taskId } = req.params;
-    const { title, description, dueDate, priority, status, report, caretakerId, nurseId, assigneeId, patientId } = req.body;
+    const {
+      title,
+      description,
+      dueDate,
+      priority,
+      status,
+      report,
+      caretakerId,
+      nurseId,
+      assigneeId,
+      patientId,
+      relatedStaffIds,
+      objectives,
+      deliverables
+    } = req.body;
     const nextAssignee = assigneeId || nurseId || caretakerId;
+    const hasPatientUpdate = Object.prototype.hasOwnProperty.call(req.body, 'patientId');
+    const existingTask = await Task.findById(taskId).select('assignee relatedStaff').lean();
 
-    if (patientId) {
+    if (!existingTask) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    const normalizedRelatedStaff = normalizeRelatedStaffIds(relatedStaffIds);
+    if (!normalizedRelatedStaff.ok) {
+      return res.status(400).json({ message: normalizedRelatedStaff.message });
+    }
+
+    const normalizedObjectives = normalizeTaskTextList(objectives, 'objectives');
+    if (!normalizedObjectives.ok) {
+      return res.status(400).json({ message: normalizedObjectives.message });
+    }
+
+    const normalizedDeliverables = normalizeTaskTextList(deliverables, 'deliverables');
+    if (!normalizedDeliverables.ok) {
+      return res.status(400).json({ message: normalizedDeliverables.message });
+    }
+
+    if (hasPatientUpdate && patientId) {
       const patient = await Patient.findById(patientId).select('_id').lean();
       if (!patient) return res.status(404).json({ message: 'Patient not found' });
     }
@@ -542,6 +729,20 @@ exports.updateTask = async (req, res) => {
       if (!assignedUser) return res.status(404).json({ message: 'Assignee not found' });
     }
 
+    const targetAssignee = nextAssignee || existingTask.assignee;
+    const targetRelatedStaff = normalizedRelatedStaff.value !== undefined
+      ? normalizedRelatedStaff.value
+      : (existingTask.relatedStaff || []);
+    if (normalizedRelatedStaff.value !== undefined || nextAssignee) {
+      const relatedStaffAccess = await validateAdminRelatedStaff(
+        targetRelatedStaff,
+        targetAssignee
+      );
+      if (!relatedStaffAccess.ok) {
+        return res.status(relatedStaffAccess.status).json({ message: relatedStaffAccess.message });
+      }
+    }
+
     const updateData = {
       ...(title !== undefined && { title }),
       ...(description !== undefined && { description }),
@@ -549,16 +750,15 @@ exports.updateTask = async (req, res) => {
       ...(priority !== undefined && { priority }),
       ...(status !== undefined && { status }),
       ...(report !== undefined && { report }),
-      ...(patientId && { patient: patientId }),
+      ...(hasPatientUpdate && { patient: patientId || null }),
       ...(nextAssignee && { assignee: nextAssignee }),
+      ...(normalizedRelatedStaff.value !== undefined && { relatedStaff: normalizedRelatedStaff.value }),
+      ...(normalizedObjectives.value !== undefined && { objectives: normalizedObjectives.value }),
+      ...(normalizedDeliverables.value !== undefined && { deliverables: normalizedDeliverables.value }),
       updated_at: Date.now()
     };
 
     const updatedTask = await Task.findByIdAndUpdate(taskId, updateData, { new: true, runValidators: true });
-
-    if (!updatedTask) {
-      return res.status(404).json({ message: 'Task not found' });
-    }
 
     Promise.resolve(
       notifyRules.taskUpdated({
