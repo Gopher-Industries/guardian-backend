@@ -1,6 +1,7 @@
 const Task = require('../models/Task');
 const Patient = require('../models/Patient');
 const User = require('../models/User');
+const Organization = require('../models/Organization');
 const mongoose = require('mongoose');
 const notifyRules = require('../services/notifyRules');
 const {
@@ -18,11 +19,18 @@ function idsEqual(left, right) {
 
 function normalizeTextList(value, fieldName) {
   if (value === undefined) return { ok: true, value: undefined };
-  if (!Array.isArray(value)) {
+  const values = Array.isArray(value)
+    ? value
+    : (typeof value === 'string' ? value.split(',') : null);
+  if (!values) {
     return { ok: false, message: `${fieldName} must be an array of text values` };
   }
 
-  const normalized = value.map(item => (typeof item === 'string' ? item.trim() : ''));
+  if (values.length === 1 && !String(values[0]).trim()) {
+    return { ok: true, value: [] };
+  }
+
+  const normalized = values.map(item => (typeof item === 'string' ? item.trim() : ''));
   if (normalized.some(item => !item)) {
     return { ok: false, message: `${fieldName} must contain only non-empty text values` };
   }
@@ -32,11 +40,18 @@ function normalizeTextList(value, fieldName) {
 
 function normalizeStaffIds(value) {
   if (value === undefined) return { ok: true, value: undefined };
-  if (!Array.isArray(value)) {
+  const values = Array.isArray(value)
+    ? value
+    : (typeof value === 'string' ? value.split(',') : null);
+  if (!values) {
     return { ok: false, message: 'relatedStaffIds must be an array of user IDs' };
   }
 
-  const normalized = [...new Set(value.map(id => String(id)))];
+  if (values.length === 1 && !String(values[0]).trim()) {
+    return { ok: true, value: [] };
+  }
+
+  const normalized = [...new Set(values.map(id => String(id).trim()))];
   if (normalized.some(id => !mongoose.isValidObjectId(id))) {
     return { ok: false, message: 'relatedStaffIds contains an invalid user ID' };
   }
@@ -44,10 +59,43 @@ function normalizeStaffIds(value) {
   return { ok: true, value: normalized };
 }
 
+async function resolveUserOrganization(user, role, requestedOrganizationId) {
+  if (requestedOrganizationId && role === 'admin') {
+    const requestedOrganization = await Organization.findOne({
+      _id: requestedOrganizationId,
+      $or: [{ createdBy: user._id }, { staff: user._id }]
+    }).select('_id').lean();
+    return requestedOrganization?._id || null;
+  }
+
+  if (user.organization) return user.organization;
+  if (role !== 'admin') return null;
+
+  const organization = await Organization.findOne({
+    $or: [{ createdBy: user._id }, { staff: user._id }]
+  }).select('_id').lean();
+  return organization?._id || null;
+}
+
+async function getRequestUserContext(req) {
+  if (req.taskRequestUser) return req.taskRequestUser;
+
+  const user = await User.findById(req.user?._id)
+    .select('_id role organization')
+    .populate('role', 'name')
+    .lean();
+  if (!user) return null;
+
+  const role = user.role?.name ? String(user.role.name).toLowerCase() : null;
+  const organization = await resolveUserOrganization(user, role, req.query?.orgId);
+  req.taskRequestUser = { ...user, roleName: role, organization };
+  return req.taskRequestUser;
+}
+
 async function getRequestUserRole(req) {
   if (req.userRole) return req.userRole;
-  const user = await User.findById(req.user?._id).populate('role', 'name').lean();
-  return user?.role?.name ? String(user.role.name).toLowerCase() : null;
+  const user = await getRequestUserContext(req);
+  return user?.roleName || null;
 }
 
 async function getPatientForRequest(req, patientId) {
@@ -118,7 +166,7 @@ function taskAssigneeFilter(assigneeId) {
 
 async function validateTaskAssignment(req, patient, assigneeId, { enforceSelfAssignment = true } = {}) {
   const assignee = await User.findById(assigneeId)
-    .select('_id role')
+    .select('_id role organization')
     .populate('role', 'name')
     .lean();
   if (!assignee) return { ok: false, status: 404, message: 'Assignee not found' };
@@ -131,9 +179,39 @@ async function validateTaskAssignment(req, patient, assigneeId, { enforceSelfAss
     return { ok: false, status: 400, message: 'Assignee must be a staff member' };
   }
 
-  const requesterRole = await getRequestUserRole(req);
-  if (enforceSelfAssignment && requesterRole !== 'admin' && !idsEqual(req.user?._id, assigneeId)) {
-    return { ok: false, status: 403, message: 'Staff can only assign tasks to themselves' };
+  const requester = await getRequestUserContext(req);
+  if (!requester) return { ok: false, status: 401, message: 'Authenticated user not found' };
+
+  const requesterRole = requester.roleName;
+  const isSelfAssignment = idsEqual(requester._id, assigneeId);
+
+  if (!isSelfAssignment) {
+    const assigneeOrganization = await resolveUserOrganization(assignee, assigneeRole);
+    if (!requester.organization || !assigneeOrganization ||
+        !idsEqual(requester.organization, assigneeOrganization)) {
+      return {
+        ok: false,
+        status: 403,
+        message: 'Tasks can only be assigned to users in the same organization'
+      };
+    }
+
+    if (enforceSelfAssignment && requesterRole === 'doctor' &&
+        !['nurse', 'caretaker'].includes(assigneeRole)) {
+      return {
+        ok: false,
+        status: 403,
+        message: 'Doctors can only assign tasks to themselves, nurses, or caretakers in their organization'
+      };
+    }
+
+    if (enforceSelfAssignment && !['admin', 'doctor'].includes(requesterRole)) {
+      return {
+        ok: false,
+        status: 403,
+        message: 'Nurses and caretakers can only assign tasks to themselves'
+      };
+    }
   }
 
   if (patient && requesterRole !== 'admin' && !patientHasAssignee(patient, assigneeId)) {
