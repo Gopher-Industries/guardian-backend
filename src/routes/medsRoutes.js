@@ -43,5 +43,5 @@ const medsController = require('../controllers/medsController');
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/add-medication', medsController.registerMeds); 
+router.post('/', medsController.registerMeds); 
 module.exports = router;

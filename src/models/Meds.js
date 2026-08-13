@@ -16,4 +16,4 @@ const MedsSchema = new mongoose.Schema({
 // Create the User model from the schema
 const Meds = mongoose.model('Meds', MedsSchema);
  
-module. Exports = Meds;
+module.exports = Meds;
