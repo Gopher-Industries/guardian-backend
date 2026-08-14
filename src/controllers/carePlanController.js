@@ -21,7 +21,8 @@ const POPULATE_OPTIONS = [
   { path: 'patient', select: 'fullname gender dateOfBirth caretaker assignedNurses' },
   { path: 'author', select: 'fullname email' },
   { path: 'caretaker', select: 'fullname email' },
-  { path: 'nurse', select: 'fullname email' }
+  { path: 'nurse', select: 'fullname email' },
+  { path: 'approved_by', select: 'fullname email' }
 ];
 
 function isValidObjectId(value) {
@@ -120,20 +121,21 @@ async function validateTasksForPatient(taskIds = [], patientId) {
   return { ok: true, tasks };
 }
 
+// caretaker and nurse are both optional: a care plan can be created
+// or updated without either assigned yet.
 async function validateCareTeam({ patient, caretakerId, nurseId }) {
   const nextCaretakerId = caretakerId || patient.caretaker;
 
-  if (!nextCaretakerId) {
-    return { ok: false, status: 400, message: 'caretakerId is required when the patient has no caretaker' };
-  }
+  let caretaker = null;
+  if (nextCaretakerId) {
+    if (!isValidObjectId(nextCaretakerId)) {
+      return { ok: false, status: 400, message: 'caretakerId must be a valid ID' };
+    }
 
-  if (!isValidObjectId(nextCaretakerId)) {
-    return { ok: false, status: 400, message: 'caretakerId must be a valid ID' };
-  }
-
-  const caretaker = await ensureUserWithRole(nextCaretakerId, 'caretaker');
-  if (!caretaker) {
-    return { ok: false, status: 400, message: 'caretakerId must reference a caretaker user' };
+    caretaker = await ensureUserWithRole(nextCaretakerId, 'caretaker');
+    if (!caretaker) {
+      return { ok: false, status: 400, message: 'caretakerId must reference a caretaker user' };
+    }
   }
 
   let nurse = null;
@@ -150,7 +152,7 @@ async function validateCareTeam({ patient, caretakerId, nurseId }) {
 
   return {
     ok: true,
-    caretakerId: caretaker._id,
+    caretakerId: caretaker ? caretaker._id : null,
     nurseId: nurse ? nurse._id : nurseId === null ? null : undefined
   };
 }
@@ -172,11 +174,93 @@ async function ensureNoOtherActivePlan(patientId, carePlanId = null) {
   };
 }
 
+/**
+ * Validates and normalizes the newer care plan fields (sign-off, effective
+ * dates, review cycle, dietary requirements, consent) from a request body.
+ * Accepts camelCase keys (matching the rest of this API's request format)
+ * and maps them to the schema's snake_case field names.
+ * Only keys that are actually present in the body are included in the
+ * returned updates object, so partial updates don't clobber existing values.
+ */
+async function validateCarePlanDetails(body = {}) {
+  const updates = {};
+
+  if (body.approvedBy !== undefined) {
+    if (body.approvedBy !== null && !isValidObjectId(body.approvedBy)) {
+      return { ok: false, status: 400, message: 'approvedBy must be a valid ID or null' };
+    }
+    if (body.approvedBy) {
+      const approver = await User.findById(body.approvedBy).select('_id').lean();
+      if (!approver) {
+        return { ok: false, status: 400, message: 'approvedBy must reference an existing user' };
+      }
+    }
+    updates.approved_by = body.approvedBy || null;
+  }
+
+  if (body.approvedAt !== undefined) {
+    if (body.approvedAt !== null && isNaN(Date.parse(body.approvedAt))) {
+      return { ok: false, status: 400, message: 'approvedAt must be a valid date or null' };
+    }
+    updates.approved_at = body.approvedAt ? new Date(body.approvedAt) : null;
+  }
+
+  if (body.effectiveFrom !== undefined) {
+    if (isNaN(Date.parse(body.effectiveFrom))) {
+      return { ok: false, status: 400, message: 'effectiveFrom must be a valid date' };
+    }
+    updates.effective_from = new Date(body.effectiveFrom);
+  }
+
+  if (body.effectiveTo !== undefined) {
+    if (body.effectiveTo !== null && isNaN(Date.parse(body.effectiveTo))) {
+      return { ok: false, status: 400, message: 'effectiveTo must be a valid date or null' };
+    }
+    updates.effective_to = body.effectiveTo ? new Date(body.effectiveTo) : null;
+  }
+
+  if (body.nextReviewDate !== undefined) {
+    if (body.nextReviewDate !== null && isNaN(Date.parse(body.nextReviewDate))) {
+      return { ok: false, status: 400, message: 'nextReviewDate must be a valid date or null' };
+    }
+    updates.next_review_date = body.nextReviewDate ? new Date(body.nextReviewDate) : null;
+  }
+
+  if (body.lastReviewedDate !== undefined) {
+    if (body.lastReviewedDate !== null && isNaN(Date.parse(body.lastReviewedDate))) {
+      return { ok: false, status: 400, message: 'lastReviewedDate must be a valid date or null' };
+    }
+    updates.last_reviewed_date = body.lastReviewedDate ? new Date(body.lastReviewedDate) : null;
+  }
+
+  if (body.dietaryRequirements !== undefined) {
+    if (typeof body.dietaryRequirements !== 'string') {
+      return { ok: false, status: 400, message: 'dietaryRequirements must be a string' };
+    }
+    updates.dietary_requirements = body.dietaryRequirements.trim();
+  }
+
+  if (body.clientConsentFlag !== undefined) {
+    if (typeof body.clientConsentFlag !== 'boolean') {
+      return { ok: false, status: 400, message: 'clientConsentFlag must be a boolean' };
+    }
+    updates.client_consent_flag = body.clientConsentFlag;
+  }
+
+  if (body.consentDate !== undefined) {
+    if (body.consentDate !== null && isNaN(Date.parse(body.consentDate))) {
+      return { ok: false, status: 400, message: 'consentDate must be a valid date or null' };
+    }
+    updates.consent_date = body.consentDate ? new Date(body.consentDate) : null;
+  }
+
+  return { ok: true, updates };
+}
+
 exports.createCarePlan = async (req, res) => {
   try {
     const {
       title,
-      description = '',
       patientId,
       caretakerId,
       nurseId = null,
@@ -201,6 +285,9 @@ exports.createCarePlan = async (req, res) => {
     const taskAccess = await validateTasksForPatient(tasks, patientId);
     if (!taskAccess.ok) return res.status(taskAccess.status).json({ message: taskAccess.message });
 
+    const detailsAccess = await validateCarePlanDetails(req.body);
+    if (!detailsAccess.ok) return res.status(detailsAccess.status).json({ message: detailsAccess.message });
+
     if (status === 'active') {
       const activePlan = await ensureNoOtherActivePlan(patientId);
       if (!activePlan.ok) {
@@ -213,13 +300,13 @@ exports.createCarePlan = async (req, res) => {
 
     const carePlan = await CarePlan.create({
       title,
-      description,
       patient: patientId,
       author: req.user._id,
       caretaker: careTeam.caretakerId,
       nurse: careTeam.nurseId ?? null,
       tasks,
-      status
+      status,
+      ...detailsAccess.updates
     });
 
     notify(notifyRules.carePlanCreated({
@@ -328,7 +415,6 @@ exports.updateCarePlan = async (req, res) => {
     const { carePlanId } = req.params;
     const {
       title,
-      description,
       patientId,
       patient,
       caretakerId,
@@ -362,9 +448,11 @@ exports.updateCarePlan = async (req, res) => {
     const taskAccess = await validateTasksForPatient(nextTasks || [], nextPatientId);
     if (!taskAccess.ok) return res.status(taskAccess.status).json({ message: taskAccess.message });
 
-    const updates = {};
+    const detailsAccess = await validateCarePlanDetails(req.body);
+    if (!detailsAccess.ok) return res.status(detailsAccess.status).json({ message: detailsAccess.message });
+
+    const updates = { ...detailsAccess.updates };
     if (title !== undefined) updates.title = title;
-    if (description !== undefined) updates.description = description;
     if (patientId || patient) updates.patient = nextPatientId;
     if (tasks !== undefined) updates.tasks = tasks;
 
