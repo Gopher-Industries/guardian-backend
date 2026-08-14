@@ -19,10 +19,9 @@ router.use(verifyToken, verifyRole(['admin', 'caretaker', 'nurse', 'doctor']));
  *       properties:
  *         _id: { type: string }
  *         title: { type: string }
- *         description: { type: string }
  *         patient: { type: string }
  *         author: { type: string }
- *         caretaker: { type: string }
+ *         caretaker: { type: string, nullable: true }
  *         nurse: { type: string, nullable: true }
  *         status:
  *           type: string
@@ -30,6 +29,15 @@ router.use(verifyToken, verifyRole(['admin', 'caretaker', 'nurse', 'doctor']));
  *         tasks:
  *           type: array
  *           items: { type: string }
+ *         approved_by: { type: string, nullable: true }
+ *         approved_at: { type: string, format: date-time, nullable: true }
+ *         effective_from: { type: string, format: date-time }
+ *         effective_to: { type: string, format: date-time, nullable: true }
+ *         next_review_date: { type: string, format: date-time, nullable: true }
+ *         last_reviewed_date: { type: string, format: date-time, nullable: true }
+ *         dietary_requirements: { type: string }
+ *         client_consent_flag: { type: boolean }
+ *         consent_date: { type: string, format: date-time, nullable: true }
  *         created_at: { type: string, format: date-time }
  *         updated_at: { type: string, format: date-time }
  */
@@ -51,7 +59,6 @@ router.use(verifyToken, verifyRole(['admin', 'caretaker', 'nurse', 'doctor']));
  *             required: [title, patientId]
  *             properties:
  *               title: { type: string }
- *               description: { type: string }
  *               patientId: { type: string }
  *               caretakerId:
  *                 type: string
@@ -63,6 +70,23 @@ router.use(verifyToken, verifyRole(['admin', 'caretaker', 'nurse', 'doctor']));
  *               tasks:
  *                 type: array
  *                 items: { type: string }
+ *               approvedBy:
+ *                 type: string
+ *                 nullable: true
+ *                 description: User ID of the staff member who signed off on the plan.
+ *               approvedAt: { type: string, format: date-time, nullable: true }
+ *               effectiveFrom:
+ *                 type: string
+ *                 format: date-time
+ *                 description: When the plan comes into effect. Defaults to now if omitted.
+ *               effectiveTo: { type: string, format: date-time, nullable: true }
+ *               nextReviewDate: { type: string, format: date-time, nullable: true }
+ *               lastReviewedDate: { type: string, format: date-time, nullable: true }
+ *               dietaryRequirements:
+ *                 type: string
+ *                 description: Allergies, texture-modified diet, or other dietary notes.
+ *               clientConsentFlag: { type: boolean }
+ *               consentDate: { type: string, format: date-time, nullable: true }
  *     responses:
  *       201:
  *         description: Care plan created
@@ -154,6 +178,33 @@ router.get('/:carePlanId', carePlanController.getCarePlanById);
  *         name: carePlanId
  *         required: true
  *         schema: { type: string }
+ *     requestBody:
+ *       required: false
+ *       description: All fields optional. Only fields included in the body are updated.
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title: { type: string }
+ *               patientId: { type: string }
+ *               caretakerId: { type: string, nullable: true }
+ *               nurseId: { type: string, nullable: true }
+ *               status:
+ *                 type: string
+ *                 enum: [active, inactive]
+ *               tasks:
+ *                 type: array
+ *                 items: { type: string }
+ *               approvedBy: { type: string, nullable: true }
+ *               approvedAt: { type: string, format: date-time, nullable: true }
+ *               effectiveFrom: { type: string, format: date-time }
+ *               effectiveTo: { type: string, format: date-time, nullable: true }
+ *               nextReviewDate: { type: string, format: date-time, nullable: true }
+ *               lastReviewedDate: { type: string, format: date-time, nullable: true }
+ *               dietaryRequirements: { type: string }
+ *               clientConsentFlag: { type: boolean }
+ *               consentDate: { type: string, format: date-time, nullable: true }
  *     responses:
  *       200:
  *         description: Care plan updated
