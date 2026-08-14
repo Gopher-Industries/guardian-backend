@@ -193,7 +193,7 @@ router.get('/', rosterController.getRosters);
  * /api/v1/rosters/{shiftId}/clock-on:
  *   patch:
  *     summary: Clock on for a shift
- *     description: Records the current time as the assigned staff member's clock-on time.
+ *     description: Allows the assigned staff member or an admin to clock on the shift.
  *     tags: [Rosters]
  *     security:
  *       - bearerAuth: []
@@ -210,13 +210,12 @@ router.get('/', rosterController.getRosters);
  *       400:
  *         description: Staff member has already clocked on
  *       403:
- *         description: User is not assigned to the shift
+ *         description: User is not allowed to clock this shift
  *       404:
  *         description: Shift not found
  */
 router.patch(
   '/:shiftId/clock-on',
-  verifyRole(['doctor', 'nurse', 'caretaker']),
   rosterController.clockOn
 );
 
@@ -225,7 +224,7 @@ router.patch(
  * /api/v1/rosters/{shiftId}/clock-off:
  *   patch:
  *     summary: Clock off from a shift
- *     description: Records the current time as the assigned staff member's clock-off time.
+ *     description: Allows the assigned staff member or an admin to clock off the shift.
  *     tags: [Rosters]
  *     security:
  *       - bearerAuth: []
@@ -242,13 +241,12 @@ router.patch(
  *       400:
  *         description: Staff member has not clocked on or already clocked off
  *       403:
- *         description: User is not assigned to the shift
+ *         description: User is not allowed to clock this shift
  *       404:
  *         description: Shift not found
  */
 router.patch(
   '/:shiftId/clock-off',
-  verifyRole(['doctor', 'nurse', 'caretaker']),
   rosterController.clockOff
 );
 
@@ -368,6 +366,38 @@ router.delete(
   '/:shiftId',
   verifyRole('admin'),
   rosterController.deleteRoster
+);
+
+/**
+ * @swagger
+ * /api/v1/rosters/staff/{staffId}:
+ *   get:
+ *     summary: Get all shifts for a staff member
+ *     description: Only the staff member or an admin can view these shifts.
+ *     tags:
+ *       - Rosters
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: staffId
+ *         required: true
+ *         description: ID of the staff member
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Staff shifts returned successfully
+ *       403:
+ *         description: Access denied
+ *       404:
+ *         description: Staff member not found
+ *       500:
+ *         description: Server error
+ */
+router.get(
+  '/staff/:staffId',
+  rosterController.getStaffShifts
 );
 
 module.exports = router;

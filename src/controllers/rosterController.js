@@ -291,7 +291,7 @@ exports.deleteRoster = async (req, res) => {
   }
 };
 
-// Staff clock on
+// Staff or admin clock on
 exports.clockOn = async (req, res) => {
   try {
     const roster = await Roster.findOne({
@@ -304,19 +304,26 @@ exports.clockOn = async (req, res) => {
       });
     }
 
-    if (String(roster.assignedStaff) !== String(req.user._id)) {
+    const isAssignedStaff =
+      String(roster.assignedStaff) === String(req.user._id);
+
+    const isAdmin =
+      req.userRole === 'admin';
+
+    if (!isAssignedStaff && !isAdmin) {
       return res.status(403).json({
-        message: 'You are not assigned to this shift'
+        message: 'You are not allowed to clock on this shift'
       });
     }
 
     if (roster.clockOnTime) {
       return res.status(400).json({
-        message: 'You have already clocked on'
+        message: 'This shift has already been clocked on'
       });
     }
 
     roster.clockOnTime = new Date();
+
     await roster.save();
     await roster.populate(staffPopulation);
 
@@ -324,6 +331,7 @@ exports.clockOn = async (req, res) => {
       message: 'Clocked on successfully',
       roster
     });
+
   } catch (error) {
     return res.status(500).json({
       message: 'Error clocking on',
@@ -332,7 +340,7 @@ exports.clockOn = async (req, res) => {
   }
 };
 
-// Staff clock off
+// Staff or admin clock off
 exports.clockOff = async (req, res) => {
   try {
     const roster = await Roster.findOne({
@@ -345,25 +353,32 @@ exports.clockOff = async (req, res) => {
       });
     }
 
-    if (String(roster.assignedStaff) !== String(req.user._id)) {
+    const isAssignedStaff =
+      String(roster.assignedStaff) === String(req.user._id);
+
+    const isAdmin =
+      req.userRole === 'admin';
+
+    if (!isAssignedStaff && !isAdmin) {
       return res.status(403).json({
-        message: 'You are not assigned to this shift'
+        message: 'You are not allowed to clock off this shift'
       });
     }
 
     if (!roster.clockOnTime) {
       return res.status(400).json({
-        message: 'You must clock on first'
+        message: 'This shift must be clocked on first'
       });
     }
 
     if (roster.clockOffTime) {
       return res.status(400).json({
-        message: 'You have already clocked off'
+        message: 'This shift has already been clocked off'
       });
     }
 
     roster.clockOffTime = new Date();
+
     await roster.save();
     await roster.populate(staffPopulation);
 
@@ -371,9 +386,66 @@ exports.clockOff = async (req, res) => {
       message: 'Clocked off successfully',
       roster
     });
+
   } catch (error) {
     return res.status(500).json({
       message: 'Error clocking off',
+      details: error.message
+    });
+  }
+};
+
+
+// Get all shifts for a particular staff member
+exports.getStaffShifts = async (req, res) => {
+  try {
+    const { staffId } = req.params;
+
+    const isOwnShifts =
+      String(req.user._id) === String(staffId);
+
+    const isAdmin =
+      req.userRole === 'admin';
+
+    if (!isOwnShifts && !isAdmin) {
+      return res.status(403).json({
+        message: 'You are not allowed to view these shifts'
+      });
+    }
+
+    const staff = await User.findById(staffId)
+      .select('fullname email role')
+      .populate('role', 'name');
+
+    if (!staff) {
+      return res.status(404).json({
+        message: 'Staff member not found'
+      });
+    }
+
+    const shifts = await Roster.find({
+      assignedStaff: staffId
+    })
+      .populate(staffPopulation)
+      .sort({
+        date: 1,
+        startTime: 1
+      });
+
+    return res.status(200).json({
+      staff: {
+        id: staff._id,
+        name: staff.fullname,
+        email: staff.email,
+        role: staff.role ? staff.role.name : null
+      },
+      totalShifts: shifts.length,
+      shifts
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      message: 'Error fetching staff shifts',
       details: error.message
     });
   }
