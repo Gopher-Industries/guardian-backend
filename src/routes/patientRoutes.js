@@ -25,6 +25,7 @@ router.post(
   doctorController.assignDoctorToPatient);
 
 // Queries 
+router.get('/find-by-name', verifyToken, patientController.findPatientIdsByName);
 router.get('/assigned-patients', verifyToken, patientController.getAssignedPatients);
 router.get('/activities', verifyToken, patientController.getPatientActivities);
 
