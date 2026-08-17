@@ -191,6 +191,7 @@ const taskRoutes = require('./routes/taskRoutes');
 const carePlanRoutes = require('./routes/carePlanRoutes');
 const resourceRoutes = require('./routes/resourceRoutes');
 const testRoutes = require('./routes/testRoutes');
+const backendBridgeRoutes = require('./routes/backendBridgeRoutes');
 
 app.use('/api/v1/auth', userRoutes);
 app.use('/api/v1/caretaker', caretakerRoutes);
@@ -212,6 +213,7 @@ app.use('/api/v1/tasks', taskRoutes);
 app.use('/api/v1/care-plans', carePlanRoutes);
 app.use('/api/v1/resources', resourceRoutes);
 app.use('/api/v1/test', testRoutes);
+app.use('/api/v1/backend-bridge', backendBridgeRoutes);
 
 app.use(
   '/swaggerDocs',
