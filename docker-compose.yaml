@@ -3,7 +3,7 @@ services:
     container_name: guardian-backend
     build: .
     env_file:
-      - .env
+      - env
     ports:
       - "3000:3000"
     volumes:

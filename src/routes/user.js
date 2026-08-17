@@ -5,6 +5,7 @@ const verifyToken = require('../middleware/verifyToken');
 const checkPasswordExpiry = require('../middleware/checkPasswordExpiry');
 const { registerSchema, loginSchema, validationMiddleware } = require('../middleware/validationMiddleware');
 
+
 /**
  * @openapi
  * /api/v1/auth/register:
@@ -396,7 +397,52 @@ router.post('/reset-password-request', userController.requestPasswordReset);
  */
 router.get('/reset-password', userController.renderPasswordResetPage);
 router.post('/reset-password', userController.resetPassword);
-
+/**
+ * @openapi
+ * /api/v1/auth/search-user:
+ *   get:
+ *     tags:
+ *       - Authentication
+ *     summary: Search users
+ *     description: >
+ *       Searches users using one or more search terms.
+ *       The search is case-insensitive and supports full names,
+ *       first names, surnames, titles, or combinations of words.
+ *       Returns all matching users.
+ *       Requires authentication.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: >
+ *           Search text containing one or more words.
+ *           Examples: "John", "Doe", "John Doe", "Dr John".
+ *         example: "John Doe"
+ *     responses:
+ *       200:
+ *         description: Matching users found successfully.
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               count: 2
+ *               users:
+ *                 - userId: "69bfb2330f5e7081ade38835"
+ *                   fullname: "Dr John Doe"
+ *                 - userId: "69bfb2330f5e7081ade38836"
+ *                   fullname: "John Smith"
+ *       400:
+ *         description: Search text is required.
+ *       404:
+ *         description: No users found.
+ *       500:
+ *         description: Internal server error.
+ */ 
+router.get('/search-user', verifyToken, userController.searchUser);
 router.get('/', verifyToken, async (req, res) => {
   try {
     const users = await User.find().select('-password_hash');

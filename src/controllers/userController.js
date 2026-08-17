@@ -2,7 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Role = require('../models/Role');
-
+const normalizeName = require("../utils/normalizeName")
 const { OTP, generateOTP } = require('../models/OTP');
 const { sendPasswordResetEmail, sendPinCodeVerificationEmail } = require('../utils/mailer');
 
@@ -320,4 +320,74 @@ exports.resetPassword = async (req, res) => {
   } catch (error) {
     res.status(400).send({ error: 'Invalid or expired token' });
   }
+};
+
+exports.searchUser = async (req, res) => {
+        try {
+
+        const { search } = req.query;
+
+        // Validate input
+        if (!search || search.trim() === "") {
+            return res.status(400).json({
+                success: false,
+                message: "Search text is required."
+            });
+        }
+
+        // Normalize search string
+        const normalizedSearch = normalizeName(search);
+        
+
+        // Split search into individual words
+        const searchTokens = normalizedSearch
+    .split(" ")
+    .filter(token => token.length > 0);
+      
+
+         // Fetch all users
+const users = await User.find({}, "_id fullname organization").lean();
+
+
+        // Find all matching users
+        const matchedUsers = users.filter((user) => {
+
+            if (!user.fullname) return false;
+
+            const normalizedStoredName = normalizeName(user.fullname);
+
+const storedTokens = normalizedStoredName.split(" ");
+const matches = searchTokens.every((token) => {
+    return storedTokens.includes(token);
+});
+return matches;
+        });
+        
+
+        // No users found
+        if (matchedUsers.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "No users found."
+            });
+        }
+
+        // Return matching users
+        return res.status(200).json({
+            success: true,
+            count: matchedUsers.length,
+            users: matchedUsers.map((user) => ({
+                userId: user._id,
+                fullname: user.fullname
+            }))
+        });
+
+    } catch (error) {
+        console.error("Search user failed:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error."
+        });
+    }
 };
