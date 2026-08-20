@@ -35,12 +35,24 @@ const { expect } = chai;
 // verifyToken -> attaches a fake admin user; verifyRole(...) -> always allows.
 const verifyTokenPath = require.resolve('../middleware/verifyToken');
 const verifyRolePath = require.resolve('../middleware/verifyRole');
+
+const originalVerifyToken = require.cache[verifyTokenPath];
+const originalVerifyRole = require.cache[verifyRolePath];
+
 require.cache[verifyTokenPath] = {
-  id: verifyTokenPath, filename: verifyTokenPath, loaded: true,
-  exports: (req, _res, next) => { req.user = { _id: 'test-admin' }; next(); }
+  id: verifyTokenPath,
+  filename: verifyTokenPath,
+  loaded: true,
+  exports: (req, _res, next) => {
+    req.user = { _id: 'test-admin' };
+    next();
+  }
 };
+
 require.cache[verifyRolePath] = {
-  id: verifyRolePath, filename: verifyRolePath, loaded: true,
+  id: verifyRolePath,
+  filename: verifyRolePath,
+  loaded: true,
   exports: () => (_req, _res, next) => next()
 };
 
