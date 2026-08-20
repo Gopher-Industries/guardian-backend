@@ -185,4 +185,22 @@ describe('email API over HTTP (no database)', function () {
       .send({ template: 'no-such-template', data: { to: 'a@b.com' } });
     expect(res).to.have.status(400);
   });
+
+  after(() => {
+    if (originalVerifyToken) {
+      require.cache[verifyTokenPath] = originalVerifyToken;
+    } else {
+      delete require.cache[verifyTokenPath];
+    }
+
+    if (originalVerifyRole) {
+      require.cache[verifyRolePath] = originalVerifyRole;
+    } else {
+      delete require.cache[verifyRolePath];
+    }
+
+    delete require.cache[require.resolve('../routes/emailRoutes')];
+  });
 });
+
+
