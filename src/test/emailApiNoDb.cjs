@@ -39,27 +39,10 @@ const verifyRolePath = require.resolve('../middleware/verifyRole');
 const originalVerifyToken = require.cache[verifyTokenPath];
 const originalVerifyRole = require.cache[verifyRolePath];
 
-require.cache[verifyTokenPath] = {
-  id: verifyTokenPath,
-  filename: verifyTokenPath,
-  loaded: true,
-  exports: (req, _res, next) => {
-    req.user = { _id: 'test-admin' };
-    next();
-  }
-};
-
-require.cache[verifyRolePath] = {
-  id: verifyRolePath,
-  filename: verifyRolePath,
-  loaded: true,
-  exports: () => (_req, _res, next) => next()
-};
-
-// Ensure a fresh router that picks up the stubbed middleware.
-delete require.cache[require.resolve('../routes/emailRoutes')];
-const emailRoutes = require('../routes/emailRoutes');
 const outbox = require('../services/emailOutbox');
+
+let emailRoutes;
+let app;
 
 function buildApp() {
   const app = express();
@@ -72,7 +55,31 @@ function buildApp() {
 
 describe('email API over HTTP (no database)', function () {
   this.timeout(10000);
-  const app = buildApp();
+
+  before(() => {
+    require.cache[verifyTokenPath] = {
+      id: verifyTokenPath,
+      filename: verifyTokenPath,
+      loaded: true,
+      exports: (req, _res, next) => {
+        req.user = { _id: 'test-admin' };
+        next();
+      }
+    };
+
+    require.cache[verifyRolePath] = {
+      id: verifyRolePath,
+      filename: verifyRolePath,
+      loaded: true,
+      exports: () => (_req, _res, next) => next()
+    };
+
+    delete require.cache[require.resolve('../routes/emailRoutes')];
+
+    emailRoutes = require('../routes/emailRoutes');
+    app = buildApp();
+  });
+
   const agent = () => chai.request(app);
 
   beforeEach(() => outbox.clear());
