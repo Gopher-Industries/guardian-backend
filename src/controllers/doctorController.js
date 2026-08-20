@@ -512,7 +512,10 @@ exports.listPatientsByDoctor = async (req, res) => {
           ? roleRaw.toLowerCase()
           : (roleRaw && roleRaw.name ? String(roleRaw.name).toLowerCase() : null);
   
-      const isDoctorRequester = (roleId === doctorRoleId) || (roleName === 'doctor');
+      const isDoctorRequester =
+          req.userRole === 'doctor' ||
+          roleId === doctorRoleId ||
+          roleName === 'doctor';
   
       // If requester is a doctor, they must be asking for THEIR OWN patients
       const requesterId = String(u._id || u.id || '');
