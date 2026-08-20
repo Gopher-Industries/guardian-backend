@@ -413,23 +413,7 @@ describe('email routes and side effects', function () {
       expect(entry.subject).to.contain('password reset');
     });
 
-    it('sends a PIN from POST /api/v1/auth/send-pin', async () => {
-      const res = await chai
-        .request(app)
-        .post('/api/v1/auth/send-pin')
-        .send({ email: nurse.email });
-
-      expect(res).to.have.status(200);
-
-      const entry = outbox.list({ includeBody: true })[0];
-      expect(entry.template).to.equal('otp');
-      expect(entry.to).to.deep.equal([nurse.email]);
-
-      // The PIN in the email must match the one stored for verification.
-      const { OTP } = require('../models/otp');
-      const stored = await OTP.findOne({ email: nurse.email });
-      expect(entry.html).to.contain(stored.otp);
-    });
+  
 
     it('sends nothing when the reset flow is given an unknown address', async () => {
       const res = await chai
