@@ -186,93 +186,8 @@ exports.listStaff = async (req, res) => {
 };
 
 /* ---------------------------------------------------------------------- */
-/**
- * @swagger
- * /api/v1/admin/staff:
- *   post:
- *     summary: Add a nurse or doctor to the organization staff
- *     description: Adds an existing user with role `nurse` or `doctor` to the staff list of the admin's organization.
- *     tags: [AdminStaff]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: orgId
- *         required: false
- *         description: Optional organization ID when the admin manages multiple organizations
- *         schema:
- *           type: string
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - userId
- *             properties:
- *               userId:
- *                 type: string
- *                 description: User ID of an existing nurse or doctor
- *                 example: "66ef5c2a9f3a1d0012ab34dd"
- *     responses:
- *       200:
- *         description: Staff member added successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - message
- *                 - organization
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Staff member added"
- *                 organization:
- *                   type: object
- *                   properties:
- *                     _id:
- *                       type: string
- *                       example: "66ef5c2a9f3a1d0012ab34bb"
- *                     name:
- *                       type: string
- *                       example: "Guardian Health Org"
- *                     active:
- *                       type: boolean
- *                       example: true
- *                     staff:
- *                       type: array
- *                       description: List of user IDs currently linked as staff
- *                       items:
- *                         type: string
- *       400:
- *         description: Invalid payload or the user does not have role nurse or doctor
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - message
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "User must have role nurse or doctor"
- *       404:
- *         description: Organization not found for admin
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - message
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Organization not found for admin"
- *       500:
- *         description: Internal server error while adding staff
- */
+
+ 
 exports.addStaff = async (req, res) => {
   try {
     const { orgId } = req.query;
@@ -386,30 +301,7 @@ exports.deactivateStaff = async (req, res) => {
 };
 
 /* ---------------------------------------------------------------------- */
-/**
- * @swagger
- * /api/v1/admin/staff/pending:
- *   get:
- *     summary: Get pending nurse and caretaker registrations for the admin's organization
- *     description: Returns all nurse and caretaker accounts in the selected organization that are awaiting admin approval.
- *     tags: [AdminStaff]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: orgId
- *         required: false
- *         schema:
- *           type: string
- *         description: Optional organization ID when the admin manages multiple organizations
- *     responses:
- *       200:
- *         description: Pending staff registrations returned successfully
- *       404:
- *         description: Organization not found for the authenticated admin
- *       500:
- *         description: Internal server error while retrieving pending registrations
- */
+
 exports.getPendingStaffRegistrations = async (req, res) => {
   try {
     const { orgId } = req.query;
@@ -447,40 +339,7 @@ exports.getPendingStaffRegistrations = async (req, res) => {
 };
 
 /* ---------------------------------------------------------------------- */
-/**
- * @swagger
- * /api/v1/admin/staff/{id}/approve:
- *   put:
- *     summary: Approve a pending nurse or caretaker account
- *     description: Approves a pending nurse or caretaker account belonging to the admin's organization and adds the approved user to the organization's active staff list.
- *     tags: [AdminStaff]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         description: User ID of the staff account
- *         schema:
- *           type: string
- *       - in: query
- *         name: orgId
- *         required: false
- *         description: Optional organization ID when the admin manages multiple organizations
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Staff account approved successfully
- *       400:
- *         description: Invalid user ID or unsupported approval request
- *       403:
- *         description: User does not belong to the selected organization
- *       404:
- *         description: User or organization not found
- *       500:
- *         description: Internal server error while approving the staff account
- */
+
 exports.approveStaff = async (req, res) => {
   try {
     const { id } = req.params;
@@ -548,54 +407,7 @@ exports.approveStaff = async (req, res) => {
 };
 
 /* ---------------------------------------------------------------------- */
-/**
- * @swagger
- * /api/v1/admin/staff/{id}/status:
- *   put:
- *     summary: Reject or deactivate a nurse or caretaker account
- *     description: Updates the status of a nurse or caretaker account in the admin's organization by rejecting a pending request or deactivating an existing member.
- *     tags: [AdminStaff]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         description: User ID of the staff account
- *         schema:
- *           type: string
- *       - in: query
- *         name: orgId
- *         required: false
- *         description: Optional organization ID when the admin manages multiple organizations
- *         schema:
- *           type: string
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - action
- *             properties:
- *               action:
- *                 type: string
- *                 enum: [reject, deactivate]
- *               reason:
- *                 type: string
- *     responses:
- *       200:
- *         description: Staff account status updated successfully
- *       400:
- *         description: Invalid user ID, invalid action, or unsupported role
- *       403:
- *         description: User does not belong to the selected organization
- *       404:
- *         description: User or organization not found
- *       500:
- *         description: Internal server error while updating staff status
- */
+
 exports.rejectOrDeactivateStaff = async (req, res) => {
   try {
     const { id } = req.params;
