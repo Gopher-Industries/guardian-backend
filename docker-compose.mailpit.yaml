@@ -1,0 +1,26 @@
+# Local mail catcher for development.
+#
+#   docker compose -f docker-compose.mailpit.yaml up -d
+#
+# Then set in .env:
+#   EMAIL_PROVIDER=smtp
+#   EMAIL_DRY_RUN=false
+#   SMTP_HOST=localhost      (or "mailpit" if guardian-backend runs in compose)
+#   SMTP_PORT=1025
+#
+# Every message the backend sends lands in the web inbox at
+# http://localhost:8025 — including HTML, plain text, headers and raw source.
+# Nothing leaves your machine, so real resident or staff addresses are safe.
+
+services:
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: guardian-mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # Web inbox
+    environment:
+      - MP_MAX_MESSAGES=5000
+      - MP_SMTP_AUTH_ACCEPT_ANY=1
+      - MP_SMTP_AUTH_ALLOW_INSECURE=1
