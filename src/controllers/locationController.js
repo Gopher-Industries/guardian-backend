@@ -115,13 +115,13 @@ exports.createLocation = async (req, res) => {
 
     await newLocation.save();
 
-    res.status(201).json({
+    return res.status(201).json({
       message: 'Location created successfully.',
       location: newLocation
     });
 
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Error creating location.',
       details: error.message
     });
@@ -147,14 +147,14 @@ exports.getAllLocations = async (req, res) => {
   try {
     const locations = await Location.find().sort({ createdAt: -1 });
 
-    res.status(200).json({
+    return res.status(200).json({
       message: 'Locations retrieved successfully.',
       total: locations.length,
       locations
     });
 
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Error retrieving locations.',
       details: error.message
     });
@@ -207,13 +207,13 @@ exports.getLocationById = async (req, res) => {
       });
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       message: 'Location retrieved successfully.',
       location
     });
 
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Error retrieving location.',
       details: error.message
     });
@@ -306,13 +306,13 @@ exports.updateLocation = async (req, res) => {
       });
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       message: 'Location updated successfully.',
       location: updatedLocation
     });
 
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Error updating location.',
       details: error.message
     });
@@ -365,12 +365,12 @@ exports.deleteLocation = async (req, res) => {
       });
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       message: 'Location deleted successfully.'
     });
 
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Error deleting location.',
       details: error.message
     });

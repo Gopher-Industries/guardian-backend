@@ -67,5 +67,5 @@ const LocationSchema = new mongoose.Schema(
     timestamps: true
   }
 );
-
+LocationSchema.index({ status: 1 });
 module.exports = mongoose.model('Location', LocationSchema);
