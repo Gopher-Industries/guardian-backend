@@ -159,12 +159,9 @@ const prescriptionRoutes = require('./routes/prescriptionRoutes');
 const taskRoutes = require('./routes/taskRoutes');
 const carePlanRoutes = require('./routes/carePlanRoutes');
 const resourceRoutes = require('./routes/resourceRoutes');
-<<<<<<< HEAD
 const locationRoutes = require('./routes/location');
 const correspondenceRoutes = require('./routes/correspondence');
-=======
 const emailRoutes = require('./routes/emailRoutes');
->>>>>>> origin/main
 
 app.use('/api/v1/auth', userRoutes);
 app.use('/api/v1/caretaker', caretakerRoutes);
