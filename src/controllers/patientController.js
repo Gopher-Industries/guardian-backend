@@ -37,85 +37,7 @@ async function blockIndependentPatientWorkForApprovedOrgMember(userId) {
  *     description: Endpoints for patient activity and entry reporting
  */
 
-/**
- * @swagger
- * /api/v1/patients/add:
- *   post:
- *     summary: Add a new patient with an optional profile photo
- *     description: Creates a new patient in the independent freelance flow for the authenticated caretaker.
- *     tags: [Patient]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             required:
- *               - fullname
- *               - dateOfBirth
- *               - gender
- *             properties:
- *               fullname:
- *                 type: string
- *                 example: John Smith
- *               dateOfBirth:
- *                 type: string
- *                 format: date
- *                 example: 1980-01-01
- *               gender:
- *                 type: string
- *                 enum: [M, F, other]
- *               profilePhoto:
- *                 type: string
- *                 format: binary
- *                 description: "Patient profile photo (file upload). NOTE: Uploading a photo is currently disabled - submitting with a photo will throw an error. Leave this field empty."
- *               emergencyContactName:
- *                 type: string
- *                 nullable: true
- *                 description: Full name of the emergency contact
- *               emergencyContactNumber:
- *                 type: string
- *                 nullable: true
- *                 description: Phone number of the emergency contact
- *               nextOfKinName:
- *                 type: string
- *                 nullable: true
- *                 description: Full name of the patient's next of kin
- *               nextOfKinRelationship:
- *                 type: string
- *                 nullable: true
- *                 enum: [SPOUSE, PARENT, CHILD, SIBLING, GRANDPARENT, GUARDIAN, CARER, FRIEND, OTHER]
- *                 description: "Relationship of the next of kin to the patient. Only accepted values: SPOUSE, PARENT, CHILD, SIBLING, GRANDPARENT, GUARDIAN, CARER, FRIEND, OTHER"
- *               medicalSummary:
- *                 type: string
- *                 nullable: true
- *                 description: Brief summary of the patient's overall medical history and status
- *               allergies:
- *                 type: array
- *                 items:
- *                   type: string
- *                 nullable: true
- *                 description: List of known allergies (e.g. penicillin, peanuts)
- *               conditions:
- *                 type: array
- *                 items:
- *                   type: string
- *                 nullable: true
- *                 description: List of diagnosed medical conditions (e.g. Type 2 Diabetes, Hypertension)
- *               notes:
- *                 type: string
- *                 nullable: true
- *                 description: Free-text clinical or care notes for the patient
- *     responses:
- *       201:
- *         description: Patient added successfully
- *       400:
- *         description: Missing required fields or invalid request data
- *       403:
- *         description: Approved organization members cannot use independent patient routes
- */
+
 exports.addPatient = async (req, res) => {
   try {
     const accessCheck = await blockIndependentPatientWorkForApprovedOrgMember(req.user._id);
@@ -303,101 +225,7 @@ exports.getAllPatients = async (req, res) => {
   }
 };
 
-/**
- * @swagger
- * /api/v1/patients/{patientId}:
- *   put:
- *     summary: Update a patient in the independent freelance flow
- *     description: Updates an existing patient record for an authorized caretaker or assigned nurse within the independent workflow.
- *     tags: [Patient]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: patientId
- *         required: true
- *         schema:
- *           type: string
- *         description: Patient ID
- *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             properties:
- *               fullname: { type: string }
- *               dateOfBirth:
- *                 type: string
- *                 format: date
- *                 example: '1980-01-01'
- *               gender:
- *                 type: string
- *                 enum: [M, F, other]
- *                 description: "Only accepted values: M, F, other"
- *               profilePhoto:
- *                 type: string
- *                 format: binary
- *                 description: "Patient profile photo (file upload). NOTE: Uploading a photo is currently disabled - submitting with a photo will throw an error. Leave this field empty."
- *               emergencyContactName: { type: string, nullable: true }
- *               emergencyContactNumber: { type: string, nullable: true }
- *               nextOfKinName: { type: string, nullable: true, description: "Full name of the patient's next of kin" }
- *               nextOfKinRelationship:
- *                 type: string
- *                 nullable: true
- *                 enum: [SPOUSE, PARENT, CHILD, SIBLING, GRANDPARENT, GUARDIAN, CARER, FRIEND, OTHER]
- *                 description: "Only accepted values: SPOUSE, PARENT, CHILD, SIBLING, GRANDPARENT, GUARDIAN, CARER, FRIEND, OTHER"
- *               medicalSummary: { type: string, nullable: true }
- *               allergies:
- *                 type: array
- *                 items: { type: string }
- *                 nullable: true
- *               conditions:
- *                 type: array
- *                 items: { type: string }
- *                 nullable: true
- *               notes: { type: string, nullable: true }
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               fullname: { type: string }
- *               dateOfBirth:
- *                 type: string
- *                 format: date
- *                 example: '1980-01-01'
- *               gender:
- *                 type: string
- *                 enum: [M, F, other]
- *                 description: "Only accepted values: M, F, other"
- *               emergencyContactName: { type: string, nullable: true }
- *               emergencyContactNumber: { type: string, nullable: true }
- *               nextOfKinName: { type: string, nullable: true, description: "Full name of the patient's next of kin" }
- *               nextOfKinRelationship:
- *                 type: string
- *                 nullable: true
- *                 enum: [SPOUSE, PARENT, CHILD, SIBLING, GRANDPARENT, GUARDIAN, CARER, FRIEND, OTHER]
- *                 description: "Only accepted values: SPOUSE, PARENT, CHILD, SIBLING, GRANDPARENT, GUARDIAN, CARER, FRIEND, OTHER"
- *               medicalSummary: { type: string, nullable: true }
- *               allergies:
- *                 type: array
- *                 items: { type: string }
- *                 nullable: true
- *               conditions:
- *                 type: array
- *                 items: { type: string }
- *                 nullable: true
- *               notes: { type: string, nullable: true }
- *     responses:
- *       200:
- *         description: Patient updated successfully
- *       403:
- *         description: Approved organization members cannot use independent update routes, or the user is not authorized for this patient
- *       404:
- *         description: Patient not found
- *       500:
- *         description: Internal server error while updating the patient
- */
+
 exports.updatePatient = async (req, res) => {
   try {
     const block = await blockIndependentPatientWorkForApprovedOrgMember(req.user._id);
@@ -527,32 +355,7 @@ exports.updatePatient = async (req, res) => {
   }
 };
 
-/**
- * @swagger
- * /api/v1/patients/{patientId}:
- *   delete:
- *     summary: Soft delete a patient in the independent freelance flow
- *     description: Marks a patient as deleted for an authorized caretaker or assigned nurse within the independent workflow.
- *     tags: [Patient]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: patientId
- *         required: true
- *         schema:
- *           type: string
- *         description: Patient ID
- *     responses:
- *       200:
- *         description: Patient deleted successfully
- *       403:
- *         description: Approved organization members cannot use independent delete routes, or the user is not authorized for this patient
- *       404:
- *         description: Patient not found
- *       500:
- *         description: Internal server error while deleting the patient
- */
+
 exports.deletePatient = async (req, res) => {
   try {
     const block = await blockIndependentPatientWorkForApprovedOrgMember(req.user._id);
@@ -596,77 +399,7 @@ exports.deletePatient = async (req, res) => {
   }
 };
 
-/**
- * @swagger
- * /api/v1/patients/{patientId}:
- *   get:
- *     summary: Fetch patient details by ID
- *     description: Retrieves a non-deleted patient record by its ID.
- *     tags: [Patient]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: patientId
- *         required: true
- *         schema:
- *           type: string
- *         description: MongoDB ObjectId of the patient
- *     responses:
- *       200:
- *         description: Patient details
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 _id: { type: string }
- *                 fullname: { type: string }
- *                 gender: { type: string, enum: [M, F, other] }
- *                 dateOfBirth: { type: string, format: date }
- *                 age: { type: integer }
- *                 profilePhoto: { type: string, nullable: true }
- *                 dateOfAdmitting: { type: string, format: date, nullable: true }
- *                 description: { type: string }
- *                 emergencyContactName: { type: string, nullable: true }
- *                 emergencyContactNumber: { type: string, nullable: true }
- *                 nextOfKinName:
- *                   type: string
- *                   nullable: true
- *                   description: Full name of the patient's next of kin
- *                 nextOfKinRelationship:
- *                   type: string
- *                   nullable: true
- *                   enum: [SPOUSE, PARENT, CHILD, SIBLING, GRANDPARENT, GUARDIAN, CARER, FRIEND, OTHER]
- *                   description: Relationship of the next of kin to the patient
- *                 medicalSummary: { type: string, nullable: true }
- *                 allergies:
- *                   type: array
- *                   items: { type: string }
- *                 conditions:
- *                   type: array
- *                   items: { type: string }
- *                 notes: { type: string, nullable: true }
- *                 caretaker:
- *                   type: object
- *                   nullable: true
- *                   properties:
- *                     _id: { type: string }
- *                     fullname: { type: string }
- *                     email: { type: string }
- *                 assignedNurses:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       _id: { type: string }
- *                       fullname: { type: string }
- *                       email: { type: string }
- *       400:
- *         description: Invalid patient ID or request error
- *       404:
- *         description: Patient not found
- */
+
 exports.getPatientDetails = async (req, res) => {
   try {
     const { patientId } = req.params;
@@ -699,41 +432,7 @@ exports.getPatientDetails = async (req, res) => {
   }
 };
 
-/**
- * @swagger
- * /api/v1/patients/assign-nurse:
- *   post:
- *     summary: Assign a nurse to a patient
- *     description: Assigns a nurse to a patient and updates both the patient and nurse records.
- *     tags: [Patient]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - nurseId
- *               - patientId
- *             properties:
- *               nurseId:
- *                 type: string
- *               patientId:
- *                 type: string
- *     responses:
- *       200:
- *         description: Nurse assigned successfully
- *       400:
- *         description: Selected user is not a nurse
- *       403:
- *         description: Approved organization members cannot use independent patient routes
- *       404:
- *         description: Invalid nurse or patient ID
- *       500:
- *         description: Internal server error while assigning the nurse
- */
+
 exports.assignNurseToPatient = async (req, res) => {
   try {
     const accessCheck = await blockIndependentPatientWorkForApprovedOrgMember(req.user._id);
@@ -782,29 +481,7 @@ exports.assignNurseToPatient = async (req, res) => {
   }
 };
 
-/**
- * @swagger
- * /api/v1/patients/assigned-patients:
- *   get:
- *     summary: Fetch assigned patients for a nurse or caretaker
- *     description: Returns patients assigned to the authenticated nurse or caretaker.
- *     tags: [Patient]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Assigned patients fetched successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Patient'
- *       403:
- *         description: Unauthorized role or invalid role information
- *       500:
- *         description: Internal server error while fetching assigned patients
- */
+
 exports.getAssignedPatients = async (req, res) => {
   try {
     // Load the authenticated user and role before applying role-based filters
@@ -886,36 +563,7 @@ exports.logEntry = async (req, res) => {
   }
 };
 
-/**
- * @swagger
- * /api/v1/patients/activities:
- *   get:
- *     summary: Fetch activities for a patient
- *     description: Returns all entry reports associated with the provided patient ID.
- *     tags: [EntryReport]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: patientId
- *         required: true
- *         schema:
- *           type: string
- *         description: Patient ID
- *     responses:
- *       200:
- *         description: Patient activities fetched successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/EntryReport'
- *       400:
- *         description: Missing patientId in query
- *       500:
- *         description: Internal server error while fetching patient activities
- */
+
 exports.getPatientActivities = async (req, res) => {
   try {
     const { patientId } = req.query;

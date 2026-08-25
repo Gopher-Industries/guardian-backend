@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Role = require('../models/Role');
 
-const { OTP, generateOTP } = require('../models/OTP');
+const { OTP, generateOTP } = require('../models/otp');
 const { sendPasswordResetEmail, sendPinCodeVerificationEmail } = require('../utils/mailer');
 
 /**
@@ -109,7 +109,7 @@ exports.registerUser = async (req, res) => {
  * @swagger
  * /api/v1/auth/login:
  *   post:
- *     summary: Log in a user!
+ *     summary: Log in a user
  *     description: Authenticates a user with the provided email and password.
  *     tags:
  *       - Authentication

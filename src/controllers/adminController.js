@@ -192,6 +192,7 @@ async function validateAdminRelatedStaff(relatedStaffIds, assigneeId, organizati
  *             $ref: '#/components/schemas/SupportTicket'
  */
 
+
 /**
  * @swagger
  * /api/v1/admin/patient-overview/{patientId}:

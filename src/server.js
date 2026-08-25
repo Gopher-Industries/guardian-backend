@@ -9,7 +9,6 @@ const socketIO = require('socket.io');
 const cors = require('cors');
 
 const swaggerUi = require('swagger-ui-express');
-const swaggerJsdoc = require('swagger-jsdoc');
 const { setEmit } = require('../socket');
 
 const app = express();
@@ -132,38 +131,8 @@ const limiter = rateLimit({
 
 app.use(limiter);
 
-const swaggerOptions = {
-  definition: {
-    openapi: '3.0.0',
-    info: {
-      title: 'Guardian API',
-      version: '1.0.0',
-      description: 'API documentation with Swagger UI and Redoc',
-    },
-    components: {
-      securitySchemes: {
-        bearerAuth: {
-          type: 'http',
-          scheme: 'bearer',
-          bearerFormat: 'JWT',
-        },
-      },
-    },
-    security: [
-      {
-        bearerAuth: [],
-      },
-    ],
-  },
-  apis: [
-    './src/routes/*.js',
-    './src/routes/**/*.js',
-    './src/controllers/*.js',
-    './src/swaggerDefinitions.js'
-  ],
-};
-
-const swaggerSpec = swaggerJsdoc(swaggerOptions);
+const { buildSwaggerSpec } = require('./config/swagger');
+const swaggerSpec = buildSwaggerSpec();
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -190,6 +159,7 @@ const prescriptionRoutes = require('./routes/prescriptionRoutes');
 const taskRoutes = require('./routes/taskRoutes');
 const carePlanRoutes = require('./routes/carePlanRoutes');
 const resourceRoutes = require('./routes/resourceRoutes');
+const emailRoutes = require('./routes/emailRoutes');
 
 app.use('/api/v1/auth', userRoutes);
 app.use('/api/v1/caretaker', caretakerRoutes);
@@ -210,6 +180,7 @@ app.use('/api/v1/orgs', orgRoutes);
 app.use('/api/v1/tasks', taskRoutes);
 app.use('/api/v1/care-plans', carePlanRoutes);
 app.use('/api/v1/resources', resourceRoutes);
+app.use('/api/v1/email', emailRoutes);
 
 app.use(
   '/swaggerDocs',
@@ -244,7 +215,9 @@ app.get('/redoc', (req, res) => {
 });
 
 app.get('/openapi.json', (req, res) => {
-  res.sendFile(path.join(__dirname, 'openapi.json'));
+  // Serve the live, generated spec so Redoc and any downloaded/imported copy
+  // always match the running API.
+  res.json(swaggerSpec);
 });
 
 app.get('/', (req, res) => {

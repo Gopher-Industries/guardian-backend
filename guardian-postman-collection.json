@@ -1,0 +1,4085 @@
+{
+  "info": {
+    "name": "Guardian API",
+    "_postman_id": "00000000-0000-4000-8000-000000000001",
+    "description": "Guardian Monitoring backend API. Authenticate via POST /api/v1/auth/login to obtain a JWT, then send it as an `Authorization: Bearer <token>` header.\n\nHow to use: set {{baseUrl}} (default http://localhost:3000), then run Authentication → \"User login\" to capture your token automatically. All other requests then send it as a Bearer token.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "token",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "ActivityRecognition",
+      "item": [
+        {
+          "name": "Create an activity recognition record",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/activity-recognition",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "activity-recognition"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientId\": \"64f1a2b3c4d5e6f789012345\",\n  \"wifi_csi_id\": \"64f1a2b3c4d5e6f789012346\",\n  \"activity_type\": \"\",\n  \"confidence\": 0,\n  \"detected_at\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get activity recognition records",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/activity-recognition?patientId=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "activity-recognition"
+              ],
+              "query": [
+                {
+                  "key": "patientId",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Optional accessible patient ObjectId used to filter linked activity recognition records."
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "Fetch detailed patient overview",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/patient-overview/:patientId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "patient-overview",
+                ":patientId"
+              ],
+              "variable": [
+                {
+                  "key": "patientId",
+                  "value": "",
+                  "description": "ID of the patient"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Create a support ticket",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/support-tickets",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "support-tickets"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Fetch all support tickets",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/support-tickets?status=&userId=&page=&limit=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "support-tickets"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Filter tickets by status"
+                },
+                {
+                  "key": "userId",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Filter tickets by user ID"
+                },
+                {
+                  "key": "page",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Page number"
+                },
+                {
+                  "key": "limit",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Number of tickets per page"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Update a support ticket",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/support-tickets/:ticketId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "support-tickets",
+                ":ticketId"
+              ],
+              "variable": [
+                {
+                  "key": "ticketId",
+                  "value": "",
+                  "description": "ID of the support ticket to be updated"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Create a new task",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/tasks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "tasks"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"\",\n  \"description\": \"\",\n  \"patientId\": \"\",\n  \"dueDate\": \"2026-04-01\",\n  \"caretakerId\": \"\",\n  \"nurseId\": \"\",\n  \"assigneeId\": \"\",\n  \"priority\": \"low\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update a task",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/tasks/:taskId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "tasks",
+                ":taskId"
+              ],
+              "variable": [
+                {
+                  "key": "taskId",
+                  "value": "",
+                  "description": "ID of the task to update"
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"\",\n  \"description\": \"\",\n  \"dueDate\": \"\",\n  \"caretakerId\": \"\",\n  \"nurseId\": \"\",\n  \"assigneeId\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete a task",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/tasks/:taskId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "tasks",
+                ":taskId"
+              ],
+              "variable": [
+                {
+                  "key": "taskId",
+                  "value": "",
+                  "description": "ID of the task to delete"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Get admin dashboard summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/dashboard-summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "dashboard-summary"
+              ]
+            },
+            "description": "Returns a system-wide snapshot for administrators. Includes total and active patient counts, a staff breakdown by role with pending approval count, a full task breakdown, task completion rate, and a count of patient logs created system-wide in the last 7 days."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "AdminPatients",
+      "item": [
+        {
+          "name": "Create a patient within the admin's organization",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/patients?orgId=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "patients"
+              ],
+              "query": [
+                {
+                  "key": "orgId",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Optional organization ID when the admin manages more than one organization"
+                }
+              ]
+            },
+            "description": "Creates a new patient record under the organization managed by the authenticated admin.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullname\": \"John Smith\",\n  \"gender\": \"Male\",\n  \"dateOfBirth\": \"1950-05-14\",\n  \"caretakerId\": 6.61111111111111e+23,\n  \"nurseId\": 6.622222222222222e+23,\n  \"doctorId\": 6.633333333333333e+23,\n  \"image\": \"\",\n  \"profilePhoto\": \"https://example.com/profile.jpg\",\n  \"dateOfAdmitting\": \"2026-04-11\",\n  \"description\": \"Patient admitted for regular monitoring\",\n  \"emergencyContactName\": \"\",\n  \"emergencyContactNumber\": \"\",\n  \"nextOfKinName\": \"\",\n  \"nextOfKinRelationship\": \"SPOUSE\",\n  \"medicalSummary\": \"\",\n  \"allergies\": [],\n  \"conditions\": [],\n  \"notes\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List patients for the admin's organization",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/patients?orgId=&q=&page=&limit=&active=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "patients"
+              ],
+              "query": [
+                {
+                  "key": "orgId",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Organization context for admins managing multiple organizations"
+                },
+                {
+                  "key": "q",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Search keyword matched against patient full name"
+                },
+                {
+                  "key": "page",
+                  "value": "",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "limit",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Filter by active status (true = active only, false = deactivated)"
+                },
+                {
+                  "key": "active",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Set to false to retrieve soft-deleted patients"
+                }
+              ]
+            },
+            "description": "Returns a paginated list of patients within the selected organization. Use `active=false` to view soft-deleted patients."
+          },
+          "response": []
+        },
+        {
+          "name": "Reassign caretaker, nurse, or doctor for a patient",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/patients/:id/assign",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "patients",
+                ":id",
+                "assign"
+              ]
+            },
+            "description": "Reassigns one or more care roles (caretaker, nurse, doctor) for an existing patient. Only provide the fields you want to change — all fields are optional. **Roles:** admin only.\n",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get a complete overview of a patient",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/patients/:id/overview?orgId=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "patients",
+                ":id",
+                "overview"
+              ],
+              "query": [
+                {
+                  "key": "orgId",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Organization context for admins managing multiple organizations"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "",
+                  "description": "Patient ID"
+                }
+              ]
+            },
+            "description": "Returns a detailed patient overview including profile data, health records, care plan, tasks, logs, and task completion rate."
+          },
+          "response": []
+        },
+        {
+          "name": "Deactivate a patient",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/patients/:id?orgId=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "patients",
+                ":id"
+              ],
+              "query": [
+                {
+                  "key": "orgId",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Organization context for admins managing multiple organizations"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "",
+                  "description": "Patient ID"
+                }
+              ]
+            },
+            "description": "Soft-deletes a patient by marking the patient record as inactive while preserving database history."
+          },
+          "response": []
+        },
+        {
+          "name": "Update patient staff assignments",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/patients/:id/reassign?orgId=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "patients",
+                ":id",
+                "reassign"
+              ],
+              "query": [
+                {
+                  "key": "orgId",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Organization context for admins managing multiple organizations"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "",
+                  "description": "Patient ID"
+                }
+              ]
+            },
+            "description": "Assigns or reassigns a caretaker, nurse, or doctor to an existing patient. At least one of `nurseId`, `doctorId`, or `caretakerId` should be provided.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nurseId\": \"\",\n  \"caretakerId\": \"\",\n  \"doctorId\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "AdminStaff",
+      "item": [
+        {
+          "name": "List staff members for the admin's organization",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/staff?orgId=&role=&q=&page=&limit=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "staff"
+              ],
+              "query": [
+                {
+                  "key": "orgId",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Optional organization ID when the admin manages multiple organizations"
+                },
+                {
+                  "key": "role",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Filter staff by role"
+                },
+                {
+                  "key": "q",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Search by full name or email address (case-insensitive)"
+                },
+                {
+                  "key": "page",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Page number"
+                },
+                {
+                  "key": "limit",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Number of records per page"
+                }
+              ]
+            },
+            "description": "Returns a paginated list of staff members linked to the selected organization, with optional filtering by role and search keyword."
+          },
+          "response": []
+        },
+        {
+          "name": "Add a nurse or doctor to the organization staff",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/staff?orgId=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "staff"
+              ],
+              "query": [
+                {
+                  "key": "orgId",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Optional organization ID when the admin manages multiple organizations"
+                }
+              ]
+            },
+            "description": "Adds an existing user with role `nurse` or `doctor` to the staff list of the admin's organization.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"66ef5c2a9f3a1d0012ab34dd\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Remove a nurse or doctor from organization staff",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/staff/:id/deactivate?orgId=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "staff",
+                ":id",
+                "deactivate"
+              ],
+              "query": [
+                {
+                  "key": "orgId",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Optional organization ID when the admin manages multiple organizations"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "",
+                  "description": "User ID of the nurse or doctor"
+                }
+              ]
+            },
+            "description": "Removes the selected nurse or doctor from the organization's active staff list."
+          },
+          "response": []
+        },
+        {
+          "name": "Get pending nurse and caretaker registrations for the admin's organization",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/staff/pending?orgId=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "staff",
+                "pending"
+              ],
+              "query": [
+                {
+                  "key": "orgId",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Optional organization ID when the admin manages multiple organizations"
+                }
+              ]
+            },
+            "description": "Returns all nurse and caretaker accounts in the selected organization that are awaiting admin approval."
+          },
+          "response": []
+        },
+        {
+          "name": "Approve a pending nurse or caretaker account",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/staff/:id/approve?orgId=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "staff",
+                ":id",
+                "approve"
+              ],
+              "query": [
+                {
+                  "key": "orgId",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Optional organization ID when the admin manages multiple organizations"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "",
+                  "description": "User ID of the staff account"
+                }
+              ]
+            },
+            "description": "Approves a pending nurse or caretaker account belonging to the admin's organization and adds the approved user to the organization's active staff list."
+          },
+          "response": []
+        },
+        {
+          "name": "Reject or deactivate a nurse or caretaker account",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/staff/:id/status?orgId=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "staff",
+                ":id",
+                "status"
+              ],
+              "query": [
+                {
+                  "key": "orgId",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Optional organization ID when the admin manages multiple organizations"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "",
+                  "description": "User ID of the staff account"
+                }
+              ]
+            },
+            "description": "Updates the status of a nurse or caretaker account in the admin's organization by rejecting a pending request or deactivating an existing member.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"reject\",\n  \"reason\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register a new user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Registers a new user with the provided fullname, email, and password.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullname\": \"John Doe\",\n  \"email\": \"johndoe@example.com\",\n  \"password\": \"Password123\",\n  \"role\": \"nurse\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Log in a user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Authenticates a user with the provided email and password.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"johndoe@example.com\",\n  \"password\": \"Password123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const j = pm.response.json();",
+                  "  const t = j.token || j.accessToken || (j.data && j.data.token);",
+                  "  if (t) { pm.collectionVariables.set('token', t); console.log('Saved token'); }",
+                  "} catch (e) { console.log('Login response was not JSON'); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send OTP for email verification",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/send-pin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "send-pin"
+              ]
+            },
+            "description": "Generates an OTP and sends it to the user's email for verification.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"johndoe@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Verify OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/verify-pin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "verify-pin"
+              ]
+            },
+            "description": "Verifies the OTP sent to the user's email address.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"johndoe@example.com\",\n  \"otp\": 123456\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Change a user's password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/change-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "change-password"
+              ]
+            },
+            "description": "Allows a user to change their password by providing the old and new passwords.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"oldPassword\": \"OldPassword123\",\n  \"newPassword\": \"NewPassword123\",\n  \"confirmPassword\": \"NewPassword123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Request a password reset",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/reset-password-request",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "reset-password-request"
+              ]
+            },
+            "description": "Sends a password reset link to the user's email.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"johndoe@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Render password reset page",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/reset-password?token=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "reset-password"
+              ],
+              "query": [
+                {
+                  "key": "token",
+                  "value": "",
+                  "disabled": true,
+                  "description": "JWT reset token"
+                }
+              ]
+            },
+            "description": "Renders a page for resetting the password using a valid reset token.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Reset password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/reset-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "reset-password"
+              ]
+            },
+            "description": "Resets the user's password using the reset token.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"JWT_TOKEN_HERE\",\n  \"newPassword\": \"NewPassword123\",\n  \"confirmPassword\": \"NewPassword123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Care Plans",
+      "item": [
+        {
+          "name": "Create a care plan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/care-plans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "care-plans"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"\",\n  \"description\": \"\",\n  \"patientId\": \"\",\n  \"caretakerId\": \"\",\n  \"nurseId\": \"\",\n  \"status\": \"active\",\n  \"tasks\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get all care plans visible to the current user",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/care-plans?patientId=&authorId=&status=&page=&limit=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "care-plans"
+              ],
+              "query": [
+                {
+                  "key": "patientId",
+                  "value": "",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "authorId",
+                  "value": "",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "status",
+                  "value": "",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "page",
+                  "value": "",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "limit",
+                  "value": "",
+                  "disabled": true,
+                  "description": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Get care plans by patient",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/care-plans/patient/:patientId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "care-plans",
+                "patient",
+                ":patientId"
+              ],
+              "variable": [
+                {
+                  "key": "patientId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Get one care plan",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/care-plans/:carePlanId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "care-plans",
+                ":carePlanId"
+              ],
+              "variable": [
+                {
+                  "key": "carePlanId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Update a care plan",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/care-plans/:carePlanId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "care-plans",
+                ":carePlanId"
+              ],
+              "variable": [
+                {
+                  "key": "carePlanId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Delete a care plan",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/care-plans/:carePlanId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "care-plans",
+                ":carePlanId"
+              ],
+              "variable": [
+                {
+                  "key": "carePlanId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Caretaker",
+      "item": [
+        {
+          "name": "View caretaker profile by ID or email",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/caretaker/profile?caretakerId=&email=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "caretaker",
+                "profile"
+              ],
+              "query": [
+                {
+                  "key": "caretakerId",
+                  "value": "",
+                  "disabled": true,
+                  "description": "The ID of the caretaker"
+                },
+                {
+                  "key": "email",
+                  "value": "",
+                  "disabled": true,
+                  "description": "The email of the caretaker"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Update caretaker profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/caretaker/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "caretaker",
+                "profile"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"caretakerId\": \"\",\n  \"fullname\": \"\",\n  \"phone\": \"\",\n  \"gender\": \"\",\n  \"age\": 0,\n  \"email\": \"\",\n  \"address\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List caretaker tasks with optional filters",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/caretaker/tasks?filter=&dueDate=&status=&sort=&page=&limit=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "caretaker",
+                "tasks"
+              ],
+              "query": [
+                {
+                  "key": "filter",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Use \"urgent\" to filter high-priority tasks"
+                },
+                {
+                  "key": "dueDate",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Return tasks due on or before this date (YYYY-MM-DD)"
+                },
+                {
+                  "key": "status",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Filter by task status"
+                },
+                {
+                  "key": "sort",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Sort results (default: dueDate ascending)"
+                },
+                {
+                  "key": "page",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Page number for pagination (default: 1)"
+                },
+                {
+                  "key": "limit",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Page size (default: 20)"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Create a task for a patient assigned to the logged-in caretaker",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/caretaker/tasks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "caretaker",
+                "tasks"
+              ]
+            },
+            "description": "Allows a caretaker to create a task only for their own assigned patient. The caretaker field is automatically taken from the logged-in user's token. Any caretakerId sent in the request body is ignored and cannot override the logged-in caretaker.\n",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Help patient with morning medication\",\n  \"patientId\": \"65f1a2b3c4d5e6f789012345\",\n  \"dueDate\": \"2026-04-01\",\n  \"nurseId\": \"65f1a2b3c4d5e6f789012346\",\n  \"priority\": \"medium\",\n  \"caretakerId\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get all caretakers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/caretaker?page=&limit=&search=&email=&sort=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "caretaker"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "limit",
+                  "value": "",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "email",
+                  "value": "",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "sort",
+                  "value": "",
+                  "disabled": true,
+                  "description": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Get all daily reports for a specific patient",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/caretaker/reports/patient/:patientId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "caretaker",
+                "reports",
+                "patient",
+                ":patientId"
+              ],
+              "variable": [
+                {
+                  "key": "patientId",
+                  "value": "",
+                  "description": "Patient ID"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Get caretaker dashboard summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/caretaker/dashboard-summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "caretaker",
+                "dashboard-summary"
+              ]
+            },
+            "description": "Returns a real-time snapshot of activity scoped to the authenticated caretaker. Includes patient counts, a full task breakdown (total, completed, in-progress, pending, and overdue), task completion rate, and a count of patient logs created by this caretaker in the last 7 days. Requires a valid JWT with the **caretaker** role."
+          },
+          "response": []
+        },
+        {
+          "name": "Create a daily caretaker report",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/caretaker/reports",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "caretaker",
+                "reports"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient\": \"\",\n  \"summary\": \"\",\n  \"foodWater\": \"\",\n  \"medicationSupport\": \"\",\n  \"mobility\": \"\",\n  \"moodBehaviour\": \"\",\n  \"incidents\": \"\",\n  \"notes\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get all daily reports for caretaker",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/caretaker/reports",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "caretaker",
+                "reports"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Doctor",
+      "item": [
+        {
+          "name": "Get all doctors",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/doctors?search=&page=&limit=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "doctors"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Search by fullname or email (case-insensitive)"
+                },
+                {
+                  "key": "page",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Page number"
+                },
+                {
+                  "key": "limit",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Results per page"
+                }
+              ]
+            },
+            "description": "Fetch a paginated list of users with role \"doctor\"."
+          },
+          "response": []
+        },
+        {
+          "name": "Get patients assigned to a doctor",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/doctors/:doctorId/patients?page=&limit=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "doctors",
+                ":doctorId",
+                "patients"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "limit",
+                  "value": "",
+                  "disabled": true,
+                  "description": ""
+                }
+              ],
+              "variable": [
+                {
+                  "key": "doctorId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Returns a paginated list of patients whose `assignedDoctor` equals the given doctorId. Allowed for the same doctor, admin, or caretaker."
+          },
+          "response": []
+        },
+        {
+          "name": "Assign or unassign a doctor to a patient",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patients/:patientId/assign-doctor",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "patients",
+                ":patientId",
+                "assign-doctor"
+              ],
+              "variable": [
+                {
+                  "key": "patientId",
+                  "value": "",
+                  "description": "Patient ObjectId"
+                }
+              ]
+            },
+            "description": "Admins or caretakers can assign a doctor to a patient. Send `{ \"doctorId\": null }` to unassign.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctorId\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get the logged-in doctor's profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/doctors/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "doctors",
+                "profile"
+              ]
+            },
+            "description": "Returns the full profile for the currently authenticated doctor, combining their User account details (name, email, role, organisation, assigned patients) with their Doctor-specific record (specialization, licenseNumber) stored in a separate collection. The doctor is identified from the JWT — no query parameters are required. Requires a valid JWT issued to a user with the **doctor** role."
+          },
+          "response": []
+        },
+        {
+          "name": "Update the logged-in doctor's profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/doctors/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "doctors",
+                "profile"
+              ]
+            },
+            "description": "Updates profile information for the currently authenticated doctor. The doctor is identified from the JWT — no `doctorId` is required in the body. Fields are written to two collections: `fullname` and `email` are updated on the **User** record; `specialization` and `licenseNumber` are upserted into the **Doctor** collection. The Doctor record is created automatically on the first update. Only fields included in the request body are changed; omitted fields are left as-is. Requires a valid JWT issued to a user with the **doctor** role.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullname\": \"Dr. Seed\",\n  \"email\": \"dr.seed@guardian.com\",\n  \"specialization\": \"Geriatrics\",\n  \"licenseNumber\": \"MED-2024-001\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get the logged-in doctor's dashboard summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/doctors/dashboard-summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "doctors",
+                "dashboard-summary"
+              ]
+            },
+            "description": "Returns a real-time snapshot of activity scoped to the authenticated doctor. Includes total and active patient counts, a full prescription status breakdown, a task breakdown (total, completed, pending, and overdue tasks across all assigned patients), and a count of care activity (patient logs) recorded against their patients in the last 7 days. Requires a valid JWT issued to a user with the **doctor** role."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Email",
+      "item": [
+        {
+          "name": "Show the effective email configuration (API keys redacted)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/email/config",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "email",
+                "config"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Check that the mail provider is reachable without sending anything",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/email/verify-connection",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "email",
+                "verify-connection"
+              ]
+            },
+            "description": "Runs a real SMTP handshake when EMAIL_PROVIDER is \"smtp\". HTTP API providers have no equivalent, and report as unsupported.\n",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"provider\": \"resend\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List available email templates and their field metadata",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/email/templates",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "email",
+                "templates"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Get the sample payload for a template",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/email/templates/:type/sample",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "email",
+                "templates",
+                ":type",
+                "sample"
+              ],
+              "variable": [
+                {
+                  "key": "type",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Render a template without sending it",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/email/preview",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "email",
+                "preview"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"template\": \"patient-alert\",\n  \"data\": {},\n  \"format\": \"json\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Send an email by option (destination + email option) — Brevo-focused simple send",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/email/send-option",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "email",
+                "send-option"
+              ]
+            },
+            "description": "The simplest way to send: provide a destination address (\"to\") and an email option (\"option\", a template key). Any fields the template needs that you do not provide are filled from that template's sample data, so a minimal { to, option } request always sends a valid email. With EMAIL_PROVIDER=brevo and a BREVO_API_KEY set, it delivers via Brevo.\n",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"to\": \"someone@example.com\",\n  \"option\": \"welcome\",\n  \"data\": {},\n  \"provider\": \"brevo\",\n  \"dryRun\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Send a templated email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/email/send",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "email",
+                "send"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"template\": \"otp\",\n  \"data\": {\n    \"to\": \"nurse@example.com\",\n    \"name\": \"Alex\",\n    \"otp\": \"482913\"\n  },\n  \"provider\": \"resend\",\n  \"dryRun\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Send an email with an explicit subject and body",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/email/send-raw",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "email",
+                "send-raw"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"to\": \"\",\n  \"from\": \"no-reply@your-domain.org\",\n  \"fromName\": \"Guardian Clinic\",\n  \"subject\": \"\",\n  \"html\": \"\",\n  \"text\": \"\",\n  \"cc\": [],\n  \"bcc\": [],\n  \"replyTo\": \"\",\n  \"provider\": \"resend\",\n  \"dryRun\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Send one templated email per recipient",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/email/send-bulk",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "email",
+                "send-bulk"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"template\": \"welcome\",\n  \"recipients\": [],\n  \"data\": {},\n  \"provider\": \"resend\",\n  \"dryRun\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Send the built-in rendering smoke test",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/email/test",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "email",
+                "test"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"to\": \"\",\n  \"provider\": \"resend\",\n  \"dryRun\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Inspect recent send attempts (sent, dry-run, blocked and failed)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/email/outbox?limit=&template=&includeBody=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "email",
+                "outbox"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "template",
+                  "value": "",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "includeBody",
+                  "value": "",
+                  "disabled": true,
+                  "description": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Clear the in-memory outbox",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/email/outbox",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "email",
+                "outbox"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Get a single outbox entry including the rendered body",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/email/outbox/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "email",
+                "outbox",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Browse the persisted \"Sent\" inbox (survives restarts)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/email/inbox?page=&limit=&status=&template=&to=&q=&includeBody=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "email",
+                "inbox"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "limit",
+                  "value": "",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "status",
+                  "value": "",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "template",
+                  "value": "",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "to",
+                  "value": "",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "q",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Free-text search over subject, recipient, template and sender"
+                },
+                {
+                  "key": "includeBody",
+                  "value": "",
+                  "disabled": true,
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Lists every email the tool has produced, newest first, from MongoDB. Falls back to the in-memory outbox when no database is connected (see the \"source\" field in the response).\n"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete every message in the sent inbox",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/email/inbox",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "email",
+                "inbox"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Counts of sent messages grouped by status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/email/inbox/stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "email",
+                "inbox",
+                "stats"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "One sent message including the rendered body",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/email/inbox/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "email",
+                "inbox",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Browsable read-only web page for the sent inbox",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/email/inbox-view",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "email",
+                "inbox-view"
+              ]
+            },
+            "description": "Static page (disabled in production unless EMAIL_INBOX_ENABLED=true). Paste an admin bearer token in the page to browse sent mail.\n"
+          },
+          "response": []
+        },
+        {
+          "name": "Browser test console for previewing and sending Guardian emails",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/email/test-console",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "email",
+                "test-console"
+              ]
+            },
+            "description": "Static page. Disabled in production unless EMAIL_TEST_CONSOLE_ENABLED=true. All actions it performs require an admin bearer token entered in the page.\n"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "EntryReport",
+      "item": [
+        {
+          "name": "Fetch activities for a patient",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patients/activities?patientId=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "patients",
+                "activities"
+              ],
+              "query": [
+                {
+                  "key": "patientId",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Patient ID"
+                }
+              ]
+            },
+            "description": "Returns all entry reports associated with the provided patient ID."
+          },
+          "response": []
+        },
+        {
+          "name": "Log a patient activity entry",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patients/entryreport",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "patients",
+                "entryreport"
+              ]
+            },
+            "description": "Creates a new entry report for a patient activity by the authenticated nurse.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientId\": \"\",\n  \"activityType\": \"eating\",\n  \"comment\": \"Patient finished lunch normally\",\n  \"timestamp\": \"2024-05-01T14:00:00Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete an entry report",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patients/entryreport/:entryId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "patients",
+                "entryreport",
+                ":entryId"
+              ],
+              "variable": [
+                {
+                  "key": "entryId",
+                  "value": "",
+                  "description": "Entry report ID"
+                }
+              ]
+            },
+            "description": "Deletes an existing entry report by its ID."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "Create a notification for a user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifications"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"\",\n  \"title\": \"\",\n  \"message\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get all notifications for the authenticated user",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifications"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Delete a notification by ID",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notifications/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifications",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "",
+                  "description": "Notification ID"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Mark a notification as read",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notifications/:id/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifications",
+                ":id",
+                "read"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "",
+                  "description": "Notification ID"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Nurse",
+      "item": [
+        {
+          "name": "View nurse profile by ID or email",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/nurse/profile?nurseId=&email=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "nurse",
+                "profile"
+              ],
+              "query": [
+                {
+                  "key": "nurseId",
+                  "value": "",
+                  "disabled": true,
+                  "description": "MongoDB ObjectId of the nurse (optional)"
+                },
+                {
+                  "key": "email",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Email address of the nurse (optional)"
+                }
+              ]
+            },
+            "description": "Returns the profile of a nurse. Can be queried by passing an `id` or `email` as a query parameter. If no query param is provided, returns the authenticated nurse's own profile. **Roles:** All authenticated users (admin, caretaker, nurse, doctor).\n"
+          },
+          "response": []
+        },
+        {
+          "name": "Get all nurses",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/nurse/all?q=&page=&limit=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "nurse",
+                "all"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Search by fullname or email"
+                },
+                {
+                  "key": "page",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Page number (default 1)"
+                },
+                {
+                  "key": "limit",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Results per page (default 10)"
+                }
+              ]
+            },
+            "description": "Fetch a paginated list of all nurses (role = nurse)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get patients assigned to the logged-in nurse",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/nurse/assigned-patients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "nurse",
+                "assigned-patients"
+              ]
+            },
+            "description": "Returns all patients currently assigned to the authenticated nurse. The nurse is identified from the JWT token — no query parameter needed. **Roles:** nurse only.\n"
+          },
+          "response": []
+        },
+        {
+          "name": "Get nurse dashboard summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/nurse/dashboard-summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "nurse",
+                "dashboard-summary"
+              ]
+            },
+            "description": "Returns a real-time snapshot of activity scoped to the authenticated nurse. Includes patient counts, a full task breakdown (total, completed, in-progress, pending, and overdue), task completion rate, and a count of patient logs created by this nurse in the last 7 days. Requires a valid JWT with the **nurse** role."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Organization",
+      "item": [
+        {
+          "name": "Create a new organization",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orgs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orgs"
+              ]
+            },
+            "description": "Creates a new organization. The authenticated admin becomes the creator and is automatically added to the organization's staff list.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Guardian Health Org\",\n  \"description\": \"Primary organization for testing\",\n  \"active\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List organizations linked to the authenticated user",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orgs/mine",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orgs",
+                "mine"
+              ]
+            },
+            "description": "Returns all organizations where the authenticated user is either the creator or a member of the staff list."
+          },
+          "response": []
+        },
+        {
+          "name": "List active organizations available for browsing",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orgs/public",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orgs",
+                "public"
+              ]
+            },
+            "description": "Returns all active organizations that freelance nurse and caretaker users can browse before submitting a join request."
+          },
+          "response": []
+        },
+        {
+          "name": "Request to join an organization",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/orgs/join-request",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orgs",
+                "join-request"
+              ]
+            },
+            "description": "Allows a freelance nurse or caretaker to submit a join request to an active organization.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orgId\": \"66ef5c2a9f3a1d0012ab34cd\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Patient",
+      "item": [
+        {
+          "name": "Add a new patient with an optional profile photo",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patients/add",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "patients",
+                "add"
+              ]
+            },
+            "description": "Creates a new patient in the independent freelance flow for the authenticated caretaker."
+          },
+          "response": []
+        },
+        {
+          "name": "Soft delete a patient in the independent freelance flow",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patients/:patientId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "patients",
+                ":patientId"
+              ],
+              "variable": [
+                {
+                  "key": "patientId",
+                  "value": "",
+                  "description": "Patient ID"
+                }
+              ]
+            },
+            "description": "Marks a patient as deleted for an authorized caretaker or assigned nurse within the independent workflow."
+          },
+          "response": []
+        },
+        {
+          "name": "Update a patient in the independent freelance flow",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patients/:patientId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "patients",
+                ":patientId"
+              ],
+              "variable": [
+                {
+                  "key": "patientId",
+                  "value": "",
+                  "description": "Patient ID"
+                }
+              ]
+            },
+            "description": "Updates an existing patient record for an authorized caretaker or assigned nurse within the independent workflow.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullname\": \"\",\n  \"dateOfBirth\": \"1980-01-01\",\n  \"gender\": \"M\",\n  \"emergencyContactName\": \"\",\n  \"emergencyContactNumber\": \"\",\n  \"nextOfKinName\": \"\",\n  \"nextOfKinRelationship\": \"SPOUSE\",\n  \"medicalSummary\": \"\",\n  \"allergies\": [],\n  \"conditions\": [],\n  \"notes\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Fetch patient details by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patients/:patientId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "patients",
+                ":patientId"
+              ],
+              "variable": [
+                {
+                  "key": "patientId",
+                  "value": "",
+                  "description": "MongoDB ObjectId of the patient"
+                }
+              ]
+            },
+            "description": "Retrieves a non-deleted patient record by its ID."
+          },
+          "response": []
+        },
+        {
+          "name": "Get patients in the independent freelance flow",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patients?page=&limit=&search=&gender=&caretakerId=&includeDeleted=&sort=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "patients"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "limit",
+                  "value": "",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "gender",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Include soft-deleted patients in results"
+                },
+                {
+                  "key": "caretakerId",
+                  "value": "",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "includeDeleted",
+                  "value": "",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "sort",
+                  "value": "",
+                  "disabled": true,
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Returns patients visible to the authenticated user within the independent workflow, with optional filtering, pagination, and sorting."
+          },
+          "response": []
+        },
+        {
+          "name": "Assign a nurse to a patient",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patients/assign-nurse",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "patients",
+                "assign-nurse"
+              ]
+            },
+            "description": "Assigns a nurse to a patient and updates both the patient and nurse records.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nurseId\": \"\",\n  \"patientId\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Fetch assigned patients for a nurse or caretaker",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patients/assigned-patients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "patients",
+                "assigned-patients"
+              ]
+            },
+            "description": "Returns patients assigned to the authenticated nurse or caretaker."
+          },
+          "response": []
+        },
+        {
+          "name": "Fetch health records of a patient",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patient/:patientId/health-records",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "patient",
+                ":patientId",
+                "health-records"
+              ],
+              "variable": [
+                {
+                  "key": "patientId",
+                  "value": "",
+                  "description": "The ID of the patient"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Create a health record for a patient",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patient/:patientId/health-record",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "patient",
+                ":patientId",
+                "health-record"
+              ],
+              "variable": [
+                {
+                  "key": "patientId",
+                  "value": "",
+                  "description": "The ID of the patient"
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vitals\": {\n    \"bloodPressure\": \"\",\n    \"temperature\": 0,\n    \"heartRate\": 0,\n    \"respiratoryRate\": 0\n  },\n  \"notes\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get the report for a patient assigned to nurse",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patient/:patientId/report",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "patient",
+                ":patientId",
+                "report"
+              ],
+              "variable": [
+                {
+                  "key": "patientId",
+                  "value": "",
+                  "description": "The ID of the patient"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Patient Logs",
+      "item": [
+        {
+          "name": "Create a patient log entry",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patient-logs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "patient-logs"
+              ]
+            },
+            "description": "Allows a nurse, caretaker, or doctor to create a log entry for a patient.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Patient mood update\",\n  \"description\": \"Patient was calm and responsive during the morning check.\",\n  \"patient\": \"69b77c228345cdf421d22ba3\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get patient logs with pagination",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patient-logs/:patientId?page=&limit=&sort=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "patient-logs",
+                ":patientId"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Page number for pagination"
+                },
+                {
+                  "key": "limit",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Number of logs per page. Maximum allowed value is 100."
+                },
+                {
+                  "key": "sort",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Sort order for logs. Use -createdAt for newest first or createdAt for oldest first."
+                }
+              ],
+              "variable": [
+                {
+                  "key": "patientId",
+                  "value": "",
+                  "description": "The ID of the patient"
+                }
+              ]
+            },
+            "description": "Returns paginated log entries for a specific patient. Accessible by admin, nurse, caretaker, and doctor."
+          },
+          "response": []
+        },
+        {
+          "name": "Update a patient log entry",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patient-logs/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "patient-logs",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "",
+                  "description": "The ID of the log entry to update"
+                }
+              ]
+            },
+            "description": "Updates a patient log entry. Only the original creator or an admin can update the log.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated patient mood update\",\n  \"description\": \"Patient was calm and responsive after breakfast.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete a patient log entry",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patient-logs/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "patient-logs",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "",
+                  "description": "The ID of the log entry to delete"
+                }
+              ]
+            },
+            "description": "Deletes a patient log entry. Only the original creator or an admin can delete the log."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Prescription",
+      "item": [
+        {
+          "name": "List prescriptions for a patient",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/patients/:patientId/prescriptions?status=&page=&limit=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "patients",
+                ":patientId",
+                "prescriptions"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Filter prescriptions by status"
+                },
+                {
+                  "key": "page",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Page number"
+                },
+                {
+                  "key": "limit",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Results per page"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "patientId",
+                  "value": "",
+                  "description": "Patient ID"
+                }
+              ]
+            },
+            "description": "Returns all prescriptions linked to a specific patient. **Roles:** All authenticated users.\n"
+          },
+          "response": []
+        },
+        {
+          "name": "Create a new prescription for a patient",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/prescriptions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "prescriptions"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get prescription by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/prescriptions/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "prescriptions",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "",
+                  "description": "Prescription ID"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Update prescription by ID",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/prescriptions/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "prescriptions",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "",
+                  "description": "Prescription ID"
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete prescription by ID",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/prescriptions/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "prescriptions",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "",
+                  "description": "Prescription ID"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Discontinue a prescription",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/prescriptions/:id/discontinue",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "prescriptions",
+                ":id",
+                "discontinue"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "",
+                  "description": "Prescription ID"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Resources",
+      "item": [
+        {
+          "name": "Create a new resource",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/resources",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "resources"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"\",\n  \"type\": \"caregiver\",\n  \"description\": \"\",\n  \"link\": \"\",\n  \"category\": \"\",\n  \"isActive\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List all resources",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/resources?type=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "resources"
+              ],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Filter resources by type"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Tasks",
+      "item": [
+        {
+          "name": "Create a task",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tasks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tasks"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"\",\n  \"description\": \"\",\n  \"dueDate\": \"\",\n  \"priority\": \"low\",\n  \"status\": \"pending\",\n  \"patientId\": \"\",\n  \"assigneeId\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get all tasks",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tasks?status=&priority=&patientId=&assigneeId=&page=&limit=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tasks"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "priority",
+                  "value": "",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "patientId",
+                  "value": "",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "assigneeId",
+                  "value": "",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "page",
+                  "value": "",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "limit",
+                  "value": "",
+                  "disabled": true,
+                  "description": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Update a task",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tasks/:taskId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tasks",
+                ":taskId"
+              ],
+              "variable": [
+                {
+                  "key": "taskId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"\",\n  \"description\": \"\",\n  \"dueDate\": \"\",\n  \"priority\": \"low\",\n  \"status\": \"pending\",\n  \"patientId\": \"\",\n  \"assigneeId\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete a task",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tasks/:taskId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tasks",
+                ":taskId"
+              ],
+              "variable": [
+                {
+                  "key": "taskId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Get tasks by patient",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tasks/patient/:patientId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tasks",
+                "patient",
+                ":patientId"
+              ],
+              "variable": [
+                {
+                  "key": "patientId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Get tasks by assignee",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tasks/assignee/:assigneeId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tasks",
+                "assignee",
+                ":assigneeId"
+              ],
+              "variable": [
+                {
+                  "key": "assigneeId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "WifiCSI",
+      "item": [
+        {
+          "name": "Create a WifiCSI record",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/wifi-csi",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "wifi-csi"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientId\": \"64f1a2b3c4d5e6f789012345\",\n  \"timestamp\": \"\",\n  \"csi_data\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get WifiCSI records for the authenticated user",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/wifi-csi?patientId=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "wifi-csi"
+              ],
+              "query": [
+                {
+                  "key": "patientId",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Optional accessible patient ObjectId used to filter linked WifiCSI records."
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Get archived WifiCSI records for the authenticated user",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/wifi-csi/archive?patientId=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "wifi-csi",
+                "archive"
+              ],
+              "query": [
+                {
+                  "key": "patientId",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Optional accessible patient ObjectId used to filter linked archived WifiCSI records."
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
