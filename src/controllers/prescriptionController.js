@@ -346,6 +346,8 @@ exports.updatePrescription = async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
+    
+    updates.updatedBy = req.user._id;
 
     const prescription = await Prescription.findByIdAndUpdate(id, updates, {
       new: true
