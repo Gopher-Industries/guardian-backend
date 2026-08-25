@@ -261,6 +261,22 @@ exports.getPatientOverview = async (req, res) => {
  *     tags: [Admin]
  *     requestBody:
  *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - subject
+ *               - description
+ *             properties:
+ *               subject:
+ *                 type: string
+ *                 description: Subject of the support ticket
+ *                 example: Unable to access patient records
+ *               description:
+ *                 type: string
+ *                 description: Description of the support issue
+ *                 example: I am unable to access the patient records from the dashboard.
  *     responses:
  *       201:
  *         description: Support ticket created successfully
@@ -417,6 +433,19 @@ exports.getSupportTickets = async (req, res) => {
  *         description: ID of the support ticket to be updated
  *     requestBody:
  *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 description: New status of the support ticket
+ *                 example: closed
+ *               adminResponse:
+ *                 type: string
+ *                 description: Response from the administrator
+ *                 example: Your issue has been reviewed and resolved.
  *     responses:
  *       200:
  *         description: Support ticket updated successfully
