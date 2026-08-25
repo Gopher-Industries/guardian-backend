@@ -74,47 +74,7 @@ exports.getProfile = async (req, res) => {
   }
 };
 
-/**
- * @swagger
- * /api/v1/caretaker/profile:
- *   put:
- *     summary: Update caretaker profile
- *     tags: [Caretaker]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [caretakerId]
- *             properties:
- *               caretakerId:
- *                 type: string
- *                 description: The ID of the caretaker
- *               fullname:
- *                 type: string
- *               phone:
- *                 type: string
- *               gender:
- *                 type: string
- *               age:
- *                 type: number
- *               email:
- *                 type: string
- *               address:
- *                 type: string
- *     responses:
- *       200:
- *         description: Caretaker profile updated successfully
- *       400:
- *         description: Invalid request
- *       404:
- *         description: Caretaker not found
- *       500:
- *         description: Server error
- */
+
 exports.updateProfile = async (req, res) => {
   try {
     const { caretakerId, ...updates } = req.body;
@@ -150,60 +110,7 @@ exports.updateProfile = async (req, res) => {
   }
 };
 
-/**
- * @swagger
- * /api/v1/caretaker/tasks:
- *   get:
- *     summary: List caretaker tasks with optional filters
- *     tags: [Caretaker]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: filter
- *         schema:
- *           type: string
- *           enum: [urgent]
- *         description: Use "urgent" to filter high-priority tasks
- *       - in: query
- *         name: dueDate
- *         schema:
- *           type: string
- *           format: date
- *         description: Return tasks due on or before this date (YYYY-MM-DD)
- *       - in: query
- *         name: status
- *         schema:
- *           type: string
- *           enum: [pending, in progress, completed]
- *         description: Filter by task status
- *       - in: query
- *         name: sort
- *         schema:
- *           type: string
- *           enum: [dueDate, -dueDate, created_at, -created_at]
- *         description: "Sort results (default: dueDate ascending)"
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *           minimum: 1
- *         description: "Page number for pagination (default: 1)"
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           minimum: 1
- *           maximum: 100
- *         description: "Page size (default: 20)"
- *     responses:
- *       200:
- *         description: List of tasks
- *       400:
- *         description: Invalid query parameters
- *       500:
- *         description: Error fetching tasks
- */
+
 exports.getTasks = async (req, res) => {
   try {
     const {
@@ -491,29 +398,7 @@ exports.getAllCaretakers = async (req, res) => {
   }
 };
 
-/**
- * @swagger
- * /api/v1/caretaker/reports/patient/{patientId}:
- *   get:
- *     summary: Get all daily reports for a specific patient
- *     tags: [Caretaker]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: patientId
- *         required: true
- *         schema:
- *           type: string
- *         description: Patient ID
- *     responses:
- *       200:
- *         description: List of reports for the patient
- *       400:
- *         description: Missing patientId
- *       500:
- *         description: Server error
- */
+
 exports.getReportsByPatient = async (req, res) => {
   try {
     const { patientId } = req.params;

@@ -313,35 +313,7 @@ exports.getPrescriptionById = async (req, res) => {
   }
 };
 
-/**
- * @swagger
- * /api/v1/prescriptions/{id}:
- *   patch:
- *     summary: Update prescription by ID
- *     tags: [Prescription]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: Prescription ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *     responses:
- *       200:
- *         description: Prescription updated successfully
- *       404:
- *         description: Prescription not found
- *       500:
- *         description: Error updating prescription
- */
+
 exports.updatePrescription = async (req, res) => {
   try {
     const { id } = req.params;

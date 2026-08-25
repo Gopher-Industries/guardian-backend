@@ -103,82 +103,16 @@ router.post('/', carePlanController.createCarePlan);
  */
 router.get('/', carePlanController.getAllCarePlans);
 
-/**
- * @swagger
- * /api/v1/care-plans/patient/{patientId}:
- *   get:
- *     summary: Get care plans by patient
- *     tags: [Care Plans]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: patientId
- *         required: true
- *         schema: { type: string }
- *     responses:
- *       200:
- *         description: Care plans for a patient
- */
+
 router.get('/patient/:patientId', carePlanController.getCarePlanByPatient);
 
-/**
- * @swagger
- * /api/v1/care-plans/{carePlanId}:
- *   get:
- *     summary: Get one care plan
- *     tags: [Care Plans]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: carePlanId
- *         required: true
- *         schema: { type: string }
- *     responses:
- *       200:
- *         description: Care plan details
- */
+
 router.get('/:carePlanId', carePlanController.getCarePlanById);
 
-/**
- * @swagger
- * /api/v1/care-plans/{carePlanId}:
- *   put:
- *     summary: Update a care plan
- *     tags: [Care Plans]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: carePlanId
- *         required: true
- *         schema: { type: string }
- *     responses:
- *       200:
- *         description: Care plan updated
- *       409:
- *         description: Another active care plan already exists for the patient
- */
+
 router.put('/:carePlanId', carePlanController.updateCarePlan);
 
-/**
- * @swagger
- * /api/v1/care-plans/{carePlanId}:
- *   delete:
- *     summary: Delete a care plan
- *     tags: [Care Plans]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: carePlanId
- *         required: true
- *         schema: { type: string }
- *     responses:
- *       200:
- *         description: Care plan deleted
- */
+
 router.delete('/:carePlanId', carePlanController.deleteCarePlan);
 
 module.exports = router;
