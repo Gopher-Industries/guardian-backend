@@ -4,13 +4,13 @@ const carePlanController = require('../controllers/carePlanController');
 const verifyToken = require('../middleware/verifyToken');
 const verifyRole = require('../middleware/verifyRole');
 
-router.use(verifyToken, verifyRole(['admin', 'caretaker', 'nurse', 'doctor']));
+router.use(verifyToken);
 
 /**
  * @swagger
  * tags:
  *   - name: Care Plans
- *     description: Care plan management endpoints
+ *     description: Care plan management endpoints. Create and update are doctor-only.
  *
  * components:
  *   schemas:
@@ -19,25 +19,16 @@ router.use(verifyToken, verifyRole(['admin', 'caretaker', 'nurse', 'doctor']));
  *       properties:
  *         _id: { type: string }
  *         title: { type: string }
+ *         description: { type: string }
  *         patient: { type: string }
- *         author: { type: string }
- *         caretaker: { type: string, nullable: true }
- *         nurse: { type: string, nullable: true }
- *         status:
- *           type: string
- *           enum: [active, inactive]
+ *         provider: { type: string }
+ *         diagnosis: { type: string }
  *         tasks:
  *           type: array
  *           items: { type: string }
- *         approved_by: { type: string, nullable: true }
- *         approved_at: { type: string, format: date-time, nullable: true }
- *         effective_from: { type: string, format: date-time }
- *         effective_to: { type: string, format: date-time, nullable: true }
- *         next_review_date: { type: string, format: date-time, nullable: true }
- *         last_reviewed_date: { type: string, format: date-time, nullable: true }
- *         dietary_requirements: { type: string }
- *         client_consent_flag: { type: boolean }
- *         consent_date: { type: string, format: date-time, nullable: true }
+ *         prescriptions: {}
+ *         reviewDate: { type: string, format: date-time, nullable: true }
+ *         relatedAppointments: {}
  *         created_at: { type: string, format: date-time }
  *         updated_at: { type: string, format: date-time }
  */
@@ -47,6 +38,7 @@ router.use(verifyToken, verifyRole(['admin', 'caretaker', 'nurse', 'doctor']));
  * /api/v1/care-plans:
  *   post:
  *     summary: Create a care plan
+ *     description: '**Roles:** doctor only.'
  *     tags: [Care Plans]
  *     security:
  *       - bearerAuth: []
@@ -60,42 +52,23 @@ router.use(verifyToken, verifyRole(['admin', 'caretaker', 'nurse', 'doctor']));
  *             properties:
  *               title: { type: string }
  *               patientId: { type: string }
- *               caretakerId:
- *                 type: string
- *                 description: Optional when the patient already has a caretaker.
- *               nurseId: { type: string, nullable: true }
- *               status:
- *                 type: string
- *                 enum: [active, inactive]
+ *               description: { type: string }
+ *               diagnosis: { type: string }
  *               tasks:
  *                 type: array
  *                 items: { type: string }
- *               approvedBy:
- *                 type: string
- *                 nullable: true
- *                 description: User ID of the staff member who signed off on the plan.
- *               approvedAt: { type: string, format: date-time, nullable: true }
- *               effectiveFrom:
- *                 type: string
- *                 format: date-time
- *                 description: When the plan comes into effect. Defaults to now if omitted.
- *               effectiveTo: { type: string, format: date-time, nullable: true }
- *               nextReviewDate: { type: string, format: date-time, nullable: true }
- *               lastReviewedDate: { type: string, format: date-time, nullable: true }
- *               dietaryRequirements:
- *                 type: string
- *                 description: Allergies, texture-modified diet, or other dietary notes.
- *               clientConsentFlag: { type: boolean }
- *               consentDate: { type: string, format: date-time, nullable: true }
+ *               reviewDate: { type: string, format: date-time, nullable: true }
+ *               prescriptions: {}
+ *               relatedAppointments: {}
  *     responses:
  *       201:
  *         description: Care plan created
  *       400:
  *         description: Invalid request body
- *       409:
- *         description: Patient already has an active care plan
+ *       403:
+ *         description: Only a doctor can create a care plan
  */
-router.post('/', carePlanController.createCarePlan);
+router.post('/', verifyRole(['doctor']), carePlanController.createCarePlan);
 
 /**
  * @swagger
@@ -110,11 +83,8 @@ router.post('/', carePlanController.createCarePlan);
  *         name: patientId
  *         schema: { type: string }
  *       - in: query
- *         name: authorId
+ *         name: providerId
  *         schema: { type: string }
- *       - in: query
- *         name: status
- *         schema: { type: string, enum: [active, inactive] }
  *       - in: query
  *         name: page
  *         schema: { type: integer, default: 1 }
@@ -125,7 +95,7 @@ router.post('/', carePlanController.createCarePlan);
  *       200:
  *         description: Paged care plan list
  */
-router.get('/', carePlanController.getAllCarePlans);
+router.get('/', verifyRole(['admin', 'caretaker', 'nurse', 'doctor']), carePlanController.getAllCarePlans);
 
 /**
  * @swagger
@@ -144,7 +114,7 @@ router.get('/', carePlanController.getAllCarePlans);
  *       200:
  *         description: Care plans for a patient
  */
-router.get('/patient/:patientId', carePlanController.getCarePlanByPatient);
+router.get('/patient/:patientId', verifyRole(['admin', 'caretaker', 'nurse', 'doctor']), carePlanController.getCarePlanByPatient);
 
 /**
  * @swagger
@@ -163,13 +133,16 @@ router.get('/patient/:patientId', carePlanController.getCarePlanByPatient);
  *       200:
  *         description: Care plan details
  */
-router.get('/:carePlanId', carePlanController.getCarePlanById);
+router.get('/:carePlanId', verifyRole(['admin', 'caretaker', 'nurse', 'doctor']), carePlanController.getCarePlanById);
 
 /**
  * @swagger
  * /api/v1/care-plans/{carePlanId}:
  *   put:
  *     summary: Update a care plan
+ *     description: >
+ *       All fields optional, only fields included in the body are updated.
+ *       **Roles:** doctor only.
  *     tags: [Care Plans]
  *     security:
  *       - bearerAuth: []
@@ -180,7 +153,6 @@ router.get('/:carePlanId', carePlanController.getCarePlanById);
  *         schema: { type: string }
  *     requestBody:
  *       required: false
- *       description: All fields optional. Only fields included in the body are updated.
  *       content:
  *         application/json:
  *           schema:
@@ -188,36 +160,31 @@ router.get('/:carePlanId', carePlanController.getCarePlanById);
  *             properties:
  *               title: { type: string }
  *               patientId: { type: string }
- *               caretakerId: { type: string, nullable: true }
- *               nurseId: { type: string, nullable: true }
- *               status:
- *                 type: string
- *                 enum: [active, inactive]
+ *               description: { type: string }
+ *               diagnosis: { type: string }
  *               tasks:
  *                 type: array
  *                 items: { type: string }
- *               approvedBy: { type: string, nullable: true }
- *               approvedAt: { type: string, format: date-time, nullable: true }
- *               effectiveFrom: { type: string, format: date-time }
- *               effectiveTo: { type: string, format: date-time, nullable: true }
- *               nextReviewDate: { type: string, format: date-time, nullable: true }
- *               lastReviewedDate: { type: string, format: date-time, nullable: true }
- *               dietaryRequirements: { type: string }
- *               clientConsentFlag: { type: boolean }
- *               consentDate: { type: string, format: date-time, nullable: true }
+ *               reviewDate: { type: string, format: date-time, nullable: true }
+ *               prescriptions: {}
+ *               relatedAppointments: {}
  *     responses:
  *       200:
  *         description: Care plan updated
- *       409:
- *         description: Another active care plan already exists for the patient
+ *       403:
+ *         description: Only a doctor can update a care plan
  */
-router.put('/:carePlanId', carePlanController.updateCarePlan);
+router.put('/:carePlanId', verifyRole(['doctor']), carePlanController.updateCarePlan);
 
 /**
  * @swagger
  * /api/v1/care-plans/{carePlanId}:
  *   delete:
  *     summary: Delete a care plan
+ *     description: >
+ *       Not explicitly covered by the doctor-only requirement (which named
+ *       only create and update), so left open to the same roles as before.
+ *       Confirm with Sam if delete should also be doctor-only.
  *     tags: [Care Plans]
  *     security:
  *       - bearerAuth: []
@@ -230,6 +197,6 @@ router.put('/:carePlanId', carePlanController.updateCarePlan);
  *       200:
  *         description: Care plan deleted
  */
-router.delete('/:carePlanId', carePlanController.deleteCarePlan);
+router.delete('/:carePlanId', verifyRole(['admin', 'caretaker', 'nurse', 'doctor']), carePlanController.deleteCarePlan);
 
 module.exports = router;
