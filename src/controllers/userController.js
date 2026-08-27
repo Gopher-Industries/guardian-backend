@@ -561,6 +561,23 @@ exports.searchUser = async (req, res) => {
 
          // Fetch all users
 const users = await User.find({}, "_id fullname organization").lean();
+// First check whether the search text matches a user ID
+const userById = users.find(
+    user => String(user._id) === search.trim()
+);
+
+if (userById) {
+    return res.status(200).json({
+        success: true,
+        count: 1,
+        users: [
+            {
+                userId: userById._id,
+                fullname: userById.fullname
+            }
+        ]
+    });
+}
 
 
         // Find all matching users

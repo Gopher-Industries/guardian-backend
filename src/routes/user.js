@@ -398,18 +398,19 @@ router.post('/reset-password-request', userController.requestPasswordReset);
 router.get('/reset-password', userController.renderPasswordResetPage);
 router.post('/reset-password', userController.resetPassword);
 /**
- * @openapi
+ * @swagger
  * /api/v1/auth/search-user:
  *   get:
+ *     summary: Search users by name or user ID
+ *     description: |
+ *       Searches users using either a user ID or a name.
+ *
+ *       - If the search value exactly matches a user ID, the corresponding user is returned.
+ *       - Otherwise, a case-insensitive name search is performed by matching one or more name terms.
+ *
+ *       Returns the matching user's ID and full name.
  *     tags:
  *       - Authentication
- *     summary: Search users
- *     description: >
- *       Searches users using one or more search terms.
- *       The search is case-insensitive and supports full names,
- *       first names, surnames, titles, or combinations of words.
- *       Returns all matching users.
- *       Requires authentication.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -418,30 +419,45 @@ router.post('/reset-password', userController.resetPassword);
  *         required: true
  *         schema:
  *           type: string
- *         description: >
- *           Search text containing one or more words.
- *           Examples: "John", "Doe", "John Doe", "Dr John".
- *         example: "John Doe"
+ *         description: |
+ *           User ID or name to search for.
+ *
+ *           Examples:
+ *           - 689f7d2a1b7c4f3d91ab1234
+ *           - John
+ *           - John Smith
  *     responses:
  *       200:
- *         description: Matching users found successfully.
+ *         description: User(s) found successfully.
  *         content:
  *           application/json:
- *             example:
- *               success: true
- *               count: 2
- *               users:
- *                 - userId: "69bfb2330f5e7081ade38835"
- *                   fullname: "Dr John Doe"
- *                 - userId: "69bfb2330f5e7081ade38836"
- *                   fullname: "John Smith"
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 count:
+ *                   type: integer
+ *                   example: 1
+ *                 users:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       userId:
+ *                         type: string
+ *                         example: 689f7d2a1b7c4f3d91ab1234
+ *                       fullname:
+ *                         type: string
+ *                         example: John Smith
  *       400:
  *         description: Search text is required.
  *       404:
  *         description: No users found.
  *       500:
  *         description: Internal server error.
- */ 
+ */
 router.get('/search-user', verifyToken, userController.searchUser);
 router.get('/', verifyToken, async (req, res) => {
   try {
