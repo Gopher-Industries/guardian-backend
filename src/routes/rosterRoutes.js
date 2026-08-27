@@ -282,9 +282,9 @@ router.get('/:shiftId', rosterController.getRosterByShiftId);
 /**
  * @swagger
  * /api/v1/rosters/{shiftId}:
- *   put:
+ *   patch:
  *     summary: Update a roster shift
- *     description: Admin updates an existing shift.
+ *     description: Admin can update one or more fields of a roster shift.
  *     tags: [Rosters]
  *     security:
  *       - bearerAuth: []
@@ -324,6 +324,14 @@ router.get('/:shiftId', rosterController.getRosterByShiftId);
  *               endTime:
  *                 type: string
  *                 example: "20:00"
+ *               clockOnTime:
+ *                 type: string
+ *                 format: date-time
+ *                 example: "2026-08-27T08:00:00.000Z"
+ *               clockOffTime:
+ *                 type: string
+ *                 format: date-time
+ *                 example: "2026-08-27T16:00:00.000Z"
  *               assignedStaffId:
  *                 type: string
  *                 example: "66a774ac9054717d844f0092"
@@ -335,7 +343,7 @@ router.get('/:shiftId', rosterController.getRosterByShiftId);
  *       404:
  *         description: Shift or staff member not found
  */
-router.put(
+router.patch(
   '/:shiftId',
   verifyRole('admin'),
   rosterController.updateRoster
