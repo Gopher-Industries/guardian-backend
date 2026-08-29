@@ -33,6 +33,12 @@ const controller = require('../controllers/medicalRecordController');
  *               location:
  *                 type: string
  *                 example: Consultation Room 2
+ *               clinic:
+ *                 type: string
+ *                 example: Main Clinic
+ *               room:
+ *                 type: string
+ *                 example: Room 5
  *               appointmentDate:
  *                 type: string
  *                 format: date
@@ -50,6 +56,10 @@ const controller = require('../controllers/medicalRecordController');
  *               doctorId:
  *                 type: string
  *               location:
+ *                 type: string
+ *               clinic:
+ *                 type: string
+ *               room:
  *                 type: string
  *               appointmentDateTime:
  *                 type: string
@@ -163,6 +173,36 @@ router.patch(
   verifyToken,
   verifyRole(['admin']),
   controller.startConsultation
+);
+
+/**
+ * @swagger
+ * /api/v1/medical-records/{id}/unstart:
+ *   patch:
+ *     summary: Unstart a consultation
+ *     description: Changes an in-progress consultation back to booked and clears the start details.
+ *     tags: [Medical Records]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Consultation unstarted successfully
+ *       404:
+ *         description: Appointment not found
+ *       409:
+ *         description: Consultation is not currently in progress
+ */
+router.patch(
+  '/:id/unstart',
+  verifyToken,
+  verifyRole(['admin']),
+  controller.unstartConsultation
 );
 
 /**
@@ -436,6 +476,10 @@ router.get(
  *                 description: New doctor User ObjectId. Must belong to the same organization.
  *               location:
  *                 type: string
+ *               clinic:
+ *                  type: string
+ *               room:
+ *                  type: string
  *               appointmentDate:
  *                 type: string
  *                 format: date
@@ -445,17 +489,21 @@ router.get(
  *           schema:
  *             type: object
  *             properties:
- *               doctorId:
+ *              doctorId:
+ *                type: string
+ *                description: New doctor User ObjectId. Must belong to the same organization.
+ *              location:
  *                 type: string
- *                 description: New doctor User ObjectId. Must belong to the same organization.
- *               location:
+ *              clinic:
  *                 type: string
- *               appointmentDateTime:
+ *              room:
+ *                 type: string
+ *              appointmentDateTime:
  *                 type: string
  *                 format: date-time
- *               appointmentDate:
+ *              appointmentDate:
  *                 type: string
- *               appointmentTime:
+ *              appointmentTime:
  *                 type: string
  *     responses:
  *       200:

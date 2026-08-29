@@ -498,6 +498,8 @@ exports.createAppointment = async (req, res) => {
 
     const {
       location,
+      clinic,
+      room,
       appointmentDateTime,
       appointmentDate,
       appointmentTime
@@ -600,19 +602,12 @@ exports.createAppointment = async (req, res) => {
         error: 'The selected user is not a doctor.'
       });
     }
-
-    if (!doctorRecord.organization) {
-      return res.status(400).json({
-        error:
-          'The selected doctor is not linked to an organization.'
-      });
-    }
     
     const adminOrganization = await Organization.findOne({
       createdBy: adminId,
       active: { $ne: false }
     })
-    .select('_id name active')
+    .select('_id name active staff')
     .lean();
 
     if (!adminOrganization) {
@@ -630,9 +625,16 @@ const adminOrganizationId =
       adminOrganizationId
     );
 
-    const sameDoctorOrganization = isSameId(
+    const sameDoctorOrganization =
+      isSameId(
       doctorRecord.organization,
       adminOrganizationId
+    ) ||
+    (
+      Array.isArray(adminOrganization.staff) &&
+      adminOrganization.staff.some((staffId) =>
+      isSameId(staffId, doctor)
+      )
     );
 
     if (
@@ -668,6 +670,8 @@ const adminOrganizationId =
       doctor,
       organization: adminOrganizationId,
       location: location.trim(),
+      clinic: clinic?.trim() || '',
+      room: room?.trim() || '',
       appointmentDateTime: appointmentDateValue,
       status: 'booked',
       createdBy: adminId
@@ -696,6 +700,8 @@ exports.updateAppointment = async (req, res) => {
 
     const {
       location,
+      clinic,
+      room,
       appointmentDateTime,
       appointmentDate,
       appointmentTime
@@ -722,14 +728,31 @@ exports.updateAppointment = async (req, res) => {
       Boolean(appointmentDate) ||
       Boolean(appointmentTime);
 
+    const hasLocationUpdate =
+      location !== undefined &&
+      location !== null &&
+      String(location).trim() !== '';
+
+    const hasClinicUpdate =
+      clinic !== undefined &&
+      clinic !== null &&
+      String(clinic).trim() !== '';
+
+    const hasRoomUpdate =
+      room !== undefined &&
+      room !== null &&
+      String(room).trim() !== '';
+
     if (
       !doctor &&
-      location === undefined &&
+      !hasLocationUpdate &&
+      !hasClinicUpdate &&
+      !hasRoomUpdate &&
       !hasDateUpdate
     ) {
       return res.status(400).json({
         error:
-          'Provide a doctor, location, or appointment date/time to update.'
+          'Provide a doctor, location, clinic, room, or appointment date/time to update.'
       });
     }
 
@@ -762,40 +785,18 @@ exports.updateAppointment = async (req, res) => {
     if (doctor) {
       if (!mongoose.isValidObjectId(doctor)) {
         return res.status(400).json({
-          error: 'Doctor ID is invalid.'
+        error: 'Doctor ID is invalid.'
         });
       }
 
-      const doctorRecord = await User.findById(doctor)
-        .populate('role', 'name')
-        .select('_id fullname role organization')
-        .lean();
+      const doctorCheck = await checkDoctorAndOrganization(
+        doctor,
+        appointment.organization
+      );
 
-      if (!doctorRecord) {
-        return res.status(404).json({
-          error: 'Doctor not found.'
-        });
-      }
-
-      if (
-        !doctorRecord.role ||
-        String(doctorRecord.role.name).toLowerCase() !== 'doctor'
-      ) {
-        return res.status(400).json({
-          error: 'The selected user is not a doctor.'
-        });
-      }
-
-      if (
-        !doctorRecord.organization ||
-        !isSameId(
-          doctorRecord.organization,
-          appointment.organization
-        )
-      ) {
-        return res.status(400).json({
-          error:
-            'The selected doctor must belong to the same organization as the appointment.'
+      if (doctorCheck.error) {
+        return res.status(doctorCheck.statusCode).json({
+          error: doctorCheck.error
         });
       }
     }
@@ -828,17 +829,16 @@ exports.updateAppointment = async (req, res) => {
       appointment.appointmentDateTime = updatedDateTime;
     }
 
-    if (location !== undefined) {
-      if (
-        typeof location !== 'string' ||
-        !location.trim()
-      ) {
-        return res.status(400).json({
-          error: 'Location cannot be empty.'
-        });
-      }
+    if (hasLocationUpdate) {
+      appointment.location = String(location).trim();
+    }
 
-      appointment.location = location.trim();
+    if (hasClinicUpdate) {
+      appointment.clinic = String(clinic).trim();
+    }
+
+    if (hasRoomUpdate) {
+      appointment.room = String(room).trim();
     }
 
     if (doctor) {
@@ -950,6 +950,55 @@ exports.startConsultation = async (req, res) => {
     });
   } catch (error) {
     return res.status(500).json({ error: error.message });
+  }
+};
+
+exports.unstartConsultation = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({
+        error: 'Appointment ID is invalid.'
+      });
+    }
+
+    const appointment = await MedicalRecord.findById(id);
+
+    if (!appointment) {
+      return res.status(404).json({
+        error: 'Appointment not found.'
+      });
+    }
+
+    if (
+      appointment.status !== 'in-progress' ||
+      !appointment.startTime ||
+      appointment.endTime
+    ) {
+      return res.status(409).json({
+        error:
+          'Only an in-progress consultation can be unstarted.'
+      });
+    }
+
+    appointment.startTime = null;
+    appointment.startedBy = null;
+    appointment.status = 'booked';
+
+    await appointment.save();
+
+    const updatedAppointment =
+      await getBasicRecordQuery(appointment._id);
+
+    return res.status(200).json({
+      message: 'Consultation unstarted successfully.',
+      appointment: updatedAppointment
+    });
+  } catch (error) {
+    return res.status(500).json({
+      error: error.message
+    });
   }
 };
 

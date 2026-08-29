@@ -32,6 +32,20 @@ const MedicalRecordSchema = new Schema(
       maxlength: 200
     },
 
+    clinic: {
+      type: String,
+      trim: true,
+      maxlength: 200,
+      default: ''
+    },
+
+    room: {
+      type: String,
+      trim: true,
+      maxlength: 100,
+      default: ''
+    },
+
     // Kept as the main sortable datetime used by the API/database.
     appointmentDateTime: {
       type: Date,
