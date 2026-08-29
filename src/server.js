@@ -50,6 +50,7 @@ const storage = process.env.VERCEL
 exports.upload = multer({ storage });
 
 app.use('/uploads', express.static('uploads'));
+app.use('/swagger-assets', express.static(path.join(__dirname, 'public')));
 
 const blockScriptRequests = (req, res, next) => {
   const userAgent = req.headers['user-agent'] || '';
@@ -191,7 +192,8 @@ app.use(
       'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.1/swagger-ui.min.css',
     customJs: [
       'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.1/swagger-ui-bundle.min.js',
-      'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.1/swagger-ui-standalone-preset.min.js'
+      'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.1/swagger-ui-standalone-preset.min.js',
+      '/swagger-assets/swaggerEmailForm.js'
     ]
   })
 );
