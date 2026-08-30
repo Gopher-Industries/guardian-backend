@@ -23,7 +23,10 @@ const swaggerOptions = {
         'to obtain a JWT, then send it as an `Authorization: Bearer <token>` header.'
     },
     servers: [
-      { url: 'http://localhost:3000', description: 'Local development' }
+      {
+        url: process.env.BASE_URL || 'http://localhost:3000',
+        description: 'Current server'
+      }
     ],
     components: {
       securitySchemes: {
