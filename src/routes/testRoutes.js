@@ -1,17 +1,18 @@
 const express = require('express');
 const router = express.Router();
-const testController = require('../controllers/testController');
+const medsController =require('../controllers/medsController');
+
 
 
 /**
  * @openapi
- * /api/v1/test:
+ * /api/v1/add-medication:
  *   post:
  *     tags:
- *       - TEST
- *     summary: test
+ *       - Prescription
+ *     summary: Adds a new medication to the medications table
  *     description: >
- *       This is a test.
+ *       Adds a new medication to the medications table.
  *     requestBody:
  *       required: true
  *       content:
@@ -19,19 +20,23 @@ const testController = require('../controllers/testController');
  *           schema:
  *             $ref: '#/components/schemas/RegisterRequest'
  *           example:
- *             test_var_1: "test" 
- *             test_var_2: "test 2"
- *            
+ *             Name_of_Medication: "oxy-diphosphate"
+ *             Doses_sizes: "2.5 mg"
+ *             Company: "panadol ltd"
+ *             What_it_does: "antibioits, it kills bacterior"
+ *             Potential_Side_Effects: "may cause drowsyness"
+ *             Directions:  "take twice daily or as directed by doctor"
+ *             
+ * 
  *     responses:
- *       201:
- *         description: Test worked
+ *       200:
+ *         description: Test successful
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/SuccessMessage'
  *             example:
  *               message: Test worked
- *     
  *       500:
  *         description: Internal server error
  *         content:
@@ -39,7 +44,5 @@ const testController = require('../controllers/testController');
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/', testController.Test);
+router.post('/add-medication', medsController.registerMeds); 
 module.exports = router;
-
-

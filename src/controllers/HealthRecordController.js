@@ -124,33 +124,7 @@ const resolveCareTeam = async (patient, userId) => {
 };
 
 
-/**
- * @swagger
- * /api/v1/patient/{patientId}/health-records:
- *   get:
- *     summary: Fetch health records of a patient
- *     tags: [Patient]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: patientId
- *         required: true
- *         schema:
- *           type: string
- *         description: The ID of the patient
- *     responses:
- *       200:
- *         description: Health records
- *       401:
- *         description: Missing or invalid token
- *       403:
- *         description: You are not allowed to view this patient's health records
- *       404:
- *         description: Patient not found or no health records exist
- *       500:
- *         description: Error fetching health records
- */
+
 exports.getHealthRecords = async (req, res) => {
   try {
     const { patientId } = req.params;
@@ -181,64 +155,7 @@ exports.getHealthRecords = async (req, res) => {
   }
 };
 
-/**
- * @swagger
- * /api/v1/patient/{patientId}/health-record:
- *   post:
- *     summary: Create a health record for a patient
- *     tags: [Patient]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: patientId
- *         required: true
- *         schema:
- *           type: string
- *         description: The ID of the patient
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               vitals:
- *                 type: object
- *                 required:
- *                   - bloodPressure
- *                   - temperature
- *                   - heartRate
- *                   - respiratoryRate
- *                 properties:
- *                   bloodPressure:
- *                     type: string
- *                     description: Blood pressure in systolic/diastolic format, e.g. 120/80
- *                   temperature:
- *                     type: number
- *                     description: Body temperature in degrees Celsius
- *                   heartRate:
- *                     type: number
- *                     description: Heart rate in beats per minute (BPM)
- *                   respiratoryRate:
- *                     type: number
- *                     description: Respiratory rate in breaths per minute
- *               notes:
- *                 type: string
- *     responses:
- *       201:
- *         description: Health record created successfully
- *       400:
- *         description: Invalid input for the health record
- *       401:
- *         description: Missing or invalid token
- *       403:
- *         description: You are not allowed to create a health record for this patient
- *       404:
- *         description: Patient not found
- *       500:
- *         description: Error creating health record
- */
+
 exports.createHealthRecords = async (req, res) => {
   try {
     const { patientId } = req.params;
@@ -280,29 +197,7 @@ exports.createHealthRecords = async (req, res) => {
   }
 };
 
-/**
- * @swagger
- * /api/v1/patient/{patientId}/report:
- *   get:
- *     summary: Get the report for a patient assigned to nurse
- *     tags: [Patient]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: patientId
- *         required: true
- *         schema:
- *           type: string
- *         description: The ID of the patient
- *     responses:
- *       200:
- *         description: Report fetched successfully
- *       404:
- *         description: Patient not found or no report available
- *       400:
- *         description: Error fetching patient report
- */
+
 exports.getPatientReport = async (req, res) => {
   try {
     const { patientId } = req.params;
