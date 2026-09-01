@@ -24,6 +24,7 @@ const swaggerOptions = {
     },
     servers: [
       { url: 'http://localhost:3000', description: 'Local development' }
+      { url: 'https://guardian-backend-xi.vercel.app', description: 'Production (Vercel)' }
     ],
     components: {
       securitySchemes: {
