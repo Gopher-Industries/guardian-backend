@@ -27,14 +27,9 @@ router.post(
 // Queries 
 router.get('/find-by-name', verifyToken, patientController.findPatientIdsByName);
 router.get('/assigned-patients', verifyToken, patientController.getAssignedPatients);
-router.get('/activities', verifyToken, patientController.getPatientActivities);
 
 // Get ONE patient by id 
 router.get('/:patientId', verifyToken, patientController.getPatientDetails);
-
-// Activities
-router.post('/entryreport', verifyToken, verifyRole(['nurse']), patientController.logEntry);
-router.delete('/entryreport/:entryId', verifyToken, patientController.deleteEntry);
 
 // List prescriptions for a patient (sub-resource)
 router.get('/:patientId/prescriptions',verifyToken,prescriptionController.listPrescriptionsForPatient);

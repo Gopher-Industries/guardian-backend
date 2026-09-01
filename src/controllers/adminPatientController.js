@@ -6,7 +6,7 @@ const { parseStringArray } = require('../utils/arrayUtils');
 const HealthRecord = require('../models/HealthRecord');
 const Task = require('../models/Task');
 const CarePlan = require('../models/CarePlan');
-const EntryReport = require('../models/EntryReport');
+const PatientLog = require('../models/PatientLog');
 const User = require('../models/User');
 
 const {
@@ -691,7 +691,7 @@ exports.listPatients = async (req, res) => {
  * /api/v1/admin/patients/{id}/overview:
  *   get:
  *     summary: Get a complete overview of a patient
- *     description: Returns a detailed patient overview including profile data, health records, care plan, tasks, logs, and task completion rate.
+ *     description: Returns a detailed patient overview including profile data, health records, care plan, tasks, patient notes, and task completion rate.
  *     tags: [AdminPatients]
  *     security:
  *       - bearerAuth: []
@@ -854,11 +854,13 @@ exports.listPatients = async (req, res) => {
  *                         type: string
  *                       patient:
  *                         type: string
- *                       activityTimestamp:
+ *                       title:
+ *                         type: string
+ *                       observations:
+ *                         type: string
+ *                       recordedAt:
  *                         type: string
  *                         format: date-time
- *                       note:
- *                         type: string
  *                 taskCompletionRate:
  *                   type: number
  *                   format: float
@@ -891,7 +893,10 @@ exports.patientOverview = async (req, res) => {
       HealthRecord.find({ patient: id }).sort({ created_at: -1 }).lean(),
       CarePlan.findOne({ patient: id }).populate('tasks').lean(),
       Task.find({ patient: id }).lean(),
-      EntryReport.find({ patient: id }).sort({ activityTimestamp: -1 }).lean(),
+      PatientLog.find({ patient: id })
+        .populate('author', 'fullname email role')
+        .sort({ recordedAt: -1, createdAt: -1 })
+        .lean(),
     ]);
 
     const taskCompletionRate = tasks.length

@@ -213,8 +213,8 @@ exports.getDashboardSummary = async (req, res) => {
     // Total Patient Logs for this nurse
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const recentLogsCount = await PatientLog.countDocuments({
-      createdBy: req.user._id,
-      createdAt: { $gte: sevenDaysAgo }
+      author: req.user._id,
+      recordedAt: { $gte: sevenDaysAgo }
     });
 
     const summary = {

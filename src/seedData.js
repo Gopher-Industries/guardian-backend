@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const Role = require('./models/Role');
 const User = require('./models/User');
 const Patient = require('./models/Patient');
-const EntryReport = require('./models/EntryReport');
+const PatientLog = require('./models/PatientLog');
 const updateSeedData = require('./updateSeedData');
 
 const getRoleId = async (name) => {
@@ -17,14 +17,14 @@ const seedData = async () => {
   try {
     const userCount = await User.countDocuments();
     const patientCount = await Patient.countDocuments();
-    const reportCount = await EntryReport.countDocuments();
+    const logCount = await PatientLog.countDocuments();
 
     // Clear previous data
     // await User.deleteMany({});
     // await Patient.deleteMany({});
-    // await EntryReport.deleteMany({});
+    // await PatientLog.deleteMany({});
 
-    if (userCount > 0 || patientCount > 0 || reportCount > 0) {
+    if (userCount > 0 || patientCount > 0 || logCount > 0) {
       console.log('⚠️ Existing data detected. Skipping seed to avoid duplication.');
       await updateSeedData();
       return;
@@ -102,35 +102,47 @@ const seedData = async () => {
       notes: 'Requires low-sugar diet. Arthritis flares in cold weather.'
     });
 
-    // Create entry reports
-    await EntryReport.create([
+    // Create patient notes
+    await PatientLog.create([
       {
         patient: patient1._id,
-        nurse: nurse1._id,
-        activityType: 'wake up',
-        comment: 'Patient woke up at 6:30 AM and appeared alert.',
-        activityTimestamp: new Date('2024-06-05T06:30:00Z')
+        author: nurse1._id,
+        location: 'care_facility',
+        address: 'Room 101, Guardian Residence',
+        title: 'Morning wellbeing check',
+        observations: 'Patient woke up at 6:30 AM and appeared alert.',
+        actionsRequired: ['Continue routine morning observations'],
+        recordedAt: new Date('2024-06-05T06:30:00Z')
       },
       {
         patient: patient1._id,
-        nurse: nurse1._id,
-        activityType: 'meal',
-        comment: 'Had a light breakfast: toast and tea.',
-        activityTimestamp: new Date('2024-06-05T07:30:00Z')
+        author: nurse1._id,
+        location: 'care_facility',
+        address: 'Dining area, Guardian Residence',
+        title: 'Breakfast note',
+        observations: 'Had a light breakfast: toast and tea.',
+        actionsRequired: [],
+        recordedAt: new Date('2024-06-05T07:30:00Z')
       },
       {
         patient: patient2._id,
-        nurse: nurse2._id,
-        activityType: 'reading',
-        comment: 'Read a magazine for 20 minutes.',
-        activityTimestamp: new Date('2024-06-05T10:00:00Z')
+        author: nurse2._id,
+        location: 'care_facility',
+        address: 'Common room, Guardian Residence',
+        title: 'Engagement activity note',
+        observations: 'Read a magazine for 20 minutes.',
+        actionsRequired: ['Encourage another seated activity this afternoon'],
+        recordedAt: new Date('2024-06-05T10:00:00Z')
       },
       {
         patient: patient2._id,
-        nurse: nurse1._id,
-        activityType: 'meditation',
-        comment: 'Guided breathing exercise for 15 minutes.',
-        activityTimestamp: new Date('2024-06-05T11:00:00Z')
+        author: nurse1._id,
+        location: 'care_facility',
+        address: 'Quiet room, Guardian Residence',
+        title: 'Breathing exercise note',
+        observations: 'Guided breathing exercise for 15 minutes.',
+        actionsRequired: ['Monitor relaxation response at next review'],
+        recordedAt: new Date('2024-06-05T11:00:00Z')
       }
     ]);
 

@@ -1,12 +1,28 @@
-// controllers/patientLogController.js
 const PatientLog = require('../models/PatientLog');
+const User = require('../models/User');
+
+function normalizeActionsRequired(value) {
+  if (Array.isArray(value)) return value;
+  if (value == null || value === '') return [];
+
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [parsed];
+    } catch (_error) {
+      return [value];
+    }
+  }
+
+  return [value];
+}
 
 /**
  * @swagger
  * /api/v1/patient-logs:
  *   post:
- *     summary: Create a patient log entry
- *     description: Allows a nurse to create a log entry for a specific patient.
+ *     summary: Create a patient note
+ *     description: Allows medical staff to record a patient note entry while keeping the patient-logs endpoint name.
  *     tags: [Patient Logs]
  *     security:
  *       - bearerAuth: []
@@ -17,59 +33,73 @@ const PatientLog = require('../models/PatientLog');
  *           schema:
  *             type: object
  *             required:
- *               - title
- *               - description
  *               - patient
+ *               - title
+ *               - observations
  *             properties:
- *               title:
- *                 type: string
- *                 example: Patient fainted briefly
- *               description:
- *                 type: string
- *                 example: Patient lost consciousness for about 10 seconds after standing up quickly. Recovered without intervention.
  *               patient:
  *                 type: string
  *                 example: 688de2621911784a80507314
+ *               location:
+ *                 type: string
+ *                 enum: [home, hospital, clinic, care_facility, telehealth, other]
+ *                 example: care_facility
+ *               address:
+ *                 type: string
+ *                 example: 12 King Street, Melbourne VIC
+ *               title:
+ *                 type: string
+ *                 example: Mobility follow-up
+ *               observations:
+ *                 type: string
+ *                 example: Patient reported improved balance during morning walk.
+ *               actionsRequired:
+ *                 oneOf:
+ *                   - type: array
+ *                     items: { type: string }
+ *                   - type: object
+ *                 example: ["Review gait tomorrow", "Update physio plan"]
+ *               recordedAt:
+ *                 type: string
+ *                 format: date-time
+ *                 example: 2026-08-23T09:30:00Z
  *     responses:
  *       201:
- *         description: Log created successfully
+ *         description: Patient note created successfully
  *       400:
  *         description: Missing required fields
+ *       401:
+ *         description: Missing, invalid, or expired token
  *       500:
  *         description: Internal server error
- *
- *     x-testing-guide:
- *       instructions: |
- *         1. First, register or login using a nurse account via `/api/v1/auth/register` or `/api/v1/auth/login`.
- *         2. Copy the returned token from the login response.
- *         3. In your testing tool, include the token in the header:
- *            Authorization: Bearer {your_token_here}
- *         4. Send a POST request to `/api/v1/patient-logs` with body:
- *            {
- *              "title": "briefly describe what happened",
- *              "description": "detailed description",
- *              "patient": "patient id"
- *            }
  */
-
-
-
 exports.createLog = async (req, res) => {
   try {
-    const { title, description, patient } = req.body;
+    const { patient, location, address, title, observations, actionsRequired, recordedAt } = req.body;
 
-    if (!title || !description || !patient) {
-      return res.status(400).json({ error: 'Title, description, and patient ID are required.' });
+    if (!patient || !title || !observations) {
+      return res.status(400).json({ error: 'patient, title, and observations are required.' });
     }
 
     const newLog = await PatientLog.create({
-      title,
-      description,
       patient,
-      createdBy: req.user._id
+      location,
+      address,
+      author: req.user._id,
+      title,
+      observations,
+      actionsRequired: normalizeActionsRequired(actionsRequired),
+      recordedAt: recordedAt || new Date()
     });
 
-    res.status(201).json({ message: 'Log created successfully', log: newLog });
+    const populated = await PatientLog.findById(newLog._id)
+      .populate('author', 'fullname email role')
+      .populate('patient', 'fullname');
+
+    res.status(201).json({
+      message: 'Patient note created successfully',
+      log: populated
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -79,8 +109,8 @@ exports.createLog = async (req, res) => {
  * @swagger
  * /api/v1/patient-logs/{patientId}:
  *   get:
- *     summary: Get logs by patient ID
- *     description: Returns a list of log entries for a specific patient.
+ *     summary: Get patient notes by patient ID
+ *     description: Returns all patient notes recorded for a specific patient.
  *     tags: [Patient Logs]
  *     security:
  *       - bearerAuth: []
@@ -91,49 +121,20 @@ exports.createLog = async (req, res) => {
  *         schema:
  *           type: string
  *         description: The ID of the patient
- *         example: 688de2621911784a80507314
  *     responses:
  *       200:
- *         description: Logs fetched successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   _id:
- *                     type: string
- *                   title:
- *                     type: string
- *                   description:
- *                     type: string
- *                   createdBy:
- *                     type: object
- *                     properties:
- *                       fullname:
- *                         type: string
- *                       role:
- *                         type: string
- *                   createdAt:
- *                     type: string
- *     x-testing-guide:
- *       instructions: |
- *         1. Login as any valid user with access to patient logs (e.g., nurse or caretaker).
- *         2. Use the JWT token in the header:
- *            Authorization: Bearer <your_token_here>
- *         3. Send a GET request to:
- *            /api/v1/patient-logs/688de2621911784a80507314
+ *         description: Patient notes fetched successfully
+ *       401:
+ *         description: Missing, invalid, or expired token
+ *       500:
+ *         description: Internal server error
  */
-
-
-
 exports.getLogsByPatient = async (req, res) => {
   try {
     const { patientId } = req.params;
     const logs = await PatientLog.find({ patient: patientId })
-      .populate('createdBy', 'fullname role')
-      .sort({ createdAt: -1 });
+      .populate('author', 'fullname email role')
+      .sort({ recordedAt: -1, createdAt: -1 });
 
     res.status(200).json(logs);
   } catch (err) {
@@ -145,8 +146,8 @@ exports.getLogsByPatient = async (req, res) => {
  * @swagger
  * /api/v1/patient-logs/{id}:
  *   delete:
- *     summary: Delete a log entry
- *     description: Deletes a patient log. Only the creator or admin can delete it.
+ *     summary: Delete a patient note
+ *     description: Deletes a patient note. Only the author or an admin can delete it.
  *     tags: [Patient Logs]
  *     security:
  *       - bearerAuth: []
@@ -156,40 +157,34 @@ exports.getLogsByPatient = async (req, res) => {
  *         required: true
  *         schema:
  *           type: string
- *         description: The ID of the log entry to delete
+ *         description: The ID of the patient note
  *     responses:
  *       200:
- *         description: Log deleted successfully
+ *         description: Patient note deleted successfully
+ *       401:
+ *         description: Missing, invalid, or expired token
  *       403:
  *         description: Permission denied
  *       404:
- *         description: Log not found
+ *         description: Patient note not found
  *       500:
  *         description: Internal server error
- *
- *     x-testing-guide:
- *       instructions: |
- *         1. Login as the nurse who created the log, or as an admin.
- *         2. Use the token in header:
- *            Authorization: Bearer {your_token_here}
- *         3. Send DELETE request to:
- *            /api/v1/patient-logs/<log_id>
  */
-
-
 exports.deleteLog = async (req, res) => {
   try {
     const { id } = req.params;
     const log = await PatientLog.findById(id);
 
-    if (!log) return res.status(404).json({ error: 'Log not found' });
+    if (!log) return res.status(404).json({ error: 'Patient note not found' });
 
-    if (!log.createdBy.equals(req.user._id) && req.user.role !== 'admin') {
+    const requester = await User.findById(req.user._id).populate('role', 'name');
+    const isAdmin = requester?.role?.name === 'admin';
+    if (!log.author.equals(req.user._id) && !isAdmin) {
       return res.status(403).json({ error: 'Permission denied' });
     }
 
     await PatientLog.findByIdAndDelete(id);
-    res.status(200).json({ message: 'Log deleted successfully' });
+    res.status(200).json({ message: 'Patient note deleted successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

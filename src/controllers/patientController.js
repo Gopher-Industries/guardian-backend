@@ -1,6 +1,5 @@
 const Patient = require('../models/Patient');
 const User = require('../models/User');
-const EntryReport = require('../models/EntryReport');
 const notifyRules = require('../services/notifyRules');
 const Role = require('../models/Role');
 const { parseStringArray } = require('../utils/arrayUtils');
@@ -108,8 +107,6 @@ async function buildVisiblePatientFilter(userId, options = {}) {
  * tags:
  *   - name: Patient
  *     description: Endpoints for independent patient management
- *   - name: EntryReport
- *     description: Endpoints for patient activity and entry reporting
  */
 
 /**
@@ -942,149 +939,6 @@ exports.getAssignedPatients = async (req, res) => {
     res.status(200).json(patients);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching assigned patients', details: error.message });
-  }
-};
-
-/**
- * @swagger
- * /api/v1/patients/entryreport:
- *   post:
- *     summary: Log a patient activity entry
- *     description: Creates a new entry report for a patient activity by the authenticated nurse.
- *     tags: [EntryReport]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - patientId
- *               - activityType
- *             properties:
- *               patientId:
- *                 type: string
- *               activityType:
- *                 type: string
- *                 example: eating
- *               comment:
- *                 type: string
- *                 example: Patient finished lunch normally
- *               timestamp:
- *                 type: string
- *                 format: date-time
- *                 example: 2024-05-01T14:00:00Z
- *     responses:
- *       201:
- *         description: Activity logged successfully
- *       400:
- *         description: Invalid request or error logging activity
- */
-exports.logEntry = async (req, res) => {
-  try {
-    const nurseId = req.user._id;
-    const { patientId, activityType, comment, timestamp } = req.body;
-
-    const newActivity = new EntryReport({
-      nurse: nurseId,
-      patient: patientId,
-      activityType,
-      comment,
-      activityTimestamp: timestamp || new Date()
-    });
-
-    await newActivity.save();
-    res.status(201).json({ message: 'Activity logged successfully', activity: newActivity });
-  } catch (error) {
-    res.status(400).json({ message: 'Error logging activity', details: error.message });
-  }
-};
-
-/**
- * @swagger
- * /api/v1/patients/activities:
- *   get:
- *     summary: Fetch activities for a patient
- *     description: Returns all entry reports associated with the provided patient ID.
- *     tags: [EntryReport]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: patientId
- *         required: true
- *         schema:
- *           type: string
- *         description: Patient ID
- *     responses:
- *       200:
- *         description: Patient activities fetched successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/EntryReport'
- *       400:
- *         description: Missing patientId in query
- *       500:
- *         description: Internal server error while fetching patient activities
- */
-exports.getPatientActivities = async (req, res) => {
-  try {
-    const { patientId } = req.query;
-    if (!patientId) {
-      return res.status(400).json({ message: 'Missing patientId in query' });
-    }
-
-    const activities = await EntryReport.find({ patient: patientId })
-      .populate('nurse', 'fullname');
-
-    const formattedActivities = activities.map(activity => {
-      const obj = activity.toObject();
-      obj.nurse = obj.nurse ? obj.nurse.fullname : null;
-      return obj;
-    });
-
-    res.status(200).json(formattedActivities);
-  } catch (error) {
-    res.status(500).json({ message: 'Error fetching patient activities', details: error.message });
-  }
-};
-
-/**
- * @swagger
- * /api/v1/patients/entryreport/{entryId}:
- *   delete:
- *     summary: Delete an entry report
- *     description: Deletes an existing entry report by its ID.
- *     tags: [EntryReport]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: entryId
- *         required: true
- *         schema:
- *           type: string
- *         description: Entry report ID
- *     responses:
- *       200:
- *         description: Entry deleted successfully
- *       404:
- *         description: Entry not found
- *       400:
- *         description: Invalid request or error deleting entry
- */
-exports.deleteEntry = async (req, res) => {
-  try {
-    const entryReport = await EntryReport.findByIdAndDelete(req.params.entryId);
-    if (!entryReport) return res.status(404).json({ message: 'Entry not found' });
-    res.json({ message: 'Entry deleted successfully' });
-  } catch (error) {
-    res.status(400).json({ message: 'Error deleting entry', details: error.message });
   }
 };
 

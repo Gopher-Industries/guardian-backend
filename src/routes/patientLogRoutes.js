@@ -6,12 +6,12 @@ const verifyRole = require('../middleware/verifyRole');
 const controller = require('../controllers/patientLogController');
 
 // add log
-router.post('/',verifyToken,verifyRole(['nurse', 'caretaker', 'doctor']),controller.createLog);
+router.post('/',verifyToken,verifyRole(['nurse', 'doctor', 'admin']),controller.createLog);
 
 // get log
-router.get('/:patientId',verifyToken,verifyRole(['nurse', 'caretaker', 'doctor', 'admin']),controller.getLogsByPatient);
+router.get('/:patientId',verifyToken,verifyRole(['nurse', 'doctor', 'admin']),controller.getLogsByPatient);
 
 // deleting log
-router.delete('/:id', verifyToken, controller.deleteLog);
+router.delete('/:id', verifyToken, verifyRole(['nurse', 'doctor', 'admin']), controller.deleteLog);
 
 module.exports = router;
