@@ -33,11 +33,11 @@ These instructions will help you get a copy of the project up and running on you
    ```
    Add the following environment variables to the `.env` file:
    ```plaintext
-   BASE_URL=http://localhost:3000
-   MONGODB_URL=mongodb://localhost:27017/guardian
-   PORT=3000
-   NODE_ENV=development
-   JWT_SECRET=your_jwt_secret_key
+   BASE_URI=http://localhost:3000
+MONGODB_URI=mongodb+srv://admin:admin123@samstest.ijg607t.mongodb.net/guardian
+PORT=3000
+NODE_ENV=development
+JWT_SECRET=password
    ```
 
 4. You might need to install the `dotenv` package:
