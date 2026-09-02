@@ -9,7 +9,6 @@ const socketIO = require('socket.io');
 const cors = require('cors');
 
 const swaggerUi = require('swagger-ui-express');
-const swaggerJsdoc = require('swagger-jsdoc');
 const { setEmit } = require('../socket');
 
 const app = express();
@@ -132,38 +131,8 @@ const limiter = rateLimit({
 
 app.use(limiter);
 
-const swaggerOptions = {
-  definition: {
-    openapi: '3.0.0',
-    info: {
-      title: 'Guardian API',
-      version: '1.0.0',
-      description: 'API documentation with Swagger UI and Redoc',
-    },
-    components: {
-      securitySchemes: {
-        bearerAuth: {
-          type: 'http',
-          scheme: 'bearer',
-          bearerFormat: 'JWT',
-        },
-      },
-    },
-    security: [
-      {
-        bearerAuth: [],
-      },
-    ],
-  },
-  apis: [
-    './src/routes/*.js',
-    './src/routes/**/*.js',
-    './src/controllers/*.js',
-    './src/swaggerDefinitions.js'
-  ],
-};
-
-const swaggerSpec = swaggerJsdoc(swaggerOptions);
+const { buildSwaggerSpec } = require('./config/swagger');
+const swaggerSpec = buildSwaggerSpec();
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -194,6 +163,14 @@ const testRoutes = require('./routes/testRoutes');
 
 const medsRoutes = require('./routes/medsRoutes');
 const meds2Routes = require('routes/meds2Routes');
+const managementPlanRoutes = require('./routes/managementPlanRoutes');
+const billingRoutes = require('./routes/billingRoutes');
+const referralRoutes = require('./routes/referralRoutes');
+const rosterRoutes = require('./routes/rosterRoutes');
+const locationRoutes = require('./routes/location');
+const correspondenceRoutes = require('./routes/correspondence');
+const emailRoutes = require('./routes/emailRoutes');
+
 app.use('/api/v1/auth', userRoutes);
 app.use('/api/v1/caretaker', caretakerRoutes);
 app.use('/api/v1/nurse', nurseRoutes);
@@ -217,6 +194,13 @@ app.use('/api/v1/test', testRoutes);
 
 app.use('/api/v1/add-medication', medsRoutes); 
 app.use('/api/v1/add-medication', meds2Routes);
+app.use('/api/v1/management-plans', managementPlanRoutes);
+app.use('/api/v1/billing', billingRoutes);
+app.use('/api/v1/referral', referralRoutes);
+app.use('/api/v1/rosters', rosterRoutes);
+app.use('/api/v1/locations', locationRoutes);
+app.use('/api/v1/correspondence', correspondenceRoutes);
+app.use('/api/v1/email', emailRoutes);
 
 app.use(
   '/swaggerDocs',
@@ -251,7 +235,9 @@ app.get('/redoc', (req, res) => {
 });
 
 app.get('/openapi.json', (req, res) => {
-  res.sendFile(path.join(__dirname, 'openapi.json'));
+  // Serve the live, generated spec so Redoc and any downloaded/imported copy
+  // always match the running API.
+  res.json(swaggerSpec);
 });
 
 app.get('/', (req, res) => {
