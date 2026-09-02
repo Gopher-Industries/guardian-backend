@@ -2,11 +2,43 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Role = require('../models/Role');
-
-const { OTP, generateOTP } = require('../models/OTP');
+const normalizeName = require("../utils/normalizeName");
+const { OTP, generateOTP } = require("../models/otp");
 const { sendPasswordResetEmail, sendPinCodeVerificationEmail } = require('../utils/mailer');
 
-
+/**
+ * @swagger
+ * /api/v1/auth/register:
+ *   post:
+ *     summary: Register a new user
+ *     description: Registers a new user with the provided fullname, email, and password.
+ *     tags:
+ *       - Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               fullname:
+ *                 type: string
+ *                 example: John Doe
+ *               email:
+ *                 type: string
+ *                 example: johndoe@example.com
+ *               password:
+ *                 type: string
+ *                 example: Password123
+ *               role:
+ *                 type: string
+ *                 example: nurse
+ *     responses:
+ *       201:
+ *         description: User registered successfully.
+ *       400:
+ *         description: Bad request. Could be due to missing fields or an invalid email/password.
+ */
 exports.registerUser = async (req, res) => {
   try {
     const { fullname, email, password, role } = req.body;
@@ -73,7 +105,33 @@ exports.registerUser = async (req, res) => {
 };
 
 
-
+/**
+ * @swagger
+ * /api/v1/auth/login:
+ *   post:
+ *     summary: Log in a user
+ *     description: Authenticates a user with the provided email and password.
+ *     tags:
+ *       - Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: johndoe@example.com
+ *               password:
+ *                 type: string
+ *                 example: Password123
+ *     responses:
+ *       200:
+ *         description: Successful login with JWT token and user information.
+ *       400:
+ *         description: Bad request. Incorrect email/password combination or account locked.
+ */
 exports.login = async (req, res) => {
   try {
     const user = await User.findOne({ email: req.body.email });
@@ -132,7 +190,32 @@ exports.login = async (req, res) => {
 };
 
 
-
+/**
+ * @swagger
+ * /api/v1/auth/send-pin:
+ *   post:
+ *     summary: Send OTP for email verification
+ *     description: Generates an OTP and sends it to the user's email for verification.
+ *     tags:
+ *       - Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: johndoe@example.com
+ *     responses:
+ *       200:
+ *         description: OTP sent to your email address.
+ *       400:
+ *         description: Bad request. Email is required.
+ *       500:
+ *         description: Internal server error. Error processing the request.
+ */
 exports.sendOTP = async (req, res) => {
     // Temporary bypass for OTP
     return res.status(200).json({ message: 'OTP functionality is temporarily disabled for testing.' });
@@ -174,7 +257,35 @@ exports.sendOTP = async (req, res) => {
 };
 
 
-
+/**
+ * @swagger
+ * /api/v1/auth/verify-pin:
+ *   post:
+ *     summary: Verify OTP
+ *     description: Verifies the OTP sent to the user's email address.
+ *     tags:
+ *       - Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: johndoe@example.com
+ *               otp:
+ *                 type: string
+ *                 example: 123456
+ *     responses:
+ *       200:
+ *         description: OTP verified successfully.
+ *       400:
+ *         description: Bad request. Email and OTP are required or invalid/expired OTP.
+ *       500:
+ *         description: Internal server error. Error processing the request.
+ */
 exports.verifyOTP = async (req, res) => {
     // Temporary bypass for OTP verification
     return res.status(200).json({ message: 'OTP verification bypassed for testing.' });
@@ -206,7 +317,38 @@ exports.verifyOTP = async (req, res) => {
 };
 
 
-
+/**
+ * @swagger
+ * /api/v1/auth/change-password:
+ *   post:
+ *     summary: Change a user's password
+ *     description: Allows a user to change their password by providing the old and new passwords.
+ *     tags:
+ *       - Authentication
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               oldPassword:
+ *                 type: string
+ *                 example: OldPassword123
+ *               newPassword:
+ *                 type: string
+ *                 example: NewPassword123
+ *               confirmPassword:
+ *                 type: string
+ *                 example: NewPassword123
+ *     responses:
+ *       200:
+ *         description: Password changed successfully.
+ *       400:
+ *         description: Bad request. Incorrect old password or new passwords don't match.
+ */
 exports.changePassword = async (req, res) => {
   try {
     const { oldPassword, newPassword, confirmPassword } = req.body;
@@ -243,7 +385,30 @@ exports.changePassword = async (req, res) => {
 };
 
 
-
+/**
+ * @swagger
+ * /api/v1/auth/reset-password-request:
+ *   post:
+ *     summary: Request a password reset
+ *     description: Sends a password reset link to the user's email.
+ *     tags:
+ *       - Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: johndoe@example.com
+ *     responses:
+ *       200:
+ *         description: Password reset link sent to the user's email.
+ *       404:
+ *         description: User not found.
+ */
 exports.requestPasswordReset = async (req, res) => {
   try {
     const { email } = req.body;
@@ -272,7 +437,27 @@ exports.requestPasswordReset = async (req, res) => {
 };
 
 
-
+/**
+ * @swagger
+ * /api/v1/auth/reset-password:
+ *   get:
+ *     summary: Render password reset page
+ *     description: Renders a page for resetting the password using a valid reset token.
+ *     tags:
+ *       - Authentication
+ *     parameters:
+ *       - name: token
+ *         in: query
+ *         required: true
+ *         description: JWT reset token
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Renders the password reset page.
+ *       400:
+ *         description: Invalid or expired token.
+ */
 exports.renderPasswordResetPage = (req, res) => {
   const { token } = req.query;
 
@@ -291,7 +476,36 @@ exports.renderPasswordResetPage = (req, res) => {
 };
 
 
-
+/**
+ * @swagger
+ * /api/v1/auth/reset-password:
+ *   post:
+ *     summary: Reset password
+ *     description: Resets the user's password using the reset token.
+ *     tags:
+ *       - Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               token:
+ *                 type: string
+ *                 example: "JWT_TOKEN_HERE"
+ *               newPassword:
+ *                 type: string
+ *                 example: NewPassword123
+ *               confirmPassword:
+ *                 type: string
+ *                 example: NewPassword123
+ *     responses:
+ *       200:
+ *         description: Password has been updated successfully.
+ *       400:
+ *         description: Invalid or expired token, or passwords don't match.
+ */
 exports.resetPassword = async (req, res) => {
   const { token, newPassword, confirmPassword } = req.body;
 
@@ -320,4 +534,91 @@ exports.resetPassword = async (req, res) => {
   } catch (error) {
     res.status(400).send({ error: 'Invalid or expired token' });
   }
+};
+
+exports.searchUser = async (req, res) => {
+        try {
+
+        const { search } = req.query;
+
+        // Validate input
+        if (!search || search.trim() === "") {
+            return res.status(400).json({
+                success: false,
+                message: "Search text is required."
+            });
+        }
+
+        // Normalize search string
+        const normalizedSearch = normalizeName(search);
+        
+
+        // Split search into individual words
+        const searchTokens = normalizedSearch
+    .split(" ")
+    .filter(token => token.length > 0);
+      
+
+         // Fetch all users
+const users = await User.find({}, "_id fullname organization").lean();
+// First check whether the search text matches a user ID
+const userById = users.find(
+    user => String(user._id) === search.trim()
+);
+
+if (userById) {
+    return res.status(200).json({
+        success: true,
+        count: 1,
+        users: [
+            {
+                userId: userById._id,
+                fullname: userById.fullname
+            }
+        ]
+    });
+}
+
+
+        // Find all matching users
+        const matchedUsers = users.filter((user) => {
+
+            if (!user.fullname) return false;
+
+            const normalizedStoredName = normalizeName(user.fullname);
+
+const storedTokens = normalizedStoredName.split(" ");
+const matches = searchTokens.every((token) => {
+    return storedTokens.includes(token);
+});
+return matches;
+        });
+        
+
+        // No users found
+        if (matchedUsers.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "No users found."
+            });
+        }
+
+        // Return matching users
+        return res.status(200).json({
+            success: true,
+            count: matchedUsers.length,
+            users: matchedUsers.map((user) => ({
+                userId: user._id,
+                fullname: user.fullname
+            }))
+        });
+
+    } catch (error) {
+        console.error("Search user failed:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error."
+        });
+    }
 };
