@@ -2,7 +2,7 @@
 
 const express = require('express');
 const router = express.Router();
-const medsController = require('../controllers/meds2Controller');
+const meds2Controller = require('../controllers/meds2Controller');
 /**
  * @openapi
  * /api/v1/add-medication:

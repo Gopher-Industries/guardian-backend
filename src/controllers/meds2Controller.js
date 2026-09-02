@@ -1,6 +1,6 @@
 const Meds2 = require('../models/Meds2');
 
-exports.registerMeds = async (req, res) => {
+exports.registerMeds2 = async (req, res) => {
   try {
     const { Name_of_Medication, Doses_sizes, Company, What_it_does, Potential_Side_Effects, Directions } = req.body;
 
