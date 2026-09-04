@@ -3,117 +3,7 @@ const Prescription = require('../models/Prescription');
 const Patient = require('../models/Patient');
 const notifyRules = require('../services/notifyRules');
 
-/**
- * @swagger
- * components:
- *   schemas:
- *     PrescriptionItem:
- *       type: object
- *       required:
- *         - name
- *         - dose
- *         - frequency
- *         - durationDays
- *       properties:
- *         name:
- *           type: string
- *           description: Medicine name
- *           example: Amoxicillin
- *         dose:
- *           type: string
- *           description: Dosage info
- *           example: "500 mg"
- *         frequency:
- *           type: string
- *           description: How often to take it
- *           example: "twice daily"
- *         durationDays:
- *           type: integer
- *           description: Number of days
- *           example: 7
- *         quantity:
- *           type: integer
- *           description: Total tablets or capsules
- *           example: 14
- *         instructions:
- *           type: string
- *           description: Extra guidance
- *           example: "Take after food"
- *
- *     PrescriptionCreateRequest:
- *       type: object
- *       description: Create prescription request body
- *       required:
- *         - items
- *       properties:
- *         patientId:
- *           type: string
- *           description: Patient ObjectId, required if patientName is not provided
- *           example: "68c268a3097a71d5162ac23a"
- *         patientName:
- *           type: string
- *           description: Patient full name, required if patientId is not provided
- *           example: "Asha Patel"
- *         items:
- *           type: array
- *           minItems: 1
- *           items:
- *             $ref: '#/components/schemas/PrescriptionItem'
- *         notes:
- *           type: string
- *           description: Optional notes for the prescription
- *           example: "For acute sinusitis"
- *       oneOf:
- *         - required: [patientId]
- *         - required: [patientName]
- */
 
-/**
- * @swagger
- * /api/v1/prescriptions:
- *   post:
- *     summary: Create a new prescription for a patient
- *     tags: [Prescription]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/PrescriptionCreateRequest'
- *           examples:
- *             minimal:
- *               summary: Minimal valid body
- *               value:
- *                 patientId: "68c268a3097a71d5162ac23a"
- *                 items:
- *                   - name: "Amoxicillin"
- *                     dose: "500 mg"
- *                     frequency: "twice daily"
- *                     durationDays: 7
- *             full:
- *               summary: With optional fields
- *               value:
- *                 patientName: "Asha Patel"
- *                 items:
- *                   - name: "Amoxicillin"
- *                     dose: "500 mg"
- *                     frequency: "twice daily"
- *                     durationDays: 7
- *                     quantity: 14
- *                     instructions: "Take after food"
- *                 notes: "For acute sinusitis"
- *     responses:
- *       201:
- *         description: Prescription created successfully
- *       400:
- *         description: Missing or invalid fields
- *       404:
- *         description: Patient not found
- *       500:
- *         description: Error creating prescription
- */
 exports.createPrescription = async (req, res) => {
   try {
     if (!req.user?._id) {
@@ -122,7 +12,7 @@ exports.createPrescription = async (req, res) => {
       });
     }
 
-    const { patientId, patientName, items, notes } = req.body;
+    const { patientId, patientName, items, notes, medicationName, dose, howMany, timesPerDay, timesOfDay, comment   } = req.body;
 
     if (!patientId && !patientName) {
       return res.status(400).json({
@@ -212,7 +102,13 @@ exports.createPrescription = async (req, res) => {
       prescriber: req.user._id,
       items,
       notes,
-      status: 'active'
+      status: 'active',
+      medicationName,
+      dose,
+      howMany,
+      timesPerDay,
+      timesOfDay,
+      comment  
     });
 
     // Trigger notifications based on rules
@@ -232,33 +128,7 @@ exports.createPrescription = async (req, res) => {
   }
 };
 
-/**
- * @swagger
- * /api/v1/prescriptions/{id}:
- *   get:
- *     summary: Get prescription by ID
- *     tags: [Prescription]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: Prescription ID
- *     responses:
- *       200:
- *         description: Prescription fetched successfully
- *       401:
- *         description: Unauthorized
- *       403:
- *         description: Access denied
- *       404:
- *         description: Prescription not found
- *       500:
- *         description: Error fetching prescription
- */
+
 exports.getPrescriptionById = async (req, res) => {
   try {
 
@@ -313,14 +183,14 @@ exports.getPrescriptionById = async (req, res) => {
   }
 };
 
-
 exports.updatePrescription = async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
 
     const prescription = await Prescription.findByIdAndUpdate(id, updates, {
-      new: true
+      new: true,
+      runValidators: true
     });
 
     if (!prescription) {
@@ -338,29 +208,7 @@ exports.updatePrescription = async (req, res) => {
   }
 };
 
-/**
- * @swagger
- * /api/v1/prescriptions/{id}/discontinue:
- *   post:
- *     summary: Discontinue a prescription
- *     tags: [Prescription]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: Prescription ID
- *     responses:
- *       200:
- *         description: Prescription discontinued successfully
- *       404:
- *         description: Prescription not found
- *       500:
- *         description: Error discontinuing prescription
- */
+
 exports.discontinuePrescription = async (req, res) => {
   try {
     const { id } = req.params;
@@ -386,29 +234,7 @@ exports.discontinuePrescription = async (req, res) => {
   }
 };
 
-/**
- * @swagger
- * /api/v1/prescriptions/{id}:
- *   delete:
- *     summary: Delete prescription by ID
- *     tags: [Prescription]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: Prescription ID
- *     responses:
- *       200:
- *         description: Prescription deleted successfully
- *       404:
- *         description: Prescription not found
- *       500:
- *         description: Error deleting prescription
- */
+
 exports.deletePrescription = async (req, res) => {
   try {
     const { id } = req.params;
@@ -422,7 +248,8 @@ exports.deletePrescription = async (req, res) => {
     }
 
     return res.status(200).json({
-      message: 'Prescription deleted successfully'
+      message: 'Prescription deleted successfully',
+      prescription
     });
   } catch (err) {
     return res.status(500).json({
@@ -432,45 +259,7 @@ exports.deletePrescription = async (req, res) => {
   }
 };
 
-/**
- * @swagger
- * /api/v1/patients/{patientId}/prescriptions:
- *   get:
- *     summary: List prescriptions for a patient
- *     tags: [Prescription]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: patientId
- *         required: true
- *         schema:
- *           type: string
- *         description: Patient ID
- *       - in: query
- *         name: status
- *         schema:
- *           type: string
- *           enum: [active, discontinued]
- *         description: Filter prescriptions by status
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *         description: Page number
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *         description: Results per page
- *     responses:
- *       200:
- *         description: List of prescriptions for the patient
- *       400:
- *         description: Invalid patientId format
- *       500:
- *         description: Error listing prescriptions
- */
+
 exports.listPrescriptionsForPatient = async (req, res) => {
   try {
     const { patientId } = req.params;
