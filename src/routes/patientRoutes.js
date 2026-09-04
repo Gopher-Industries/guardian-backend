@@ -1,11 +1,10 @@
 const express = require('express');
 const router = express.Router();
 
-const patientController = require('../controllers/patientController');
+const patientController = require('../controllers/PatientController');
 const doctorController = require('../controllers/doctorController');
 const verifyToken = require('../middleware/verifyToken');
 const verifyRole = require('../middleware/verifyRole');
-const upload = require('../middleware/multer');
 const prescriptionController = require('../controllers/prescriptionController');
 
 /**
@@ -14,11 +13,10 @@ const prescriptionController = require('../controllers/prescriptionController');
  *   post:
  *     tags:
  *       - Patient
- *     summary: Add a new patient with profile photo
+ *     summary: Add a new patient
  *     description: >
- *       Creates a new patient record. Accepts a multipart/form-data request
- *       that includes patient details and an optional profile photo.
- *       **Roles:** caretaker.
+ *       Creates a new patient record.
+*       **Roles:** doctor.
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -28,12 +26,22 @@ const prescriptionController = require('../controllers/prescriptionController');
  *           schema:
  *             $ref: '#/components/schemas/PatientCreateRequest'
  *           example:
- *             name: "Mary Jane"
- *             age: 72
- *             gender: "female"
- *             condition: "Dementia - Stage 2"
- *             phone: "+61412345678"
- *             address: "12 Elder Street, Melbourne VIC 3000"
+ *             firstName: "Mary"
+ *             lastName: "Jane"
+ *             dateOfBirth: "1954-05-12"
+ *             birthSex: "Female"
+ *             genderIdentity: "Female"
+ *             pronouns: "She/Her"
+ *             ethnicity: "Australian, non-Aboriginal"
+ *             countryOfBirth: "Australia"
+ *             preferredLanguage: "English"
+ *             interpreterRequired: false
+ *             mobilePhone: "+61412345678"
+ *             addressLine1: "12 Elder Street"
+ *             cityOrSuburb: "Melbourne"
+ *             postCode: "3000"
+ *             generalNotes: "Requires morning visits."
+ *             appointmentNotes: "Prefers appointments before midday."
  *     responses:
  *       201:
  *         description: Patient created successfully
@@ -43,12 +51,17 @@ const prescriptionController = require('../controllers/prescriptionController');
  *               $ref: '#/components/schemas/PatientSummary'
  *             example:
  *               _id: "664f1c2e8b1a2c3d4e5f6a7b"
- *               name: "Mary Jane"
- *               age: 72
- *               gender: "female"
- *               condition: "Dementia - Stage 2"
+ *               firstName: "Mary"
+ *               lastName: "Jane"
+ *               dateOfBirth: "1954-05-12"
+ *               birthSex: "Female"
+ *               genderIdentity: "Female"
+ *               pronouns: "She/Her"
+ *               preferredLanguage: "English"
+ *               mobilePhone: "+61412345678"
+ *               generalNotes: "Requires morning visits."
+ *               appointmentNotes: "Prefers appointments before midday."
  *               isActive: true
- *               photo: "uploads/1714000000000-profile.jpg"
  *       400:
  *         description: Validation error — missing required fields
  *         content:
@@ -56,7 +69,7 @@ const prescriptionController = require('../controllers/prescriptionController');
  *             schema:
  *               $ref: '#/components/schemas/ValidationError'
  *             example:
- *               error: "name, age, and gender are required."
+ *               error: "firstName, lastName, dateOfBirth, and birthSex are required."
  *       401:
  *         description: Unauthorized — missing or invalid token
  *         content:
@@ -64,7 +77,7 @@ const prescriptionController = require('../controllers/prescriptionController');
  *             schema:
  *               $ref: '#/components/schemas/UnauthorizedError'
  *       403:
- *         description: Forbidden — only caretakers can add patients
+ *         description: Forbidden — only doctors can add patients
  *         content:
  *           application/json:
  *             schema:
@@ -79,8 +92,7 @@ const prescriptionController = require('../controllers/prescriptionController');
 router.post(
     '/add',
     verifyToken,
-    verifyRole(['caretaker']),
-    upload.single('photo'),
+    verifyRole(['doctor']),//change to doctor
     patientController.addPatient
   );
 
@@ -129,9 +141,6 @@ router.post(
  */
 router.delete('/:patientId', verifyToken, patientController.deletePatient);
 
-router.post('/add', verifyToken, upload.single('profilePhoto'), patientController.addPatient);
-router.delete('/:patientId', verifyToken, patientController.deletePatient);
-
 /**
  * @openapi
  * /api/v1/patients/{patientId}:
@@ -140,8 +149,7 @@ router.delete('/:patientId', verifyToken, patientController.deletePatient);
  *       - Patient
  *     summary: Update patient details
  *     description: >
- *       Updates an existing patient's details. Accepts multipart/form-data
- *       to allow updating the profile photo as well.
+ *       Updates an existing patient's details.
  *       **Roles:** All authenticated users.
  *     security:
  *       - bearerAuth: []
@@ -154,9 +162,13 @@ router.delete('/:patientId', verifyToken, patientController.deletePatient);
  *           schema:
  *             $ref: '#/components/schemas/PatientUpdateRequest'
  *           example:
- *             name: "Mary Jane"
- *             age: 73
- *             condition: "Dementia - Stage 3"
+ *             firstName: "Mary"
+ *             lastName: "Jane"
+ *             birthSex: "Female"
+ *             genderIdentity: "Female"
+ *             pronouns: "She/Her"
+ *             generalNotes: "Requires afternoon monitoring."
+ *             appointmentNotes: "Review mobility at each appointment."
  *     responses:
  *       200:
  *         description: Patient updated successfully
@@ -166,10 +178,13 @@ router.delete('/:patientId', verifyToken, patientController.deletePatient);
  *               $ref: '#/components/schemas/PatientSummary'
  *             example:
  *               _id: "664f1c2e8b1a2c3d4e5f6a7b"
- *               name: "Mary Jane"
- *               age: 73
- *               gender: "female"
- *               condition: "Dementia - Stage 3"
+ *               firstName: "Mary"
+ *               lastName: "Jane"
+ *               birthSex: "Female"
+ *               genderIdentity: "Female"
+ *               pronouns: "She/Her"
+ *               generalNotes: "Requires afternoon monitoring."
+ *               appointmentNotes: "Review mobility at each appointment."
  *               isActive: true
  *       400:
  *         description: Invalid request
@@ -196,7 +211,7 @@ router.delete('/:patientId', verifyToken, patientController.deletePatient);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.put('/:patientId', verifyToken, upload.single('profilePhoto'), patientController.updatePatient);
+router.put('/:patientId', verifyToken, patientController.updatePatient);
 
 /**
  * @openapi
@@ -234,10 +249,12 @@ router.put('/:patientId', verifyToken, upload.single('profilePhoto'), patientCon
  *                 $ref: '#/components/schemas/PatientSummary'
  *             example:
  *               - _id: "664f1c2e8b1a2c3d4e5f6a7b"
- *                 name: "Mary Jane"
- *                 age: 72
- *                 gender: "female"
- *                 condition: "Dementia - Stage 2"
+ *                 firstName: "Mary"
+ *                 lastName: "Jane"
+ *                 birthSex: "Female"
+ *                 genderIdentity: "Female"
+ *                 pronouns: "She/Her"
+ *                 preferredLanguage: "English"
  *                 isActive: true
  *       401:
  *         description: Unauthorized
@@ -253,69 +270,6 @@ router.put('/:patientId', verifyToken, upload.single('profilePhoto'), patientCon
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get('/', verifyToken, patientController.getAllPatients);
-
-/**
- * @openapi
- * /api/v1/patients/assign-nurse:
- *   post:
- *     tags:
- *       - Patient
- *     summary: Assign a nurse to a patient
- *     description: >
- *       Assigns a nurse to a specific patient.
- *       **Roles:** caretaker.
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/AssignNurseRequest'
- *           example:
- *             patientId: "664f1c2e8b1a2c3d4e5f6a7b"
- *             nurseId: "664f1c2e8b1a2c3d4e5f6a7c"
- *     responses:
- *       200:
- *         description: Nurse assigned successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/SuccessMessage'
- *             example:
- *               message: "Nurse assigned to patient successfully."
- *       400:
- *         description: Missing patientId or nurseId
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ValidationError'
- *       401:
- *         description: Unauthorized
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/UnauthorizedError'
- *       403:
- *         description: Forbidden — caretaker only
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ForbiddenError'
- *       404:
- *         description: Patient or nurse not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/NotFoundError'
- *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- */
-router.post('/assign-nurse', verifyToken, verifyRole(['caretaker']), patientController.assignNurseToPatient);
 
 /**
  * @openapi
@@ -386,50 +340,6 @@ router.post(
   verifyToken,
   verifyRole(['admin', 'caretaker']),
   doctorController.assignDoctorToPatient);
-
-/**
- * @openapi
- * /api/v1/patients/assigned-patients:
- *   get:
- *     tags:
- *       - Patient
- *     summary: Fetch assigned patients for a nurse or caretaker
- *     description: >
- *       Returns the list of patients assigned to the currently authenticated nurse or caretaker.
- *       The user is identified from the JWT token.
- *       **Roles:** All authenticated users.
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: List of assigned patients
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/PatientSummary'
- *             example:
- *               - _id: "664f1c2e8b1a2c3d4e5f6a7b"
- *                 name: "Mary Jane"
- *                 age: 72
- *                 gender: "female"
- *                 condition: "Dementia - Stage 2"
- *                 isActive: true
- *       401:
- *         description: Unauthorized
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/UnauthorizedError'
- *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- */
-router.get('/assigned-patients', verifyToken, patientController.getAssignedPatients);
 
 /**
  * @openapi
@@ -512,12 +422,15 @@ router.get('/activities', verifyToken, patientController.getPatientActivities);
  *               $ref: '#/components/schemas/PatientSummary'
  *             example:
  *               _id: "664f1c2e8b1a2c3d4e5f6a7b"
- *               name: "Mary Jane"
- *               age: 72
- *               gender: "female"
- *               condition: "Dementia - Stage 2"
+ *               firstName: "Mary"
+ *               lastName: "Jane"
+ *               birthSex: "Female"
+ *               genderIdentity: "Female"
+ *               pronouns: "She/Her"
+ *               preferredLanguage: "English"
+ *               generalNotes: "Requires morning visits."
+ *               appointmentNotes: "Prefers appointments before midday."
  *               isActive: true
- *               photo: "uploads/1714000000000-profile.jpg"
  *       401:
  *         description: Unauthorized
  *         content:

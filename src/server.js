@@ -143,7 +143,7 @@ app.use(express.json());
 const userRoutes = require('./routes/user');
 const caretakerRoutes = require('./routes/caretakerRoutes');
 const nurseRoutes = require('./routes/nurseRoutes');
-const patientRoutes = require('./routes/patientRoutes');
+const patientRoutes = require('./routes/PatientRoutes');
 const healthRecordRoutes = require('./routes/healthRecordRoutes');
 const wifiCSIRoutes = require('./routes/wifiCSI');
 const activityRecognitionRoutes = require('./routes/activityRecognition');

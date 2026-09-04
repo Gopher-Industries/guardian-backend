@@ -29,16 +29,21 @@ function extractId(input) {
   return input; // fallback → let validation handle
 }
 
-/* normalize gender inputs */
-function normalizeGender(g) {
-  if (!g) return g;
-  const s = String(g).trim().toLowerCase();
-  if (s.startsWith('m')) return 'M';
-  if (s.startsWith('f')) return 'F';
-  return 'other';
-}
 
-const PatientSchema = new Schema(
+//value arrays for enum fields
+const BIRTH_SEX_VALUES = ['Male', 'Female', 'Other'];
+const GENDER_IDENTITY_VALUES = ['Male', 'Female', 'Non-binary', 'Other', 'Prefer not to say'];
+const PRONOUN_VALUES = ['He/Him', 'She/Her', 'They/Them', 'Other', 'Prefer not to say'];
+const ETHNICITY_VALUES = ['Australian, non-Aboriginal','Aboriginal', 'Torres Strait Islander', 'Both Aboriginal and Torres Strait Islander', 'Other'];
+const COUNTRY_OF_BIRTH_VALUES = ['Australia', 'New Zealand', 'United Kingdom', 'United States', 'China', 'India', 'Malaysia', 'Philippines', 'Vietnam', 'Other'];
+const PREFERRED_LANGUAGE_VALUES = ['English', 'Mandarin', 'Arabic', 'Cantonese', 'Vietnamese', 'Italian', 'Greek', 'Croatian', 'Spanish', 'Hindi', 'Farsi', 'Punjabi', 'Tagalog', 'Burmese', 'Nepali', 'Other'];
+const CONTACT_VIA_VALUES = ['homePhone', 'mobilePhone', 'workPhone'];
+const PENSION_CARD_TYPE_VALUES = ['Concession', 'Healthcare Card', 'Pension Card'];
+const USUAL_ACCOUNT_VALUES = ['Patient Fee', 'Concession Fee', 'Medicare', 'DVA', 'Private Health Insurance', 'Other'];
+
+
+
+const patientSchema = new Schema(
   {
     // uuid for external reference (not just mongo id)
     uuid: {
@@ -50,10 +55,82 @@ const PatientSchema = new Schema(
       immutable: true,
     },
 
-    // basic patient info
-    fullname: { type: String, required: true, trim: true, index: true },
-    gender: { type: String, required: true, enum: ['M', 'F', 'other'], set: normalizeGender },
+    // patient identity fields
+    title: { type: String, trim: true },//need to define ENUM or replace with String
+    firstName: { type: String, required: true, trim: true, index: true },
+    lastName: { type: String, required: true, trim: true, index: true },
+    middleName: { type: String, trim: true },
+    preferredName: { type: String, trim: true },
     dateOfBirth: { type: Date, required: true },
+    birthSex: { type: String, required: true, enum: BIRTH_SEX_VALUES },
+    genderIdentity: { type: String, enum: GENDER_IDENTITY_VALUES },
+    pronouns: { type: String, trim: true, enum: PRONOUN_VALUES },
+    ethnicity: { type: String, trim: true, enum: ETHNICITY_VALUES },
+    countryOfBirth: { type: String, trim: true, enum: COUNTRY_OF_BIRTH_VALUES },
+    preferredLanguage: { type: String, trim: true, enum: PREFERRED_LANGUAGE_VALUES },
+    interpreterRequired: { type: Boolean, default: false },
+
+
+
+    // contact info
+    addressLine1: { type: String, trim: true },
+    addressLine2: { type: String, trim: true },
+    cityOrSuburb: { type: String, trim: true },
+    postCode: { type: String, trim: true },
+    homePhone: { type: String, trim: true },
+    mobilePhone: { type: String, trim: true },
+    workPhone: { type: String, trim: true },
+    contactVia: { type: String, enum: CONTACT_VIA_VALUES },//get enum to show just the names of the fields above, not the actual values
+    email: { type: String, trim: true },
+
+    //consents
+    optOutofDeidentifiedDataSharing: { type: Boolean, default: false },
+    updateAddressOfAllFamilyMembers: { type: Boolean, default: false },
+
+    //medicare and health identifiers
+    healthIdentifier: { type: String, trim: true },
+    medicareNumber: { type: String, trim: true },
+    irn: { type: String, trim: true },
+    expiryDate: { type: Date },//needs to be valid when only using month and year, but not day. Need to check if this is possible with mongoose date type
+    pensionHccNumber: { type: String, trim: true },
+    pensionCardType: { type: String, enum: PENSION_CARD_TYPE_VALUES },
+    dvaNumber: { type: String, trim: true },
+    usualGP: { type: String, trim: true },//enum to be defined based on Org doctors
+    usualGPID: { type: Schema.Types.ObjectId, ref: 'User', set: extractId },//id of doctor based on usualGP enum
+    registeredLocation: { type: String, trim: true },//enum to be defined based on locations could probably be a front end task
+    registeredLocationID: { type: Schema.Types.ObjectId, ref: 'Location', set: extractId },//id of location based on registeredLocation enum
+
+    //clinical/admin details
+    usualAccount: { type: String, enum: USUAL_ACCOUNT_VALUES },//verify enum values
+    healthInsuranceProvider: { type: String, trim: true },
+    healthInsuranceNumber: { type: String, trim: true },
+    healthInsuranceExpiryDate: { type: Date },
+    religion: { type: String, trim: true },
+    headOfFamily: { type: String, trim: true },
+    nextOfKin: { type: String, trim: true },
+    nextOfKinRelationship: { type: String, trim: true },
+    emergencyContact: { type: String, trim: true },
+    occupation: { type: String, trim: true },
+
+    //status/flags
+    isActive: { type: Boolean, default: true },
+    isDeceased: { type: Boolean, default: false },
+    dateOfDeath: { type: Date },
+    causeOfDeath: { type: String, trim: true },
+    
+    //admin fields
+    createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    createdAt: { type: Date, default: Date.now },
+    updatedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    updatedAt: { type: Date, default: Date.now },
+
+    //General and Appointment Notes
+    //generalNotes: sits on patient file to record general notes about the patient, visible to all staff
+    //appointmentNotes: sits on patient file to record notes about the patient that are specific to appointments, 
+    //  visible to all staff, creates popup when booking an appointment for the patient? need to discuss with chehul
+    generalNotes: { type: String, trim: true },
+    appointmentNotes: { type: String, trim: true },
+
 
     // org link (and cached name)
     organization: {
@@ -68,31 +145,6 @@ const PatientSchema = new Schema(
     },
     organizationName: { type: String },
 
-    // caretaker must always exist (role = caretaker)
-    caretaker: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
-      set: extractId,
-      required: true,
-      validate: {
-        validator: (v) => v == null || Types.ObjectId.isValid(String(v)),
-        message: 'Invalid caretaker ObjectId',
-      },
-    },
-
-    // nurses (can be multiple)
-    assignedNurses: [
-      {
-        type: Schema.Types.ObjectId,
-        ref: 'User',
-        set: extractId,
-        validate: {
-          validator: (v) => v == null || Types.ObjectId.isValid(String(v)),
-          message: 'Invalid nurse ObjectId',
-        },
-      },
-    ],
-
     // doctor (single link)
     assignedDoctor: {
       type: Schema.Types.ObjectId,
@@ -104,57 +156,32 @@ const PatientSchema = new Schema(
       },
     },
 
-    // misc profile info
-    profilePhoto: { type: String },
-    dateOfAdmitting: { type: Date },
-    description: { type: String, default: '' },
-
-    // emergency contact
-    emergencyContactName: { type: String },
-    emergencyContactNumber: { type: String },
-
-    // next of kin
-    nextOfKinName: { type: String },
-    nextOfKinRelationship: {
-      type: String,
-      enum: ['SPOUSE', 'PARENT', 'CHILD', 'SIBLING', 'GRANDPARENT', 'GUARDIAN', 'CARER', 'FRIEND', 'OTHER'],
-    },
-
     // medical info
-    medicalSummary: { type: String },
     allergies: [{ type: String }],
     conditions: [{ type: String }],
-    notes: { type: String },
 
     // soft delete fields
     isDeleted: { type: Boolean, default: false, index: true },
     deletedAt: { type: Date },
     deletedBy: { type: Schema.Types.ObjectId, ref: 'User' },
   },
-  {  
-    timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }, 
-    toJSON: { virtuals: true }, 
-    toObject: { virtuals: true } 
-  }
 );
 
+//need to validate array of doctors based on org or location doctors, need to discuss with chehul and sam
 // pre-validate → clean ids before mongo cast
-PatientSchema.pre('validate', function (next) {
+patientSchema.pre('validate', function (next) {
   this.organization = extractId(this.organization);
-  this.caretaker = extractId(this.caretaker);
-  if (Array.isArray(this.assignedNurses)) this.assignedNurses = this.assignedNurses.map(extractId);
+  //if (Array.isArray(this.assignedNurses)) this.assignedNurses = this.assignedNurses.map(extractId);
   this.assignedDoctor = extractId(this.assignedDoctor);
   next();
 });
 
 // common query index
-PatientSchema.index({ organization: 1, isDeleted: 1, created_at: -1 });
-PatientSchema.index({ caretaker: 1 });
-PatientSchema.index({ assignedNurses: 1 });
-PatientSchema.index({ assignedDoctor: 1 });
+patientSchema.index({ organization: 1, isDeleted: 1, created_at: -1 });
+patientSchema.index({ assignedDoctor: 1 });
 
 // virtual age calc
-PatientSchema.virtual('age').get(function () {
+patientSchema.virtual('age').get(function () {
   if (!this.dateOfBirth) return null;
   const today = new Date();
   let age = today.getFullYear() - this.dateOfBirth.getFullYear();
@@ -163,8 +190,8 @@ PatientSchema.virtual('age').get(function () {
   return age;
 });
 
-// pre-save checks → set orgName + validate roles
-PatientSchema.pre('save', async function preSave(next) {
+// pre-save checks → set orgName + validate doctor
+patientSchema.pre('save', async function preSave(next) {
   try {
     const jobs = [];
 
@@ -174,29 +201,6 @@ PatientSchema.pre('save', async function preSave(next) {
         Organization.findById(this.organization).select('name').lean().then((org) => {
           if (org?.name) this.organizationName = org.name;
         })
-      );
-    }
-
-    // caretaker must have caretaker role
-    if (this.caretaker) {
-      jobs.push(
-        User.findById(this.caretaker).populate('role', 'name').then((u) => {
-          if (!u || !u.role || u.role.name !== 'caretaker') {
-            throw new Error('Assigned caretaker must have role "caretaker".');
-          }
-        })
-      );
-    }
-
-    // all nurses must have nurse role
-    if (Array.isArray(this.assignedNurses) && this.assignedNurses.length) {
-      jobs.push(
-        User.find({ _id: { $in: this.assignedNurses } })
-          .populate('role', 'name')
-          .then((users) => {
-            const invalid = users.filter((u) => !u?.role || u.role.name !== 'nurse');
-            if (invalid.length) throw new Error('All assigned nurses must have the role "nurse".');
-          })
       );
     }
 
@@ -219,7 +223,7 @@ PatientSchema.pre('save', async function preSave(next) {
 });
 
 // json transform → add `id` field and drop __v
-PatientSchema.set('toJSON', {
+patientSchema.set('toJSON', {
   virtuals: true,
   versionKey: false,
   transform: (_doc, ret) => {
@@ -228,4 +232,4 @@ PatientSchema.set('toJSON', {
   },
 });
 
-module.exports = mongoose.model('Patient', PatientSchema);
+module.exports = mongoose.model('Patient', patientSchema);
