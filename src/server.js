@@ -161,6 +161,8 @@ const carePlanRoutes = require('./routes/carePlanRoutes');
 const resourceRoutes = require('./routes/resourceRoutes');
 const medicalRecordRoutes = require('./routes/medicalRecordRoutes');
 const vitalRoutes = require('./routes/vitalRoutes');
+const meds2Routes = require('./routes/meds2Routes');
+const managementPlanRoutes = require('./routes/managementPlanRoutes');
 const billingRoutes = require('./routes/billingRoutes');
 const referralRoutes = require('./routes/referralRoutes');
 const rosterRoutes = require('./routes/rosterRoutes');
@@ -189,6 +191,11 @@ app.use('/api/v1/care-plans', carePlanRoutes);
 app.use('/api/v1/resources', resourceRoutes);
 app.use('/api/v1/medical-records', medicalRecordRoutes);
 app.use('/api/v1/vitals', vitalRoutes);
+
+
+ 
+app.use('/api/v1/add-medication', meds2Routes);
+app.use('/api/v1/management-plans', managementPlanRoutes);
 app.use('/api/v1/billing', billingRoutes);
 app.use('/api/v1/referral', referralRoutes);
 app.use('/api/v1/rosters', rosterRoutes);
