@@ -421,7 +421,7 @@ exports.getSupportTickets = async (req, res) => {
 /**
  * @swagger
  * /api/v1/admin/support-tickets/{ticketId}:
- *   put:
+ *   patch:
  *     summary: Update a support ticket
  *     tags: [Admin]
  *     parameters:
