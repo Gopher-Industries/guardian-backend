@@ -5,6 +5,7 @@ const DailyReport = require('../models/DailyReport');
 const Patient = require('../models/Patient');
 const PatientLog = require('../models/PatientLog');
 const notifyRules = require('../services/notifyRules');
+const { queueTaskAssignedEmail } = require('../services/taskEmailService');
 
 function taskAssigneeQuery(userId) {
   return {
@@ -301,6 +302,8 @@ exports.createTask = async (req, res) => {
         actorId: req.user?._id,
       })
     ).catch(() => {});
+
+    queueTaskAssignedEmail(newTask, { assignedById: req.user?._id });
 
     return res.status(201).json({
       message: "Task created successfully",
