@@ -11,7 +11,37 @@
  *         Pass it as: Authorization: Bearer <token>
  *
  *   schemas:
- *
+ *     Task:
+ *       type: object
+ *       properties:
+ *         _id:
+ *           type: string
+ *         title:
+ *           type: string
+ *         description:
+ *           type: string
+ *         dueDate:
+ *           type: string
+ *           format: date-time
+ *         priority:
+ *           type: string
+ *           enum: [low, medium, high]
+ *         status:
+ *           type: string
+ *           enum: [pending, in_progress, completed]
+ *         patient:
+ *           type: string
+ *         assignee:
+ *           type: string
+ *         caretaker:
+ *           type: string
+ *         nurse_id:
+ *           type: string
+ *         report:
+ *           type: string
+ *         created_at:
+ *           type: string
+ * 
  *     # ─────────────────────────────────────────────
  *     # AUTH
  *     # ─────────────────────────────────────────────

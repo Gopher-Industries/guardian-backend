@@ -11,17 +11,11 @@ const User = require('../models/User');
 
 // Prevent password-reset tests from trying to send a real email.
 const mailerPath = require.resolve('../utils/mailer');
-require.cache[mailerPath] = {
-  id: mailerPath,
-  filename: mailerPath,
-  loaded: true,
-  exports: {
-    sendPasswordResetEmail: async () => true,
-    sendPinCodeVerificationEmail: async () => true,
-  },
-};
-delete require.cache[require.resolve('../controllers/userController')];
-const userController = require('../controllers/userController');
+const userControllerPath = require.resolve('../controllers/userController');
+
+const originalMailer = require.cache[mailerPath];
+
+let userController;
 
 const { expect } = chai;
 
@@ -37,6 +31,21 @@ function makeRenderRes() {
 
 describe('auth controller flow', function () {
   this.timeout(15000);
+    before(() => {
+    require.cache[mailerPath] = {
+      id: mailerPath,
+      filename: mailerPath,
+      loaded: true,
+      exports: {
+        sendEmail: async () => true,
+        sendPasswordResetEmail: async () => true,
+        sendPinCodeVerificationEmail: async () => true,
+      },
+    };
+
+    delete require.cache[userControllerPath];
+    userController = require('../controllers/userController');
+  });
 
   before(connectTestDb);
   beforeEach(async () => {

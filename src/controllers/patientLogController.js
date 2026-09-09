@@ -53,47 +53,7 @@ const canAccessPatientLogs = async (patientId, req) => {
   return false;
 };
 
-/**
- * @swagger
- * /api/v1/patient-logs:
- *   post:
- *     summary: Create a patient log entry
- *     description: Allows a nurse, caretaker, or doctor to create a log entry for a patient.
- *     tags: [Patient Logs]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - title
- *               - description
- *               - patient
- *             properties:
- *               title:
- *                 type: string
- *                 example: Patient mood update
- *               description:
- *                 type: string
- *                 example: Patient was calm and responsive during the morning check.
- *               patient:
- *                 type: string
- *                 example: 69b77c228345cdf421d22ba3
- *     responses:
- *       201:
- *         description: Log created successfully
- *       400:
- *         description: Missing required fields
- *       401:
- *         description: Unauthorized or missing token
- *       403:
- *         description: Access denied due to insufficient role
- *       500:
- *         description: Internal server error
- */
+
 exports.createLog = async (req, res) => {
   try {
     const { title, description, patient } = req.body;

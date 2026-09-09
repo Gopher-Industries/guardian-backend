@@ -14,29 +14,7 @@ function taskAssigneeQuery(userId) {
   };
 }
 
-/**
- * @swagger
- * /api/v1/nurse/profile:
- *   get:
- *     summary: View nurse profile by ID or email
- *     tags: [Nurse]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: nurseId
- *         schema:
- *           type: string
- *       - in: query
- *         name: email
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Nurse profile fetched successfully
- *       404:
- *         description: Nurse not found
- */
+
 exports.getProfile = async (req, res) => {
   try {
     const { nurseId, email } = req.query;
@@ -127,18 +105,7 @@ exports.getAllNurses = async (req, res) => {
 };
 
 
-/**
- * @swagger
- * /api/v1/nurse/assigned-patients:
- *   get:
- *     summary: Get patients assigned to the logged-in nurse
- *     tags: [Nurse]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: List of assigned patients
- */
+
 exports.getAssignedPatientsForNurse = async (req, res) => {
   try {
     const nurse = await User.findById(req.user._id)
