@@ -1,32 +1,6 @@
 const Patient = require('../models/Patient');
-const User = require('../models/User');
 const EntryReport = require('../models/EntryReport');
-const notifyRules = require('../services/notifyRules');
-const Role = require('../models/Role');
 const { parseStringArray } = require('../utils/arrayUtils');
-
-// Restricts independent patient-management routes for approved organization-linked
-// nurses and caretakers. These users must use the organization-based workflow.
-async function blockIndependentPatientWorkForApprovedOrgMember(userId) {
-  const user = await User.findById(userId).populate('role', 'name');
-  if (!user) {
-    return { blocked: true, message: 'User not found' };
-  }
-
-  const roleName = user.role?.name?.toLowerCase();
-  if (!['nurse', 'caretaker'].includes(roleName)) {
-    return { blocked: false };
-  }
-
-  if (user.organization && user.approvalStatus === 'approved') {
-    return {
-      blocked: true,
-      message: 'Approved organization members cannot manage patients independently. Patient work must be handled through admin assignment flow.'
-    };
-  }
-
-  return { blocked: false };
-}
 
 /**
  * @swagger
@@ -37,51 +11,115 @@ async function blockIndependentPatientWorkForApprovedOrgMember(userId) {
  *     description: Endpoints for patient activity and entry reporting
  */
 
-
+/**
+ * @swagger
+ * /api/v1/patients/add:
+ *   post:
+ *     summary: Add a new patient
+ *     description: Creates a new patient for the authenticated doctor.
+ *     tags: [Patient]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - firstName
+ *               - lastName
+ *               - dateOfBirth
+ *               - birthSex
+ *             properties:
+ *               firstName:
+ *                 type: string
+ *                 example: John
+ *               lastName:
+ *                 type: string
+ *                 example: Smith
+ *               dateOfBirth:
+ *                 type: string
+ *                 format: date
+ *                 example: 1980-01-01
+ *               birthSex:
+ *                 type: string
+ *                 enum: [Male, Female, Other]
+ *               genderIdentity:
+ *                 type: string
+ *                 enum: [Male, Female, Non-binary, Other, Prefer not to say]
+ *               pronouns:
+ *                 type: string
+ *                 enum: [He/Him, She/Her, They/Them, Other, Prefer not to say]
+ *               emergencyContact:
+ *                 type: string
+ *                 nullable: true
+ *               nextOfKin:
+ *                 type: string
+ *                 nullable: true
+ *               generalNotes:
+ *                 type: string
+ *                 nullable: true
+ *               appointmentNotes:
+ *                 type: string
+ *                 nullable: true
+ *               allergies:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 nullable: true
+ *                 description: List of known allergies (e.g. penicillin, peanuts)
+ *               conditions:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 nullable: true
+ *                 description: List of diagnosed medical conditions (e.g. Type 2 Diabetes, Hypertension)
+ *     responses:
+ *       201:
+ *         description: Patient added successfully
+ *       400:
+ *         description: Missing required fields or invalid request data
+ *       403:
+ *         description: Approved organization members cannot use independent patient routes
+ */
 exports.addPatient = async (req, res) => {
   try {
-    const accessCheck = await blockIndependentPatientWorkForApprovedOrgMember(req.user._id);
-    if (accessCheck.blocked) {
-      return res.status(403).json({ message: accessCheck.message });
-    }
-    
     const {
-      fullname, dateOfBirth, gender,
-      emergencyContactName, emergencyContactNumber,
-      nextOfKinName, nextOfKinRelationship, medicalSummary,
-      allergies, conditions, notes
+      title, firstName, lastName, middleName, preferredName, dateOfBirth,
+      birthSex, genderIdentity, pronouns, ethnicity, countryOfBirth,
+      preferredLanguage, interpreterRequired, addressLine1, addressLine2,
+      cityOrSuburb, postCode, homePhone, mobilePhone, workPhone, contactVia,
+      email, optOutofDeidentifiedDataSharing, updateAddressOfAllFamilyMembers,
+      healthIdentifier, medicareNumber, irn, expiryDate, pensionHccNumber,
+      pensionCardType, dvaNumber, usualGP, usualGPID, registeredLocation,
+      registeredLocationID, usualAccount, healthInsuranceProvider,
+      healthInsuranceNumber, healthInsuranceExpiryDate, religion, headOfFamily,
+      nextOfKin, nextOfKinRelationship, emergencyContact, occupation,
+      generalNotes, appointmentNotes, isDeceased, dateOfDeath, causeOfDeath,
+      assignedDoctor, allergies, conditions
     } = req.body;
-    const caretakerId = req.user._id; // Extracted from the token middleware
 
 
-    if (!fullname || !dateOfBirth || !gender) {
+    if (!firstName || !lastName || !dateOfBirth || !birthSex) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
     const newPatient = new Patient({
-      fullname,
-      dateOfBirth,
-      gender,
-      caretaker: caretakerId,
-      profilePhoto: req.file?.filename,
-      emergencyContactName,
-      emergencyContactNumber,
-      nextOfKinName,
-      nextOfKinRelationship,
-      medicalSummary,
-      allergies: parseStringArray(allergies),
-      conditions: parseStringArray(conditions),
-      notes
+      title, firstName, lastName, middleName, preferredName, dateOfBirth,
+      birthSex, genderIdentity, pronouns, ethnicity, countryOfBirth,
+      preferredLanguage, interpreterRequired, addressLine1, addressLine2,
+      cityOrSuburb, postCode, homePhone, mobilePhone, workPhone, contactVia,
+      email, optOutofDeidentifiedDataSharing, updateAddressOfAllFamilyMembers,
+      healthIdentifier, medicareNumber, irn, expiryDate, pensionHccNumber,
+      pensionCardType, dvaNumber, usualGP, usualGPID, registeredLocation,
+      registeredLocationID, usualAccount, healthInsuranceProvider,
+      healthInsuranceNumber, healthInsuranceExpiryDate, religion, headOfFamily,
+      nextOfKin, nextOfKinRelationship, emergencyContact, occupation,
+      generalNotes, appointmentNotes, isDeceased, dateOfDeath, causeOfDeath,
     });
 
     await newPatient.save();
-    Promise.resolve(
-      notifyRules.patientCreated({
-        patientId: newPatient._id,
-        actorId: req.user?._id,
-        caretakerId
-      })
-    ).catch(() => {});
 
     res.status(201).json({
       message: 'Patient added successfully',
@@ -118,15 +156,11 @@ exports.addPatient = async (req, res) => {
  *           type: string
  *           example: John
  *       - in: query
- *         name: gender
+ *         name: birthSex
  *         schema:
  *           type: string
  *           example: Male
  *       - in: query
- *         name: caretakerId
- *         schema:
- *           type: string
- *           example: 661111111111111111111111
  *       - in: query
  *         name: includeDeleted
  *         schema:
@@ -143,7 +177,6 @@ exports.addPatient = async (req, res) => {
  *       403:
  *         description: Approved organization members cannot use independent patient routes
  *       404:
- *         description: User not found
  *       500:
  *         description: Internal server error while fetching patients
  */
@@ -153,14 +186,8 @@ exports.getAllPatients = async (req, res) => {
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
     const skip = (page - 1) * limit;
 
-    const { search, gender, caretakerId, includeDeleted, sort = '-created_at' } = req.query;
+    const { search, birthSex, createdBy, includeDeleted, sort = '-created_at' } = req.query;
 
-    const me = await User.findById(req.user._id).populate('role', 'name');
-    if (!me) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    const roleName = me.role?.name?.toLowerCase();
     const filter = {};
 
     if (!(String(includeDeleted).toLowerCase() === 'true')) {
@@ -168,38 +195,23 @@ exports.getAllPatients = async (req, res) => {
     }
 
     if (search) {
-      filter.fullname = { $regex: search, $options: 'i' };
+      filter.$or = [
+        { firstName: { $regex: search, $options: 'i' } },
+        { lastName: { $regex: search, $options: 'i' } }
+      ];
     }
 
-    if (gender) {
-      filter.gender = gender;
+    if (birthSex) {
+      filter.birthSex = birthSex;
     }
 
-    if (roleName === 'caretaker') {
-      if (me.organization && me.approvalStatus === 'approved') {
-        return res.status(403).json({
-          message: 'Approved organization members cannot view patients through independent patient routes. Use organization-based routes instead.'
-        });
-      }
-
-      filter.caretaker = me._id;
-    } else if (roleName === 'nurse') {
-      if (me.organization && me.approvalStatus === 'approved') {
-        return res.status(403).json({
-          message: 'Approved organization members cannot view patients through independent patient routes. Use organization-based routes instead.'
-        });
-      }
-
-      filter.assignedNurses = me._id;
-    } else if (caretakerId) {
-      filter.caretaker = caretakerId;
+    if (createdBy) {
+      filter.createdBy = createdBy;
     }
 
     const total = await Patient.countDocuments(filter);
 
     const patients = await Patient.find(filter)
-      .populate('caretaker', 'fullname email')
-      .populate('assignedNurses', 'fullname email')
       .populate('assignedDoctor', 'fullname email')
       .sort(sort)
       .skip(skip)
@@ -225,16 +237,100 @@ exports.getAllPatients = async (req, res) => {
   }
 };
 
-
+/**
+ * @swagger
+ * /api/v1/patients/{patientId}:
+ *   put:
+ *     summary: Update a patient in the independent freelance flow
+ *     description: Updates an existing patient record for an authenticated user.
+ *     tags: [Patient]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: patientId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Patient ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               firstName: { type: string }
+ *               lastName: { type: string }
+ *               title: { type: string, nullable: true }
+ *               middleName: { type: string, nullable: true }
+ *               preferredName: { type: string, nullable: true }
+ *               dateOfBirth:
+ *                 type: string
+ *                 format: date
+ *                 example: '1980-01-01'
+ *               birthSex:
+ *                 type: string
+ *                 enum: [Male, Female, Other]
+ *               genderIdentity:
+ *                 type: string
+ *                 enum: [Male, Female, Non-binary, Other, Prefer not to say]
+ *               pronouns:
+ *                 type: string
+ *                 enum: [He/Him, She/Her, They/Them, Other, Prefer not to say]
+ *               emergencyContact: { type: string, nullable: true }
+ *               nextOfKin: { type: string, nullable: true }
+ *               nextOfKinRelationship: { type: string, nullable: true }
+ *               generalNotes: { type: string, nullable: true }
+ *               appointmentNotes: { type: string, nullable: true }
+ *               allergies:
+ *                 type: array
+ *                 items: { type: string }
+ *                 nullable: true
+ *               conditions:
+ *                 type: array
+ *                 items: { type: string }
+ *                 nullable: true
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               firstName: { type: string }
+ *               lastName: { type: string }
+ *               dateOfBirth:
+ *                 type: string
+ *                 format: date
+ *                 example: '1980-01-01'
+ *               birthSex:
+ *                 type: string
+ *                 enum: [Male, Female, Other]
+ *               genderIdentity: { type: string, enum: [Male, Female, Non-binary, Other, Prefer not to say] }
+ *               pronouns: { type: string, enum: [He/Him, She/Her, They/Them, Other, Prefer not to say] }
+ *               emergencyContact: { type: string, nullable: true }
+ *               nextOfKin: { type: string, nullable: true }
+ *               nextOfKinRelationship: { type: string, nullable: true }
+ *               generalNotes: { type: string, nullable: true }
+ *               appointmentNotes: { type: string, nullable: true }
+ *               allergies:
+ *                 type: array
+ *                 items: { type: string }
+ *                 nullable: true
+ *               conditions:
+ *                 type: array
+ *                 items: { type: string }
+ *                 nullable: true
+ *     responses:
+ *       200:
+ *         description: Patient updated successfully
+ *       403:
+ *         description: The user is not authorized for this patient
+ *       404:
+ *         description: Patient not found
+ *       500:
+ *         description: Internal server error while updating the patient
+ */
 exports.updatePatient = async (req, res) => {
   try {
-    const block = await blockIndependentPatientWorkForApprovedOrgMember(req.user._id);
-    if (block.blocked) {
-      return res.status(403).json({
-        message: block.message || 'Approved organization members cannot update patients through independent routes.'
-      });
-    }
-
     const patient = await Patient.findOne({
       _id: req.params.patientId,
       isDeleted: { $ne: true }
@@ -244,55 +340,41 @@ exports.updatePatient = async (req, res) => {
       return res.status(404).json({ message: 'Patient not found' });
     }
 
-    const me = await User.findById(req.user._id).populate('role', 'name');
-    const roleName = me?.role?.name?.toLowerCase();
-
-    if (roleName === 'caretaker' && String(patient.caretaker) !== String(req.user._id)) {
-      return res.status(403).json({ message: 'You can only update your own patients' });
-    }
-
-    if (
-      roleName === 'nurse' &&
-      !patient.assignedNurses.some((id) => String(id) === String(req.user._id))
-    ) {
-      return res.status(403).json({ message: 'You can only update assigned patients' });
-    }
-
     const {
-      fullname,
-      dateOfBirth,
-      gender,
-      emergencyContactName,
-      emergencyContactNumber,
-      nextOfKinName,
+      title, firstName, lastName, middleName, preferredName, dateOfBirth,
+      birthSex, genderIdentity, pronouns, ethnicity, countryOfBirth,
+      preferredLanguage, interpreterRequired, addressLine1, addressLine2,
+      cityOrSuburb, postCode, homePhone, mobilePhone, workPhone, contactVia,
+      email, optOutofDeidentifiedDataSharing, updateAddressOfAllFamilyMembers,
+      healthIdentifier, medicareNumber, irn, expiryDate, pensionHccNumber,
+      pensionCardType, dvaNumber, usualGP, usualGPID, registeredLocation,
+      registeredLocationID, usualAccount, healthInsuranceProvider,
+      healthInsuranceNumber, healthInsuranceExpiryDate, religion, headOfFamily,
+      nextOfKin,
       nextOfKinRelationship,
-      medicalSummary,
+      emergencyContact, occupation, generalNotes, appointmentNotes,
+      isActive, isDeceased, dateOfDeath, causeOfDeath, assignedDoctor,
       allergies,
-      conditions,
-      notes,
-      description,
-      image,
-      dateOfAdmitting
+      conditions
     } = req.body;
 
-    if (typeof fullname !== 'undefined') {
-      patient.fullname = fullname;
-    }
+    const patientFields = {
+      title, firstName, lastName, middleName, preferredName, birthSex,
+      genderIdentity, pronouns, ethnicity, countryOfBirth, preferredLanguage,
+      interpreterRequired, addressLine1, addressLine2, cityOrSuburb, postCode,
+      homePhone, mobilePhone, workPhone, contactVia, email,
+      optOutofDeidentifiedDataSharing, updateAddressOfAllFamilyMembers,
+      healthIdentifier, medicareNumber, irn, expiryDate, pensionHccNumber,
+      pensionCardType, dvaNumber, usualGP, usualGPID, registeredLocation,
+      registeredLocationID, usualAccount, healthInsuranceProvider,
+      healthInsuranceNumber, healthInsuranceExpiryDate, religion, headOfFamily,
+      nextOfKin, nextOfKinRelationship, emergencyContact, occupation,
+      generalNotes, appointmentNotes, isActive, isDeceased, dateOfDeath,
+      causeOfDeath, assignedDoctor
+    };
 
-    if (typeof gender !== 'undefined') {
-      patient.gender = gender;
-    }
-
-    if (typeof description !== 'undefined') {
-      patient.description = description;
-    }
-
-    if (typeof dateOfAdmitting !== 'undefined') {
-      patient.dateOfAdmitting = dateOfAdmitting;
-    }
-
-    if (typeof image !== 'undefined') {
-      patient.profilePhoto = image;
+    for (const [field, value] of Object.entries(patientFields)) {
+      if (typeof value !== 'undefined') patient[field] = value;
     }
 
     if (typeof dateOfBirth !== 'undefined') {
@@ -302,40 +384,12 @@ exports.updatePatient = async (req, res) => {
       }
     }
 
-    if (req.file && req.file.filename) {
-      patient.profilePhoto = req.file.filename;
-    }
-
-    if (typeof emergencyContactName !== 'undefined') {
-      patient.emergencyContactName = emergencyContactName;
-    }
-
-    if (typeof emergencyContactNumber !== 'undefined') {
-      patient.emergencyContactNumber = emergencyContactNumber;
-    }
-
-    if (typeof nextOfKinName !== 'undefined') {
-      patient.nextOfKinName = nextOfKinName;
-    }
-
-    if (typeof nextOfKinRelationship !== 'undefined') {
-      patient.nextOfKinRelationship = nextOfKinRelationship;
-    }
-
-    if (typeof medicalSummary !== 'undefined') {
-      patient.medicalSummary = medicalSummary;
-    }
-
     if (typeof allergies !== 'undefined') {
       patient.allergies = parseStringArray(allergies);
     }
 
     if (typeof conditions !== 'undefined') {
       patient.conditions = parseStringArray(conditions);
-    }
-
-    if (typeof notes !== 'undefined') {
-      patient.notes = notes;
     }
 
     await patient.save();
@@ -355,16 +409,34 @@ exports.updatePatient = async (req, res) => {
   }
 };
 
-
+/**
+ * @swagger
+ * /api/v1/patients/{patientId}:
+ *   delete:
+ *     summary: Soft delete a patient in the independent freelance flow
+ *     description: Marks a patient as deleted for an authenticated user.
+ *     tags: [Patient]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: patientId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Patient ID
+ *     responses:
+ *       200:
+ *         description: Patient deleted successfully
+ *       403:
+ *         description: The user is not authorized for this patient
+ *       404:
+ *         description: Patient not found
+ *       500:
+ *         description: Internal server error while deleting the patient
+ */
 exports.deletePatient = async (req, res) => {
   try {
-    const block = await blockIndependentPatientWorkForApprovedOrgMember(req.user._id);
-    if (block.blocked) {
-      return res.status(403).json({
-        message: block.message || 'Approved organization members cannot delete patients through independent routes.'
-      });
-    }
-
     const patient = await Patient.findOne({
       _id: req.params.patientId,
       isDeleted: { $ne: true }
@@ -372,17 +444,6 @@ exports.deletePatient = async (req, res) => {
 
     if (!patient) {
       return res.status(404).json({ message: 'Patient not found' });
-    }
-
-    const me = await User.findById(req.user._id).populate('role', 'name');
-    const roleName = me?.role?.name?.toLowerCase();
-
-    if (roleName === 'caretaker' && String(patient.caretaker) !== String(req.user._id)) {
-      return res.status(403).json({ message: 'You can only delete your own patients' });
-    }
-
-    if (roleName === 'nurse' && !patient.assignedNurses.some((id) => String(id) === String(req.user._id))) {
-      return res.status(403).json({ message: 'You can only delete assigned patients' });
     }
 
     patient.isDeleted = true;
@@ -399,7 +460,56 @@ exports.deletePatient = async (req, res) => {
   }
 };
 
-
+/**
+ * @swagger
+ * /api/v1/patients/{patientId}:
+ *   get:
+ *     summary: Fetch patient details by ID
+ *     description: Retrieves a non-deleted patient record by its ID.
+ *     tags: [Patient]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: patientId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: MongoDB ObjectId of the patient
+ *     responses:
+ *       200:
+ *         description: Patient details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 _id: { type: string }
+ *                 firstName: { type: string }
+ *                 lastName: { type: string }
+ *                 birthSex: { type: string, enum: [Male, Female, Other] }
+ *                 genderIdentity: { type: string, enum: [Male, Female, Non-binary, Other, Prefer not to say] }
+ *                 pronouns: { type: string, enum: [He/Him, She/Her, They/Them, Other, Prefer not to say] }
+ *                 dateOfBirth: { type: string, format: date }
+ *                 age: { type: integer }
+ *                 emergencyContact: { type: string, nullable: true }
+ *                 nextOfKin: { type: string, nullable: true }
+ *                 nextOfKinRelationship: { type: string, nullable: true }
+ *                 generalNotes: { type: string, nullable: true }
+ *                 appointmentNotes: { type: string, nullable: true }
+ *                 allergies:
+ *                   type: array
+ *                   items: { type: string }
+ *                 conditions:
+ *                   type: array
+ *                   items: { type: string }
+ *                 createdBy: { type: string }
+ *                 assignedDoctor: { type: string, nullable: true }
+ *       400:
+ *         description: Invalid patient ID or request error
+ *       404:
+ *         description: Patient not found
+ */
 exports.getPatientDetails = async (req, res) => {
   try {
     const { patientId } = req.params;
@@ -407,8 +517,8 @@ exports.getPatientDetails = async (req, res) => {
     let patient;
     try {
       patient = await Patient.findOne({ _id: patientId, isDeleted: { $ne: true } })
-        .populate('caretaker', 'fullname email')
-        .populate('assignedNurses', 'fullname email');
+        .populate('createdBy', 'fullname email')
+        .populate('assignedDoctor', 'fullname email');
     } catch (e) {
       if (e.name === 'CastError') {
         return res.status(400).json({ message: 'Invalid patient id' });
@@ -429,80 +539,6 @@ exports.getPatientDetails = async (req, res) => {
     return res.json(patientObj);
   } catch (error) {
     return res.status(400).json({ message: 'Error fetching patient information', details: error.message });
-  }
-};
-
-
-exports.assignNurseToPatient = async (req, res) => {
-  try {
-    const accessCheck = await blockIndependentPatientWorkForApprovedOrgMember(req.user._id);
-    if (accessCheck.blocked) {
-      return res.status(403).json({ message: accessCheck.message });
-    }
-
-    const { nurseId, patientId } = req.body;
-
-    const patient = await Patient.findById(patientId);
-    const nurse = await User.findById(nurseId).populate('role');
-
-    if (!patient || !nurse) {
-      return res.status(404).json({ error: 'Invalid nurse or patient ID' });
-    }
-
-    if (!nurse.role || nurse.role.name !== 'nurse') {
-      return res.status(400).json({ error: 'Selected user is not a nurse' });
-    }
-
-    if (!patient.assignedNurses.includes(nurseId)) {
-      patient.assignedNurses.push(nurseId);
-      await patient.save();
-    }
-
-    if (!nurse.assignedPatients.includes(patientId)) {
-      nurse.assignedPatients.push(patientId);
-      await nurse.save();
-    }
-
-    res.status(200).json({
-      message: 'Nurse assigned to patient successfully',
-      patient: {
-        id: patient._id,
-        fullname: patient.fullname,
-        assignedNurses: patient.assignedNurses
-      },
-      nurse: {
-        id: nurse._id,
-        fullname: nurse.fullname,
-        assignedPatients: nurse.assignedPatients
-      }
-    });
-  } catch (error) {
-    res.status(500).json({ message: 'Error assigning nurse to patient', details: error.message });
-  }
-};
-
-
-exports.getAssignedPatients = async (req, res) => {
-  try {
-    // Load the authenticated user and role before applying role-based filters
-    const user = await User.findById(req.user._id).populate('role');
-    if (!user || !user.role || !user.role.name) {
-      return res.status(403).json({ message: 'Invalid or missing user role' });
-    }
-
-    const query = {};
-    if (user.role.name === 'nurse') {
-      query.assignedNurses = user;
-    } else if (user.role.name === 'caretaker') {
-      query.caretaker = user;
-    } else {
-      return res.status(403).json({ message: 'Unauthorized role' });
-    }
-
-    const patients = await Patient.find(query).populate('assignedNurses', 'fullname email').populate('caretaker', 'fullname email');
-    res.status(200).json(patients);
-  } catch (error) {
-    res.status(500).json({ message: 'Error fetching assigned patients', details: error.message });
   }
 };
 
@@ -563,7 +599,36 @@ exports.logEntry = async (req, res) => {
   }
 };
 
-
+/**
+ * @swagger
+ * /api/v1/patients/activities:
+ *   get:
+ *     summary: Fetch activities for a patient
+ *     description: Returns all entry reports associated with the provided patient ID.
+ *     tags: [EntryReport]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: patientId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Patient ID
+ *     responses:
+ *       200:
+ *         description: Patient activities fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/EntryReport'
+ *       400:
+ *         description: Missing patientId in query
+ *       500:
+ *         description: Internal server error while fetching patient activities
+ */
 exports.getPatientActivities = async (req, res) => {
   try {
     const { patientId } = req.query;
