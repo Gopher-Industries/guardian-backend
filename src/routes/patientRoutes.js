@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-const patientController = require('../controllers/PatientController');
+const patientController = require('../controllers/patientController');
 const doctorController = require('../controllers/doctorController');
 const verifyToken = require('../middleware/verifyToken');
 const verifyRole = require('../middleware/verifyRole');
