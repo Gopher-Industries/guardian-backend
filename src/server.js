@@ -3,6 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const database = require('./config/db');
+const { startScheduler } = require('./scheduler');
 const multer = require('multer');
 const http = require('http');
 const socketIO = require('socket.io');
@@ -164,6 +165,7 @@ const vitalRoutes = require('./routes/vitalRoutes');
 const meds2Routes = require('./routes/meds2Routes');
 const managementPlanRoutes = require('./routes/managementPlanRoutes');
 const billingRoutes = require('./routes/billingRoutes');
+const appointmentReminderRoutes = require('./routes/appointmentReminderRoutes');
 const referralRoutes = require('./routes/referralRoutes');
 const rosterRoutes = require('./routes/rosterRoutes');
 const locationRoutes = require('./routes/location');
@@ -197,6 +199,7 @@ app.use('/api/v1/vitals', vitalRoutes);
 app.use('/api/v1/add-medication', meds2Routes);
 app.use('/api/v1/management-plans', managementPlanRoutes);
 app.use('/api/v1/billing', billingRoutes);
+app.use('/api/v1/appointment-reminders', appointmentReminderRoutes);
 app.use('/api/v1/referral', referralRoutes);
 app.use('/api/v1/rosters', rosterRoutes);
 app.use('/api/v1/locations', locationRoutes);
@@ -338,6 +341,7 @@ setEmit(emitToUser);
 const PORT = process.env.PORT || 3000;
 
 if (process.env.NODE_ENV !== 'test') {
+  startScheduler();
   server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });
