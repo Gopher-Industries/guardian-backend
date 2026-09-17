@@ -1,6 +1,6 @@
 const { checkShiftReminders } = require('./shiftReminderService');
 
-const CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
+const CHECK_INTERVAL = 3 * 60 * 60 * 1000; // 3 hours
 
 function startShiftReminderScheduler() {
   console.log('Shift reminder scheduler started.');
@@ -10,7 +10,7 @@ function startShiftReminderScheduler() {
     console.error('Shift reminder check failed:', error.message);
   });
 
-  // Run every 5 minutes
+  // Run every 3 hours
   setInterval(async () => {
     try {
       await checkShiftReminders();
