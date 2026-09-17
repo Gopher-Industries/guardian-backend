@@ -169,6 +169,7 @@ const rosterRoutes = require('./routes/rosterRoutes');
 const locationRoutes = require('./routes/location');
 const correspondenceRoutes = require('./routes/correspondence');
 const emailRoutes = require('./routes/emailRoutes');
+const { startShiftReminderScheduler } = require('./services/shiftReminderScheduler');
 
 app.use('/api/v1/auth', userRoutes);
 app.use('/api/v1/caretaker', caretakerRoutes);
@@ -340,6 +341,9 @@ const PORT = process.env.PORT || 3000;
 if (process.env.NODE_ENV !== 'test') {
   server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+
+    // Start the shift reminder scheduler
+    startShiftReminderScheduler();
   });
 }
 
