@@ -3,6 +3,10 @@ const User = require('../models/User');
 const { getEmailConfig } = require('../config/emailConfig');
 const emailService = require('./emailService');
 const { formatDateTime } = require('../utils/datetime');
+const {
+  enqueueTaskAssignedEmail,
+  isTaskEmailQueueEnabled
+} = require('../queues/taskEmailQueue');
 
 async function sendTaskAssignedEmail(task, options = {}) {
   if (!task || !task.assignee) {
@@ -50,19 +54,64 @@ async function sendTaskAssignedEmail(task, options = {}) {
   });
 }
 
-function queueTaskAssignedEmail(task, options = {}) {
+function startDirectTaskAssignedEmail(task, options = {}, reason = 'queue_disabled') {
+  console.log(JSON.stringify({
+    event: 'task_assignment_email_direct_started',
+    taskId: task?._id ? String(task._id) : null,
+    assigneeId: task?.assignee ? String(task.assignee) : null,
+    reason
+  }));
+
   return Promise.resolve()
     .then(() => sendTaskAssignedEmail(task, options))
+    .then((result) => {
+      console.log(JSON.stringify({
+        event: 'task_assignment_email_direct_completed',
+        taskId: task?._id ? String(task._id) : null,
+        assigneeId: task?.assignee ? String(task.assignee) : null,
+        reason
+      }));
+      return result;
+    })
     .catch((error) => {
       console.error(JSON.stringify({
-        event: 'task_assignment_email_failed',
+        event: 'task_assignment_email_direct_failed',
         taskId: task?._id ? String(task._id) : null,
         assigneeId: task?.assignee ? String(task.assignee) : null,
         outboxId: error.outboxId || null,
+        reason,
         error: error.message
       }));
       return null;
     });
+}
+
+async function queueTaskAssignedEmail(task, options = {}) {
+  if (!isTaskEmailQueueEnabled()) {
+    startDirectTaskAssignedEmail(task, options);
+    return { mode: 'direct' };
+  }
+
+  try {
+    const job = await enqueueTaskAssignedEmail(task, options);
+    console.log(JSON.stringify({
+      event: 'task_assignment_email_queued',
+      jobId: job?.id ? String(job.id) : null,
+      taskId: task?._id ? String(task._id) : null,
+      assigneeId: task?.assignee ? String(task.assignee) : null
+    }));
+    return { mode: 'queued', jobId: job?.id || null };
+  } catch (error) {
+    console.error(JSON.stringify({
+      event: 'task_assignment_email_queue_failed',
+      taskId: task?._id ? String(task._id) : null,
+      assigneeId: task?.assignee ? String(task.assignee) : null,
+      error: error.message
+    }));
+
+    startDirectTaskAssignedEmail(task, options, 'queue_unavailable');
+    return { mode: 'direct_fallback' };
+  }
 }
 
 module.exports = { sendTaskAssignedEmail, queueTaskAssignedEmail };
