@@ -169,6 +169,7 @@ const rosterRoutes = require('./routes/rosterRoutes');
 const locationRoutes = require('./routes/location');
 const correspondenceRoutes = require('./routes/correspondence');
 const emailRoutes = require('./routes/emailRoutes');
+const blobStoreRoutes = require('./routes/blobStoreRoutes'); 
 
 app.use('/api/v1/auth', userRoutes);
 app.use('/api/v1/caretaker', caretakerRoutes);
@@ -202,6 +203,7 @@ app.use('/api/v1/rosters', rosterRoutes);
 app.use('/api/v1/locations', locationRoutes);
 app.use('/api/v1/correspondence', correspondenceRoutes);
 app.use('/api/v1/email', emailRoutes);
+app.use('/api/v1/blob_store', blobStoreRoutes);
 
 app.use(
   '/swaggerDocs',
