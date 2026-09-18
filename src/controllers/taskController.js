@@ -323,7 +323,7 @@ exports.createTask = async (req, res) => {
       actorId: req.user?._id
     }));
 
-    queueTaskAssignedEmail(task, { assignedById: req.user?._id });
+    await queueTaskAssignedEmail(task, { assignedById: req.user?._id });
 
     return res.status(201).json({ message: 'Task created', task });
   } catch (error) {
