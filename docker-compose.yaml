@@ -4,6 +4,17 @@ services:
     build: .
     env_file:
       - .env
+    environment:
+      - TASK_EMAIL_QUEUE_ENABLED=true
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - EMAIL_PROVIDER=smtp
+      - EMAIL_DRY_RUN=false
+      - EMAIL_ALLOWLIST_ENFORCE=false
+      - SMTP_HOST=mailpit
+      - SMTP_PORT=1025
+      - SMTP_SECURE=false
+      - SMTP_IGNORE_TLS=true
     ports:
       - "3000:3000"
     volumes:
@@ -14,6 +25,33 @@ services:
     depends_on:
       - mongo
       - mailpit
+      - redis
+
+  email-worker:
+    container_name: guardian-email-worker
+    build: .
+    command: node src/workers/taskEmailWorker.js
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - TASK_EMAIL_QUEUE_ENABLED=true
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - EMAIL_PROVIDER=smtp
+      - EMAIL_DRY_RUN=false
+      - EMAIL_ALLOWLIST_ENFORCE=false
+      - SMTP_HOST=mailpit
+      - SMTP_PORT=1025
+      - SMTP_SECURE=false
+      - SMTP_IGNORE_TLS=true
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+    depends_on:
+      - mongo
+      - mailpit
+      - redis
 
   mongo:
     image: mongo
@@ -43,5 +81,14 @@ services:
       - MP_SMTP_AUTH_ACCEPT_ANY=1
       - MP_SMTP_AUTH_ALLOW_INSECURE=1
 
+  redis:
+    image: redis:7-alpine
+    container_name: guardian-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+
 volumes:
   mongo_data:
+  redis_data:
