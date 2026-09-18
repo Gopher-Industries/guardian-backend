@@ -9,6 +9,7 @@
     "@fastify/swagger": "^6.0.0",
     "@getbrevo/brevo": "^2.2.0",
     "bcryptjs": "^2.4.3",
+    "bullmq": "^5.81.5",
     "cors": "^2.8.6",
     "dotenv": "^8.6.0",
     "ejs": "^3.1.10",
@@ -50,7 +51,8 @@
     "openapi:generate": "node scripts/generate-openapi.js",
     "postman:generate": "node scripts/generate-postman.js",
     "test:email:api": "NODE_ENV=test mocha 'src/test/emailApiNoDb.cjs' --exit",
-    "email:sandbox": "node scripts/email-sandbox.js"
+    "email:sandbox": "node scripts/email-sandbox.js",
+    "worker:task-email": "node src/workers/taskEmailWorker.js"
   },
   "devDependencies": {
     "@types/socket.io": "^3.0.2",
