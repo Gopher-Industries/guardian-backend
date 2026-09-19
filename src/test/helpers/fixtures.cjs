@@ -113,7 +113,7 @@ async function createPatient({
     createdAt: new Date('2026-04-01'),
   });
 
-  const linkedUsers = [caretaker, ...assignedNurses, assignedDoctor].filter(Boolean);
+  const linkedUsers = [assignedDoctor].filter(Boolean);
   await Promise.all(
     linkedUsers.map((user) =>
       User.updateOne(
