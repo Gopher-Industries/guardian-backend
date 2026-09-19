@@ -105,7 +105,6 @@ async function createPatient({
     firstName,
     lastName,
     birthSex,
-    gender,
     dateOfBirth: new Date(dateOfBirth),
     assignedDoctor: assignedDoctor ? assignedDoctor._id || assignedDoctor : undefined,
     organization: organization ? organization._id || organization : undefined,
