@@ -105,8 +105,6 @@ async function createPatient({
     lastName,
     gender,
     dateOfBirth: new Date(dateOfBirth),
-    caretaker: caretaker._id || caretaker,
-    assignedNurses: assignedNurses.map((nurse) => nurse._id || nurse),
     assignedDoctor: assignedDoctor ? assignedDoctor._id || assignedDoctor : undefined,
     organization: organization ? organization._id || organization : undefined,
     dateOfAdmitting: new Date('2026-04-01'),
