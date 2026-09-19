@@ -94,21 +94,24 @@ async function createOrganization({ name = 'Guardian Test Org', admin }) {
 async function createPatient({
   firstName = 'Test',
   lastName = 'Patient',
-  gender = 'Female',
+  birthSex = 'Female',
   dateOfBirth = '1985-01-01',
   assignedDoctor,
   organization,
   isDeleted = false,
+  createdBy,
 }) {
   const patient = await Patient.create({
     firstName,
     lastName,
+    birthSex,
     gender,
     dateOfBirth: new Date(dateOfBirth),
     assignedDoctor: assignedDoctor ? assignedDoctor._id || assignedDoctor : undefined,
     organization: organization ? organization._id || organization : undefined,
-    dateOfAdmitting: new Date('2026-04-01'),
     isDeleted,
+    createdBy: createdBy ? createdBy._id || createdBy : undefined,
+    createdAt: new Date('2026-04-01'),
   });
 
   const linkedUsers = [caretaker, ...assignedNurses, assignedDoctor].filter(Boolean);
@@ -163,13 +166,17 @@ async function createDashboardFixture() {
   const activePatient = await createPatient({
     firstName: 'Active Dashboard',
     lastName: 'Patient',
+    birthSex: 'Male',
     assignedDoctor: fixture.doctor,
+    createdBy: fixture.admin,
   });
 
   const deletedPatient = await createPatient({
     firstName: 'Deleted Dashboard',
     lastName: 'Patient',
+    birthSex: 'Female',
     assignedDoctor: fixture.doctor,
+    createdBy: fixture.admin,
     isDeleted: true,
   });
 

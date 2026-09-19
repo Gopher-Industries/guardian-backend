@@ -120,14 +120,14 @@ async function buildFixture() {
   );
 
   const patient = await Patient.create({
-    fullname: 'Patient Zero',
-    gender: 'male',
+    firstName: 'Patient',
+    lastName: 'Zero',
+    birthSex: 'Male',
     dateOfBirth: new Date('1980-05-17'),
     organization: organization._id,
-    caretaker: oldCaretaker._id,
-    assignedNurses: [oldNurse._id],
     assignedDoctor: oldDoctor._id,
-    dateOfAdmitting: new Date('2026-03-26'),
+    createdBy: admin._id,
+    createdAt: new Date('2026-03-26'),
   });
 
   await Promise.all([
@@ -438,8 +438,9 @@ describe('admin patient reassign flow', function () {
     const req = {
       query: { orgId: String(fixture.organization._id) },
       body: {
-        fullname: 'Blocked Patient',
-        gender: 'male',
+        firstName: 'Blocked',
+        lastName: 'Patient',
+        birthSex: 'Male',
         dateOfBirth: '1985-01-01',
         caretakerId: String(otherOrg.otherCaretaker._id),
       },
