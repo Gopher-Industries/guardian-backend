@@ -202,7 +202,9 @@ async function buildSecondOrg(roleIds) {
     otherDoctor,
   };
 }
-
+// needs some work to make sure that it actually works after removing caretakers and nurses requirements from the patient model.
+// these tests were based on the old model and will need to be updated to reflect the new model and requirements.
+// cannot be updated right now, as how the changes of removing caretakers and nurses from the patient model affects the rest of the codebase is not certain.
 describe('admin patient reassign flow', function () {
   this.timeout(15000);
 
