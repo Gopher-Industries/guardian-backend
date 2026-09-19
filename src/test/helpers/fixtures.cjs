@@ -92,28 +92,28 @@ async function createOrganization({ name = 'Guardian Test Org', admin }) {
 }
 
 async function createPatient({
-  fullname = 'Test Patient',
-  gender = 'F',
+  firstName = 'Test',
+  lastName = 'Patient',
+  birthSex = 'Female',
   dateOfBirth = '1985-01-01',
-  caretaker,
-  assignedNurses = [],
   assignedDoctor,
   organization,
   isDeleted = false,
+  createdBy,
 }) {
   const patient = await Patient.create({
-    fullname,
-    gender,
+    firstName,
+    lastName,
+    birthSex,
     dateOfBirth: new Date(dateOfBirth),
-    caretaker: caretaker._id || caretaker,
-    assignedNurses: assignedNurses.map((nurse) => nurse._id || nurse),
     assignedDoctor: assignedDoctor ? assignedDoctor._id || assignedDoctor : undefined,
     organization: organization ? organization._id || organization : undefined,
-    dateOfAdmitting: new Date('2026-04-01'),
     isDeleted,
+    createdBy: createdBy ? createdBy._id || createdBy : undefined,
+    createdAt: new Date('2026-04-01'),
   });
 
-  const linkedUsers = [caretaker, ...assignedNurses, assignedDoctor].filter(Boolean);
+  const linkedUsers = [assignedDoctor].filter(Boolean);
   await Promise.all(
     linkedUsers.map((user) =>
       User.updateOne(
@@ -163,17 +163,19 @@ async function createCoreFixture() {
 async function createDashboardFixture() {
   const fixture = await createCoreFixture();
   const activePatient = await createPatient({
-    fullname: 'Active Dashboard Patient',
-    caretaker: fixture.caretaker,
-    assignedNurses: [fixture.nurse],
+    firstName: 'Active Dashboard',
+    lastName: 'Patient',
+    birthSex: 'Male',
     assignedDoctor: fixture.doctor,
+    createdBy: fixture.admin,
   });
 
   const deletedPatient = await createPatient({
-    fullname: 'Deleted Dashboard Patient',
-    caretaker: fixture.caretaker,
-    assignedNurses: [fixture.nurse],
+    firstName: 'Deleted Dashboard',
+    lastName: 'Patient',
+    birthSex: 'Female',
     assignedDoctor: fixture.doctor,
+    createdBy: fixture.admin,
     isDeleted: true,
   });
 
