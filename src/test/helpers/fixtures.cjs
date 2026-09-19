@@ -92,17 +92,17 @@ async function createOrganization({ name = 'Guardian Test Org', admin }) {
 }
 
 async function createPatient({
-  fullname = 'Test Patient',
-  gender = 'F',
+  firstName = 'Test',
+  lastName = 'Patient',
+  gender = 'Female',
   dateOfBirth = '1985-01-01',
-  caretaker,
-  assignedNurses = [],
   assignedDoctor,
   organization,
   isDeleted = false,
 }) {
   const patient = await Patient.create({
-    fullname,
+    firstName,
+    lastName,
     gender,
     dateOfBirth: new Date(dateOfBirth),
     caretaker: caretaker._id || caretaker,
@@ -163,16 +163,14 @@ async function createCoreFixture() {
 async function createDashboardFixture() {
   const fixture = await createCoreFixture();
   const activePatient = await createPatient({
-    fullname: 'Active Dashboard Patient',
-    caretaker: fixture.caretaker,
-    assignedNurses: [fixture.nurse],
+    firstName: 'Active Dashboard',
+    lastName: 'Patient',
     assignedDoctor: fixture.doctor,
   });
 
   const deletedPatient = await createPatient({
-    fullname: 'Deleted Dashboard Patient',
-    caretaker: fixture.caretaker,
-    assignedNurses: [fixture.nurse],
+    firstName: 'Deleted Dashboard',
+    lastName: 'Patient',
     assignedDoctor: fixture.doctor,
     isDeleted: true,
   });
