@@ -33,7 +33,7 @@
   "scripts": {
     "start": "nodemon src/server.js",
     "dev": "nodemon src/app.js",
-    "test": "NODE_ENV=test mocha 'src/test/**/*.cjs' --recursive --exit"
+    "test": "node scripts/run-tests.cjs"
   },
   "devDependencies": {
     "@types/socket.io": "^3.0.2",

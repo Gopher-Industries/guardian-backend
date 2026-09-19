@@ -5,6 +5,7 @@ const User = require('../models/User');
 const verifyToken = require('../middleware/verifyToken');
 const verifyRole = require('../middleware/verifyRole');
 const adminController = require('../controllers/adminController');
+const dailyOperationalReportController = require('../controllers/dailyOperationalReportController');
 
 
 
@@ -75,5 +76,39 @@ router.delete('/tasks/:taskId', verifyToken, verifyRole(['admin']), adminControl
 
 // Dashboard Summary API
 router.get('/dashboard-summary', verifyToken, verifyRole(['admin']), adminController.getDashboardSummary);
+
+/**
+ * @swagger
+ * /api/v1/admin/daily-reports/pdf:
+ *   post:
+ *     summary: Generate and save the daily operational report as a PDF
+ *     description: Pulls task and alert metrics from the database. General notes and analytics notes are supplied by the caller. The authenticated admin and server clock are used for sign-off.
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [generalNotes, analytics]
+ *             properties:
+ *               reportDate:
+ *                 type: string
+ *                 format: date
+ *                 description: Date to report on; defaults to the server's current local date.
+ *               generalNotes:
+ *                 type: string
+ *               analytics:
+ *                 type: string
+ *                 description: Analyst commentary to accompany the calculated comparison with the prior report.
+ *     responses:
+ *       201:
+ *         description: PDF generated and saved under uploads/daily-reports
+ *       400:
+ *         description: Missing notes or invalid report date
+ */
+router.post('/daily-reports/pdf', verifyToken, verifyRole(['admin']), dailyOperationalReportController.generatePdf);
 
 module.exports = router;
