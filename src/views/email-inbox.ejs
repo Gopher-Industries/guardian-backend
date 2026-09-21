@@ -1,0 +1,203 @@
+<%#
+  Guardian Email Service — email-inbox.ejs
+
+  Read-only browser page for the persisted "Sent" inbox. The page itself is
+  unauthenticated and carries no configuration; it calls the admin API using a
+  bearer token the operator pastes in.
+
+  Author: Graeme Thomas
+  Date:   2026-08-08
+%>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Guardian — Sent inbox</title>
+  <style>
+    :root{
+      --bg:#eef2f6; --panel:#fff; --fg:#1f2933; --muted:#6b7684; --border:#d9e1e8;
+      --brand:#1f3a5f; --accent:#0f6a6a; --row:#f7fafc;
+      --sent:#2e8b57; --dry:#6b7684; --blocked:#b7791f; --failed:#b32b2b;
+    }
+    @media (prefers-color-scheme: dark){
+      :root{--bg:#0e1621;--panel:#16202b;--fg:#e6edf3;--muted:#9aa7b4;--border:#2a3644;--row:#111b26;--brand:#24405f}
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--fg);font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:14px}
+    header.top{background:var(--brand);color:#fff;padding:14px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+    header.top h1{font-size:17px;margin:0;font-weight:700}
+    header.top .muted{color:#c9d6e5;font-size:12px}
+    .conn{margin-left:auto;display:flex;gap:8px;align-items:center}
+    input,select,button{font:inherit;padding:7px 10px;border-radius:6px;border:1px solid var(--border);background:var(--panel);color:var(--fg)}
+    button{cursor:pointer;background:var(--accent);color:#fff;border:0;font-weight:600}
+    button.secondary{background:transparent;color:var(--fg);border:1px solid var(--border)}
+    .bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:12px 20px;border-bottom:1px solid var(--border);background:var(--panel)}
+    .stats{display:flex;gap:6px;flex-wrap:wrap}
+    .chip{font-size:12px;padding:3px 9px;border-radius:20px;border:1px solid var(--border);color:var(--muted)}
+    .wrap{display:grid;grid-template-columns:minmax(340px,1fr) minmax(360px,1.2fr);gap:0;height:calc(100vh - 118px)}
+    @media (max-width:820px){.wrap{grid-template-columns:1fr;height:auto}}
+    .list{overflow:auto;border-right:1px solid var(--border)}
+    table{width:100%;border-collapse:collapse}
+    th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:top}
+    th{position:sticky;top:0;background:var(--panel);color:var(--muted);font-weight:600;z-index:1}
+    tr.msg{cursor:pointer}
+    tr.msg:hover{background:var(--row)}
+    tr.msg.active{background:var(--row);outline:2px solid var(--accent);outline-offset:-2px}
+    .badge{display:inline-block;padding:2px 8px;border-radius:10px;color:#fff;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+    .b-sent{background:var(--sent)} .b-dry-run{background:var(--dry)} .b-blocked{background:var(--blocked)} .b-failed{background:var(--failed)}
+    .subj{font-weight:600} .to{color:var(--muted)}
+    .detail{overflow:auto;padding:16px 20px;background:var(--panel)}
+    .detail h2{font-size:15px;margin:0 0 10px}
+    .meta{width:100%;border:1px solid var(--border);border-radius:8px;margin:0 0 12px}
+    .meta td{padding:6px 10px;font-size:12px}
+    .meta td:first-child{color:var(--muted);width:34%}
+    iframe{width:100%;height:520px;border:1px solid var(--border);border-radius:8px;background:#fff}
+    .empty{padding:40px;text-align:center;color:var(--muted)}
+    .pager{display:flex;gap:8px;align-items:center;padding:10px 20px;border-top:1px solid var(--border);background:var(--panel)}
+    .src{font-size:11px;color:var(--muted)}
+    a{color:var(--accent)}
+  </style>
+</head>
+<body>
+  <header class="top">
+    <h1>Guardian — Sent inbox</h1>
+    <span class="muted">Read-only view of every email produced by the tool.</span>
+    <div class="conn">
+      <input id="token" type="password" placeholder="Paste admin bearer token" size="30" autocomplete="off">
+      <button id="connect">Connect</button>
+      <a href="<%= apiBase %>/test-console" class="src">Test console →</a>
+    </div>
+  </header>
+
+  <div class="bar">
+    <select id="status">
+      <option value="">All statuses</option>
+      <option value="sent">sent</option>
+      <option value="dry-run">dry-run</option>
+      <option value="blocked">blocked</option>
+      <option value="failed">failed</option>
+    </select>
+    <input id="template" placeholder="template (e.g. otp)" size="16">
+    <input id="q" placeholder="search subject / recipient" size="22">
+    <button id="refresh" class="secondary">Refresh</button>
+    <span class="stats" id="stats"></span>
+    <span class="src" id="source"></span>
+  </div>
+
+  <div class="wrap">
+    <div class="list">
+      <table>
+        <thead><tr><th>When</th><th>Status</th><th>To / Subject</th></tr></thead>
+        <tbody id="rows"><tr><td colspan="3" class="empty">Paste an admin token and press Connect.</td></tr></tbody>
+      </table>
+    </div>
+    <div class="detail" id="detail"><div class="empty">Select a message to preview it.</div></div>
+  </div>
+  <div class="pager">
+    <button id="prev" class="secondary">‹ Prev</button>
+    <span id="page">—</span>
+    <button id="next" class="secondary">Next ›</button>
+  </div>
+
+  <script>
+    var API = <%- JSON.stringify(apiBase) %>;
+    var state = { page: 1, pages: 1 };
+
+    function token(){ return document.getElementById('token').value.trim(); }
+    function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c];}); }
+
+    async function api(path){
+      var res = await fetch(API + path, { headers: { Authorization: 'Bearer ' + token() } });
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    }
+
+    function fmt(iso){ try{ return new Date(iso).toLocaleString('en-AU',{timeZone:'Australia/Perth'}); }catch(e){ return iso||''; } }
+
+    async function loadStats(){
+      try{
+        var s = await api('/inbox/stats');
+        var order=['sent','dry-run','blocked','failed'];
+        var chips = order.filter(function(k){return s.byStatus && s.byStatus[k];})
+          .map(function(k){ return '<span class="chip">'+k+': '+s.byStatus[k]+'</span>'; });
+        document.getElementById('stats').innerHTML = '<span class="chip">total: '+(s.total||0)+'</span>' + chips.join('');
+      }catch(e){ document.getElementById('stats').textContent=''; }
+    }
+
+    async function loadList(){
+      var params = new URLSearchParams();
+      params.set('page', state.page);
+      var st=document.getElementById('status').value; if(st) params.set('status', st);
+      var tpl=document.getElementById('template').value.trim(); if(tpl) params.set('template', tpl);
+      var q=document.getElementById('q').value.trim(); if(q) params.set('q', q);
+
+      var rows = document.getElementById('rows');
+      try{
+        var data = await api('/inbox?' + params.toString());
+        state.pages = data.pages || 1;
+        document.getElementById('page').textContent = 'Page ' + data.page + ' of ' + data.pages + ' (' + data.total + ')';
+        document.getElementById('source').textContent = data.source === 'memory' ? 'source: in-memory (no database connected)' : 'source: database';
+        if(!data.entries.length){ rows.innerHTML = '<tr><td colspan="3" class="empty">No messages.</td></tr>'; document.getElementById('detail').innerHTML='<div class="empty">No messages.</div>'; return; }
+        rows.innerHTML = data.entries.map(function(e){
+          var to = (e.to||[]).join(', ');
+          return '<tr class="msg" data-id="'+esc(e.id)+'">'
+            + '<td>'+esc(fmt(e.createdAt))+'</td>'
+            + '<td><span class="badge b-'+esc(e.status)+'">'+esc(e.status)+'</span></td>'
+            + '<td><div class="subj">'+esc(e.subject||'(no subject)')+'</div><div class="to">'+esc(to)+' · '+esc(e.template||'')+'</div></td>'
+            + '</tr>';
+        }).join('');
+        Array.prototype.forEach.call(rows.querySelectorAll('tr.msg'), function(tr){
+          tr.addEventListener('click', function(){ selectRow(tr); openMessage(tr.getAttribute('data-id')); });
+        });
+      }catch(e){
+        rows.innerHTML = '<tr><td colspan="3" class="empty">Could not load ('+esc(e.message)+'). Check the token.</td></tr>';
+      }
+    }
+
+    function selectRow(tr){
+      Array.prototype.forEach.call(document.querySelectorAll('tr.msg'), function(x){ x.classList.remove('active'); });
+      tr.classList.add('active');
+    }
+
+    async function openMessage(id){
+      var d = document.getElementById('detail');
+      d.innerHTML = '<div class="empty">Loading…</div>';
+      try{
+        var e = await api('/inbox/' + encodeURIComponent(id));
+        var meta = [
+          ['Status', '<span class="badge b-'+esc(e.status)+'">'+esc(e.status)+'</span>'],
+          ['When', esc(fmt(e.createdAt))],
+          ['Template', esc(e.template||'')],
+          ['From', esc(e.from||'')],
+          ['To', esc((e.to||[]).join(', '))],
+          ['Subject', esc(e.subject||'')],
+          ['Provider', esc(e.provider||'') + (e.requestedProvider && e.requestedProvider!==e.provider ? ' (requested '+esc(e.requestedProvider)+')' : '')],
+          ['Message ID', esc(e.messageId||'—')],
+          (e.attachments&&e.attachments.length)?['Attachments', esc(e.attachments.map(function(a){return a.filename;}).join(', '))]:null,
+          (e.blockedRecipients&&e.blockedRecipients.length)?['Blocked', esc(e.blockedRecipients.join(', '))]:null,
+          e.error?['Error', esc(e.error)]:null
+        ].filter(Boolean).map(function(r){ return '<tr><td>'+r[0]+'</td><td>'+r[1]+'</td></tr>'; }).join('');
+
+        var frame = document.createElement('iframe');
+        frame.setAttribute('sandbox','');
+        d.innerHTML = '<h2>'+esc(e.subject||'(no subject)')+'</h2><table class="meta">'+meta+'</table>';
+        d.appendChild(frame);
+        frame.srcdoc = e.html || '<p style="font-family:sans-serif;color:#888">No HTML body (text only).</p>';
+      }catch(err){
+        d.innerHTML = '<div class="empty">Could not load message ('+esc(err.message)+').</div>';
+      }
+    }
+
+    function connect(){ state.page=1; loadStats(); loadList(); }
+    document.getElementById('connect').addEventListener('click', connect);
+    document.getElementById('refresh').addEventListener('click', function(){ state.page=1; loadStats(); loadList(); });
+    document.getElementById('status').addEventListener('change', function(){ state.page=1; loadList(); });
+    document.getElementById('q').addEventListener('keydown', function(e){ if(e.key==='Enter'){ state.page=1; loadList(); } });
+    document.getElementById('template').addEventListener('keydown', function(e){ if(e.key==='Enter'){ state.page=1; loadList(); } });
+    document.getElementById('prev').addEventListener('click', function(){ if(state.page>1){ state.page--; loadList(); } });
+    document.getElementById('next').addEventListener('click', function(){ if(state.page<state.pages){ state.page++; loadList(); } });
+  </script>
+</body>
+</html>

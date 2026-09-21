@@ -1,0 +1,552 @@
+<%#
+  Guardian Email Service — email-test-console.ejs
+
+  Browser-based test console for previewing and sending Guardian emails. Unauthenticated page that drives the admin API using a bearer token pasted in by the operator.
+
+  Author: Graeme Thomas
+  Date:   2026-08-08
+%>
+
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Guardian — Email Test Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #14171c;
+    --panel: #1b1f26;
+    --panel-2: #21262e;
+    --border: #2e353f;
+    --text: #d5dae1;
+    --muted: #7f8b9a;
+    --accent: #4fc3c3;
+    --accent-dim: #2e8b8b;
+    --ok: #5fbf7f;
+    --warn: #d9a441;
+    --err: #e06c6c;
+    --mono: 'JetBrains Mono', 'Cascadia Mono', Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: var(--mono); font-size: 13px; line-height: 1.5;
+  }
+  header {
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    padding: 12px 18px; background: var(--panel);
+    border-bottom: 1px solid var(--border);
+  }
+  header h1 { margin: 0; font-size: 15px; font-weight: 700; letter-spacing: 0.5px; }
+  header h1 span { color: var(--accent); }
+  .spacer { flex: 1; }
+  .layout { display: grid; grid-template-columns: 380px 1fr; gap: 0; height: calc(100vh - 49px); }
+  @media (max-width: 980px) { .layout { grid-template-columns: 1fr; height: auto; } }
+  .col { overflow-y: auto; padding: 16px 18px; }
+  .col.left { border-right: 1px solid var(--border); background: var(--panel); }
+  fieldset {
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 12px 14px 14px; margin: 0 0 16px;
+  }
+  legend { padding: 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--accent); }
+  label { display: block; font-size: 11px; color: var(--muted); margin: 10px 0 4px; text-transform: uppercase; letter-spacing: 0.6px; }
+  label .req { color: var(--err); }
+  input[type=text], input[type=email], input[type=url], input[type=number], input[type=password], select, textarea {
+    width: 100%; padding: 7px 9px; background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 4px; font-family: var(--mono); font-size: 12.5px;
+  }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent-dim); }
+  textarea { min-height: 76px; resize: vertical; }
+  .help { font-size: 10.5px; color: var(--muted); margin-top: 3px; }
+  .row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+  .row > * { flex: 1; min-width: 120px; }
+  .check { display: flex; align-items: center; gap: 7px; margin-top: 12px; }
+  .check input { width: auto; }
+  .check label { margin: 0; text-transform: none; letter-spacing: 0; font-size: 12px; color: var(--text); }
+  button {
+    padding: 8px 14px; background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 4px;
+    font-family: var(--mono); font-size: 12px; cursor: pointer;
+  }
+  button:hover:not(:disabled) { border-color: var(--accent-dim); color: var(--accent); }
+  button.primary { background: var(--accent-dim); border-color: var(--accent-dim); color: #0d1114; font-weight: 700; }
+  button.primary:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); color: #0d1114; }
+  button.danger:hover:not(:disabled) { border-color: var(--err); color: var(--err); }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 12px; flex-wrap: wrap; }
+  .tab {
+    padding: 7px 14px; cursor: pointer; font-size: 12px; color: var(--muted);
+    border: 1px solid transparent; border-bottom: none; border-radius: 4px 4px 0 0;
+  }
+  .tab.active { color: var(--accent); background: var(--panel); border-color: var(--border); }
+  .pane { display: none; }
+  .pane.active { display: block; }
+  iframe#preview { width: 100%; height: 640px; border: 1px solid var(--border); border-radius: 6px; background: #fff; }
+  pre {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
+    padding: 12px; overflow: auto; margin: 0; font-size: 12px; white-space: pre-wrap; word-break: break-word;
+  }
+  .pill {
+    display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10.5px;
+    font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; border: 1px solid;
+  }
+  .pill.ok { color: var(--ok); border-color: var(--ok); }
+  .pill.warn { color: var(--warn); border-color: var(--warn); }
+  .pill.err { color: var(--err); border-color: var(--err); }
+  .pill.mute { color: var(--muted); border-color: var(--muted); }
+  #status { font-size: 12px; padding: 8px 12px; border-radius: 4px; margin-bottom: 12px; display: none; }
+  #status.show { display: block; }
+  #status.ok { background: rgba(95,191,127,0.1); border: 1px solid var(--ok); color: var(--ok); }
+  #status.err { background: rgba(224,108,108,0.1); border: 1px solid var(--err); color: var(--err); }
+  #status.info { background: rgba(79,195,195,0.08); border: 1px solid var(--accent-dim); color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { text-align: left; padding: 7px 9px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.7px; }
+  tr.clickable { cursor: pointer; }
+  tr.clickable:hover td { background: var(--panel-2); }
+  .desc { font-size: 11.5px; color: var(--muted); margin: 8px 0 0; }
+  .warnlist { margin: 8px 0 0; padding-left: 18px; font-size: 11.5px; color: var(--warn); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Guardian <span>// email test console</span></h1>
+  <span id="providerPill" class="pill mute">not connected</span>
+  <span id="dryPill" class="pill mute" style="display:none">dry run</span>
+  <div class="spacer"></div>
+  <span style="font-size:11px;color:var(--muted)" id="envLabel"></span>
+</header>
+
+<div class="layout">
+  <!-- ------------------------------------------------------------------ -->
+  <div class="col left">
+    <fieldset>
+      <legend>Session</legend>
+      <label for="token">Admin bearer token <span class="req">*</span></label>
+      <input type="password" id="token" placeholder="eyJhbGciOi..." autocomplete="off">
+      <div class="help">JWT from POST /api/v1/auth/login for an admin user. Kept in this tab only.</div>
+      <div class="btns">
+        <button class="primary" id="connectBtn">Connect</button>
+        <button id="forgetBtn">Forget token</button>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Delivery</legend>
+      <label for="provider">Provider override</label>
+      <select id="provider">
+        <option value="">(use server default)</option>
+        <option value="dryrun">dryrun — render only</option>
+        <option value="resend">resend</option>
+        <option value="brevo">brevo</option>
+        <option value="mailersend">mailersend</option>
+        <option value="smtp">smtp — local catcher / relay</option>
+      </select>
+      <div class="btns">
+        <button id="verifyBtn">Check connection</button>
+      </div>
+      <div class="check">
+        <input type="checkbox" id="dryRun" checked>
+        <label for="dryRun">Dry run (render and record, do not deliver)</label>
+      </div>
+      <div class="help">Uncheck to actually deliver. Recipients must pass EMAIL_ALLOWLIST.</div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Template</legend>
+      <select id="template"><option value="">— connect first —</option></select>
+      <p class="desc" id="templateDesc"></p>
+      <div id="fields"></div>
+      <div class="btns">
+        <button id="sampleBtn">Load sample</button>
+        <button id="previewBtn">Preview</button>
+        <button class="primary" id="sendBtn">Send</button>
+      </div>
+    </fieldset>
+  </div>
+
+  <!-- ------------------------------------------------------------------ -->
+  <div class="col right">
+    <div id="status"></div>
+
+    <div class="tabs">
+      <div class="tab active" data-pane="html">HTML preview</div>
+      <div class="tab" data-pane="text">Plain text</div>
+      <div class="tab" data-pane="result">Result</div>
+      <div class="tab" data-pane="outbox">Outbox</div>
+      <div class="tab" data-pane="config">Config</div>
+    </div>
+
+    <div class="pane active" id="pane-html">
+      <p class="desc" id="subjectLine">Subject will appear here after a preview.</p>
+      <iframe id="preview" title="Email preview" sandbox=""></iframe>
+    </div>
+
+    <div class="pane" id="pane-text"><pre id="textOut">No preview yet.</pre></div>
+
+    <div class="pane" id="pane-result"><pre id="resultOut">No send yet.</pre></div>
+
+    <div class="pane" id="pane-outbox">
+      <div class="btns" style="margin:0 0 12px">
+        <button id="refreshOutbox">Refresh</button>
+        <button class="danger" id="clearOutbox">Clear outbox</button>
+      </div>
+      <table>
+        <thead><tr><th>Time</th><th>Status</th><th>Template</th><th>To</th><th>Provider</th></tr></thead>
+        <tbody id="outboxBody"><tr><td colspan="5" style="color:var(--muted)">Connect to load.</td></tr></tbody>
+      </table>
+    </div>
+
+    <div class="pane" id="pane-config"><pre id="configOut">Connect to load configuration.</pre></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var API = <%- JSON.stringify(apiBase) %>;
+  var TOKEN_KEY = 'guardian.email.console.token';
+
+  var state = { templates: [], current: null };
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  function token() { return $('token').value.trim(); }
+
+  function setStatus(kind, text) {
+    var el = $('status');
+    el.className = 'show ' + kind;
+    el.textContent = text;
+  }
+
+  function clearStatus() { $('status').className = ''; }
+
+  function api(path, options) {
+    options = options || {};
+    var headers = { 'Content-Type': 'application/json' };
+    if (token()) headers.Authorization = 'Bearer ' + token();
+
+    return fetch(API + path, {
+      method: options.method || 'GET',
+      headers: headers,
+      body: options.body ? JSON.stringify(options.body) : undefined
+    }).then(function (response) {
+      var type = response.headers.get('content-type') || '';
+      var parse = type.indexOf('application/json') !== -1 ? response.json() : response.text();
+
+      return parse.then(function (payload) {
+        if (!response.ok) {
+          var message = (payload && (payload.message || payload.error)) || ('HTTP ' + response.status);
+          var error = new Error(message);
+          error.payload = payload;
+          error.status = response.status;
+          throw error;
+        }
+        return payload;
+      });
+    });
+  }
+
+  /* ---------------- tabs ---------------- */
+  Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (tab) {
+    tab.addEventListener('click', function () {
+      Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (t) { t.classList.remove('active'); });
+      Array.prototype.forEach.call(document.querySelectorAll('.pane'), function (p) { p.classList.remove('active'); });
+      tab.classList.add('active');
+      $('pane-' + tab.dataset.pane).classList.add('active');
+      if (tab.dataset.pane === 'outbox') loadOutbox();
+    });
+  });
+
+  function showPane(name) {
+    var tab = document.querySelector('.tab[data-pane="' + name + '"]');
+    if (tab) tab.click();
+  }
+
+  /* ---------------- connect ---------------- */
+  function connect() {
+    if (!token()) { setStatus('err', 'Enter an admin bearer token first.'); return; }
+
+    setStatus('info', 'Connecting…');
+
+    Promise.all([api('/config'), api('/templates')])
+      .then(function (results) {
+        var config = results[0];
+        var templates = results[1].templates;
+
+        try { sessionStorage.setItem(TOKEN_KEY, token()); } catch (e) { /* non-fatal */ }
+
+        state.templates = templates;
+        renderConfig(config);
+        renderTemplateOptions(templates);
+        loadOutbox();
+        setStatus('ok', 'Connected. ' + templates.length + ' templates available.');
+      })
+      .catch(function (error) {
+        setStatus('err', 'Connect failed: ' + error.message);
+        $('providerPill').className = 'pill err';
+        $('providerPill').textContent = 'error';
+      });
+  }
+
+  function renderConfig(config) {
+    $('configOut').textContent = JSON.stringify(config, null, 2);
+    $('envLabel').textContent = config.environment + ' · from ' + config.from;
+
+    $('providerPill').className = 'pill ' + (config.validation.ok ? 'ok' : 'err');
+    $('providerPill').textContent = config.provider;
+
+    var dry = $('dryPill');
+    dry.style.display = config.dryRun ? 'inline-block' : 'none';
+    dry.className = 'pill warn';
+    dry.textContent = 'server dry run';
+
+    var messages = config.validation.errors.concat(config.validation.warnings);
+    if (messages.length) setStatus(config.validation.ok ? 'info' : 'err', messages.join(' | '));
+  }
+
+  function renderTemplateOptions(templates) {
+    var select = $('template');
+    select.innerHTML = '';
+
+    var categories = {};
+    templates.forEach(function (t) {
+      categories[t.category] = categories[t.category] || [];
+      categories[t.category].push(t);
+    });
+
+    Object.keys(categories).forEach(function (category) {
+      var group = document.createElement('optgroup');
+      group.label = category;
+      categories[category].forEach(function (t) {
+        var option = document.createElement('option');
+        option.value = t.key;
+        option.textContent = t.name;
+        group.appendChild(option);
+      });
+      select.appendChild(group);
+    });
+
+    select.value = templates[0] ? templates[0].key : '';
+    renderFields();
+  }
+
+  /* ---------------- dynamic form ---------------- */
+  function renderFields() {
+    var key = $('template').value;
+    state.current = state.templates.filter(function (t) { return t.key === key; })[0] || null;
+
+    $('templateDesc').textContent = state.current ? state.current.description : '';
+
+    var container = $('fields');
+    container.innerHTML = '';
+    if (!state.current) return;
+
+    state.current.fields.forEach(function (field) {
+      var label = document.createElement('label');
+      label.setAttribute('for', 'f_' + field.name);
+      label.innerHTML = field.label + (field.required ? ' <span class="req">*</span>' : '');
+      container.appendChild(label);
+
+      var input;
+      if (field.choices && field.choices.length) {
+        input = document.createElement('select');
+        if (!field.required) input.appendChild(new Option('', ''));
+        field.choices.forEach(function (choice) { input.appendChild(new Option(choice, choice)); });
+      } else if (field.type === 'textarea') {
+        input = document.createElement('textarea');
+      } else {
+        input = document.createElement('input');
+        input.type = field.type === 'number' ? 'number'
+          : field.type === 'email' ? 'email'
+          : field.type === 'url' ? 'url' : 'text';
+      }
+
+      input.id = 'f_' + field.name;
+      input.dataset.field = field.name;
+      container.appendChild(input);
+
+      if (field.help) {
+        var help = document.createElement('div');
+        help.className = 'help';
+        help.textContent = field.help;
+        container.appendChild(help);
+      }
+    });
+  }
+
+  function collectData() {
+    var data = {};
+    Array.prototype.forEach.call($('fields').querySelectorAll('[data-field]'), function (input) {
+      var value = input.value.trim();
+      if (value !== '') data[input.dataset.field] = value;
+    });
+    return data;
+  }
+
+  function loadSample() {
+    if (!state.current) return;
+
+    api('/templates/' + encodeURIComponent(state.current.key) + '/sample')
+      .then(function (response) {
+        Object.keys(response.sample).forEach(function (name) {
+          var input = document.getElementById('f_' + name);
+          if (input) input.value = response.sample[name];
+        });
+        setStatus('ok', 'Sample data loaded.');
+      })
+      .catch(function (error) { setStatus('err', error.message); });
+  }
+
+  /* ---------------- preview / send ---------------- */
+  function preview() {
+    if (!state.current) { setStatus('err', 'Select a template.'); return; }
+    setStatus('info', 'Rendering…');
+
+    api('/preview', { method: 'POST', body: { template: state.current.key, data: collectData() } })
+      .then(function (rendered) {
+        $('preview').srcdoc = rendered.html;
+        $('subjectLine').textContent = 'Subject: ' + rendered.subject;
+        $('textOut').textContent = rendered.text || '(no plain-text alternative)';
+        showPane('html');
+        setStatus('ok', 'Rendered "' + rendered.template + '". Nothing was sent.');
+      })
+      .catch(function (error) {
+        setStatus('err', error.message + (error.payload && error.payload.fields ? ' [' + error.payload.fields.join(', ') + ']' : ''));
+      });
+  }
+
+  function send() {
+    if (!state.current) { setStatus('err', 'Select a template.'); return; }
+
+    var dry = $('dryRun').checked;
+    var data = collectData();
+
+    if (!dry && !window.confirm('Deliver a real email to ' + (data.to || '(no recipient)') + '?')) return;
+
+    setStatus('info', dry ? 'Dry-run send…' : 'Sending…');
+    $('sendBtn').disabled = true;
+
+    api('/send', {
+      method: 'POST',
+      body: {
+        template: state.current.key,
+        data: data,
+        provider: $('provider').value || undefined,
+        dryRun: dry
+      }
+    })
+      .then(function (result) {
+        $('resultOut').textContent = JSON.stringify(result, null, 2);
+        showPane('result');
+        setStatus('ok', result.status + ' via ' + result.provider + ' — id ' + result.id);
+        loadOutbox();
+      })
+      .catch(function (error) {
+        $('resultOut').textContent = JSON.stringify(error.payload || { error: error.message }, null, 2);
+        showPane('result');
+        setStatus('err', error.message);
+      })
+      .then(function () { $('sendBtn').disabled = false; });
+  }
+
+  /* ---------------- outbox ---------------- */
+  function loadOutbox() {
+    if (!token()) return;
+
+    api('/outbox?limit=40')
+      .then(function (response) {
+        var body = $('outboxBody');
+        body.innerHTML = '';
+
+        if (!response.entries.length) {
+          body.innerHTML = '<tr><td colspan="5" style="color:var(--muted)">Outbox is empty.</td></tr>';
+          return;
+        }
+
+        response.entries.forEach(function (entry) {
+          var row = document.createElement('tr');
+          row.className = 'clickable';
+          row.title = 'Click to load this message into the preview pane';
+
+          var kind = entry.status === 'sent' ? 'ok'
+            : entry.status === 'dry-run' ? 'warn'
+            : entry.status === 'failed' || entry.status === 'blocked' ? 'err' : 'mute';
+
+          row.innerHTML =
+            '<td>' + new Date(entry.createdAt).toLocaleTimeString() + '</td>' +
+            '<td><span class="pill ' + kind + '">' + entry.status + '</span></td>' +
+            '<td>' + entry.template + '</td>' +
+            '<td>' + (entry.to || []).join(', ') + '</td>' +
+            '<td>' + entry.provider + '</td>';
+
+          row.addEventListener('click', function () { openOutboxEntry(entry.id); });
+          body.appendChild(row);
+        });
+      })
+      .catch(function (error) { setStatus('err', 'Outbox: ' + error.message); });
+  }
+
+  function openOutboxEntry(id) {
+    api('/outbox/' + encodeURIComponent(id))
+      .then(function (entry) {
+        $('preview').srcdoc = entry.html || '<p>No HTML body.</p>';
+        $('subjectLine').textContent = 'Subject: ' + entry.subject;
+        $('textOut').textContent = entry.text || '(no plain-text alternative)';
+        $('resultOut').textContent = JSON.stringify(entry, null, 2);
+        showPane('html');
+        setStatus('info', 'Loaded outbox entry ' + entry.id + ' (' + entry.status + ').');
+      })
+      .catch(function (error) { setStatus('err', error.message); });
+  }
+
+  /* ---------------- wiring ---------------- */
+  $('connectBtn').addEventListener('click', connect);
+  $('forgetBtn').addEventListener('click', function () {
+    try { sessionStorage.removeItem(TOKEN_KEY); } catch (e) { /* non-fatal */ }
+    $('token').value = '';
+    setStatus('info', 'Token cleared from this tab.');
+  });
+  $('template').addEventListener('change', renderFields);
+  $('sampleBtn').addEventListener('click', loadSample);
+  $('previewBtn').addEventListener('click', preview);
+  $('sendBtn').addEventListener('click', send);
+  $('verifyBtn').addEventListener('click', function () {
+    setStatus('info', 'Checking connection…');
+    api('/verify-connection', { method: 'POST', body: { provider: $('provider').value || undefined } })
+      .then(function (result) {
+        $('resultOut').textContent = JSON.stringify(result, null, 2);
+        showPane('result');
+        if (result.supported === false) setStatus('info', result.message);
+        else setStatus('ok', 'Reached ' + result.host + ':' + result.port + '.');
+      })
+      .catch(function (error) {
+        $('resultOut').textContent = JSON.stringify(error.payload || { error: error.message }, null, 2);
+        showPane('result');
+        setStatus('err', 'Connection failed: ' + error.message);
+      });
+  });
+  $('refreshOutbox').addEventListener('click', loadOutbox);
+  $('clearOutbox').addEventListener('click', function () {
+    if (!window.confirm('Clear the in-memory outbox?')) return;
+    api('/outbox', { method: 'DELETE' })
+      .then(function () { loadOutbox(); setStatus('ok', 'Outbox cleared.'); })
+      .catch(function (error) { setStatus('err', error.message); });
+  });
+
+  try {
+    var saved = sessionStorage.getItem(TOKEN_KEY);
+    if (saved) { $('token').value = saved; connect(); }
+  } catch (e) { /* sessionStorage unavailable */ }
+})();
+</script>
+</body>
+</html>

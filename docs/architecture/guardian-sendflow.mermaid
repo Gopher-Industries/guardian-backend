@@ -1,0 +1,26 @@
+%% Guardian email — send-request flow (POST /api/v1/email/send-option, Brevo)
+sequenceDiagram
+  autonumber
+  participant C as Consumer
+  participant S as Express + Auth
+  participant Ctl as emailController
+  participant Svc as emailService
+  participant T as templates
+  participant P as brevoProvider
+  participant B as Brevo API
+  participant DB as MongoDB (inbox)
+
+  C->>S: POST /email/send-option { to, option }
+  S->>S: verifyToken + verifyRole('admin')
+  S->>Ctl: sendOption(req)
+  Ctl->>Svc: sendByOption(option, to, data)
+  Svc->>T: fill sample + render(option)
+  T-->>Svc: subject, html, text
+  Svc->>Svc: validate address · allowlist · dry-run?
+  Svc->>P: send(payload)  [provider = brevo]
+  P->>B: sendTransacEmail(payload + API key)
+  B-->>P: { messageId }
+  P-->>Svc: { provider: brevo, messageId }
+  Svc->>DB: persist sent record (best-effort)
+  Svc-->>Ctl: { status: sent, messageId }
+  Ctl-->>C: 202 Accepted

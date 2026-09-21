@@ -29,9 +29,10 @@ router.use(verifyToken, verifyRole(['admin']));
  *           schema:
  *             $ref: '#/components/schemas/AdminPatientCreateRequest'
  *           example:
- *             name: "Robert Brown"
+ *             fullname: "Robert Brown"
  *             age: 68
  *             gender: "male"
+ *             dateOfBirth: "March, 3 1945"
  *             caretakerId: "664f1c2e8b1a2c3d4e5f6a7b"
  *             nurseId: "664f1c2e8b1a2c3d4e5f6a7c"
  *             doctorId: "664f1c2e8b1a2c3d4e5f6a7d"

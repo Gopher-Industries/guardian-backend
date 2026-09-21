@@ -92,52 +92,7 @@ exports.listDoctors = async (req, res) => {
   }
 };
 
-/**
- * @swagger
- * /api/v1/patients/{patientId}/assign-doctor:
- *   post:
- *     summary: Assign or unassign a doctor to a patient
- *     description: >-
- *       Admins or caretakers can assign a doctor to a patient.
- *       Send `{ "doctorId": null }` to unassign.
- *     tags: [Doctor]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: patientId
- *         required: true
- *         schema:
- *           type: string
- *         description: Patient ObjectId
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               doctorId:
- *                 type: string
- *                 nullable: true
- *                 description: Doctor ObjectId, or null to unassign
- *           examples:
- *             assign:
- *               summary: Assign a doctor
- *               value: { doctorId: "66fabc1234567890abcdef12" }
- *             unassign:
- *               summary: Unassign the current doctor
- *               value: { doctorId: null }
- *     responses:
- *       200:
- *         description: Assignment updated
- *       400:
- *         description: Invalid request
- *       404:
- *         description: Patient or doctor not found
- *       500:
- *         description: Server error
- */
+
 exports.assignDoctorToPatient = async (req, res) => {
   try {
     const { patientId } = req.params;
@@ -191,104 +146,7 @@ exports.assignDoctorToPatient = async (req, res) => {
   }
 };
 
-/**
- * @swagger
- * /api/v1/doctors/profile:
- *   get:
- *     summary: Get the logged-in doctor's profile
- *     description: >-
- *       Returns the full profile for the currently authenticated doctor, combining their
- *       User account details (name, email, role, organisation, assigned patients) with their
- *       Doctor-specific record (specialization, licenseNumber) stored in a separate collection.
- *       The doctor is identified from the JWT — no query parameters are required.
- *       Requires a valid JWT issued to a user with the **doctor** role.
- *     tags: [Doctor]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Doctor profile fetched successfully.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 _id:
- *                   type: string
- *                   example: "6641a2f3c89e4b001f3d9abc"
- *                 fullname:
- *                   type: string
- *                   example: "Dr. Seed"
- *                 email:
- *                   type: string
- *                   example: "johndoctor@example.com"
- *                 role:
- *                   type: object
- *                   properties:
- *                     _id:
- *                       type: string
- *                     name:
- *                       type: string
- *                       example: "doctor"
- *                 organization:
- *                   type: object
- *                   nullable: true
- *                   properties:
- *                     _id:
- *                       type: string
- *                     name:
- *                       type: string
- *                 assignedPatients:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       _id:
- *                         type: string
- *                       fullname:
- *                         type: string
- *                       age:
- *                         type: number
- *                       gender:
- *                         type: string
- *                 profile:
- *                   type: object
- *                   description: Doctor-specific data stored in the Doctor collection. Empty object if not yet set.
- *                   properties:
- *                     specialization:
- *                       type: string
- *                       nullable: true
- *                       example: "Geriatrics"
- *                     licenseNumber:
- *                       type: string
- *                       nullable: true
- *                       description: >-
- *                         Medical registration number. Accepted as a free-form string for now.
- *                         TODO: implement proper format and authority validation
- *                         (e.g. verify against PRC/PMA registry or enforce a country-specific pattern).
- *                       example: "MED-2024-001"
- *       404:
- *         description: The authenticated user's doctor record was not found.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: "Doctor not found"
- *       500:
- *         description: Unexpected server error.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                 details:
- *                   type: string
- */
+
 exports.getProfile = async (req, res) => {
   try {
     const doctorId = req.user._id;
@@ -621,45 +479,7 @@ exports.getDashboardSummary = async (req, res) => {
   }
 };
 
-/**
- * @swagger
- * /api/v1/doctors/{doctorId}/patients:
- *   get:
- *     summary: Get patients assigned to a doctor
- *     description: Returns a paginated list of patients whose `assignedDoctor` equals the given doctorId. Allowed for the same doctor, admin, or caretaker.
- *     tags: [Doctor]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: doctorId
- *         required: true
- *         schema:
- *           type: string
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *           minimum: 1
- *           default: 1
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           minimum: 1
- *           default: 20
- *     responses:
- *       200:
- *         description: List of patients for the doctor
- *       400:
- *         description: Invalid doctorId
- *       403:
- *         description: Forbidden
- *       404:
- *         description: Doctor not found
- *       500:
- *         description: Server error
- */
+
 exports.listPatientsByDoctor = async (req, res) => {
     try {
       const { doctorId } = req.params;
@@ -692,7 +512,10 @@ exports.listPatientsByDoctor = async (req, res) => {
           ? roleRaw.toLowerCase()
           : (roleRaw && roleRaw.name ? String(roleRaw.name).toLowerCase() : null);
   
-      const isDoctorRequester = (roleId === doctorRoleId) || (roleName === 'doctor');
+      const isDoctorRequester =
+          req.userRole === 'doctor' ||
+          roleId === doctorRoleId ||
+          roleName === 'doctor';
   
       // If requester is a doctor, they must be asking for THEIR OWN patients
       const requesterId = String(u._id || u.id || '');

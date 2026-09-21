@@ -15,21 +15,21 @@ const connectDB = async () => {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
+
     console.log("MongoDB connected successfully");
 
-    // Seed roles when the server starts
     await seedRoles();
-
-    // Seed data when the server starts
     await seedData();
     await seedStaffData();
     await seedDoctorData();
+
     console.log("Data seeded successfully");
   } catch (err) {
     console.error("MongoDB connection error:", err.message);
-    process.exit(1); // Exit with failure code
+    process.exit(1);
   }
 };
 
 connectDB();
+
 module.exports = mongoose;
