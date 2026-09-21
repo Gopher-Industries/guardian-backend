@@ -5,10 +5,8 @@ const notifyRules = require('../services/notifyRules');
 const Role = require('../models/Role');
 const { parseStringArray } = require('../utils/arrayUtils');
 
-/**
- * Restricts independent patient-management routes for approved organization-linked
- * nurses and caretakers. These users must use the organization-based workflow.
- */
+// Restricts independent patient-management routes for approved organization-linked
+// nurses and caretakers. These users must use the organization-based workflow.
 async function blockIndependentPatientWorkForApprovedOrgMember(userId) {
   const user = await User.findById(userId).populate('role', 'name');
   if (!user) {
@@ -191,6 +189,8 @@ async function buildVisiblePatientFilter(userId, options = {}) {
  *       403:
  *         description: Approved organization members cannot use independent patient routes
  */
+
+
 exports.addPatient = async (req, res) => {
   try {
     const accessCheck = await blockIndependentPatientWorkForApprovedOrgMember(req.user._id);
@@ -511,6 +511,7 @@ exports.findPatientIdsByName = async (req, res) => {
  *       500:
  *         description: Internal server error while updating the patient
  */
+
 exports.updatePatient = async (req, res) => {
   try {
     const block = await blockIndependentPatientWorkForApprovedOrgMember(req.user._id);
@@ -640,32 +641,7 @@ exports.updatePatient = async (req, res) => {
   }
 };
 
-/**
- * @swagger
- * /api/v1/patients/{patientId}:
- *   delete:
- *     summary: Soft delete a patient in the independent freelance flow
- *     description: Marks a patient as deleted for an authorized caretaker or assigned nurse within the independent workflow.
- *     tags: [Patient]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: patientId
- *         required: true
- *         schema:
- *           type: string
- *         description: Patient ID
- *     responses:
- *       200:
- *         description: Patient deleted successfully
- *       403:
- *         description: Approved organization members cannot use independent delete routes, or the user is not authorized for this patient
- *       404:
- *         description: Patient not found
- *       500:
- *         description: Internal server error while deleting the patient
- */
+
 exports.deletePatient = async (req, res) => {
   try {
     const block = await blockIndependentPatientWorkForApprovedOrgMember(req.user._id);
@@ -709,77 +685,7 @@ exports.deletePatient = async (req, res) => {
   }
 };
 
-/**
- * @swagger
- * /api/v1/patients/{patientId}:
- *   get:
- *     summary: Fetch patient details by ID
- *     description: Retrieves a non-deleted patient record by its ID.
- *     tags: [Patient]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: patientId
- *         required: true
- *         schema:
- *           type: string
- *         description: MongoDB ObjectId of the patient
- *     responses:
- *       200:
- *         description: Patient details
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 _id: { type: string }
- *                 fullname: { type: string }
- *                 gender: { type: string, enum: [M, F, other] }
- *                 dateOfBirth: { type: string, format: date }
- *                 age: { type: integer }
- *                 profilePhoto: { type: string, nullable: true }
- *                 dateOfAdmitting: { type: string, format: date, nullable: true }
- *                 description: { type: string }
- *                 emergencyContactName: { type: string, nullable: true }
- *                 emergencyContactNumber: { type: string, nullable: true }
- *                 nextOfKinName:
- *                   type: string
- *                   nullable: true
- *                   description: Full name of the patient's next of kin
- *                 nextOfKinRelationship:
- *                   type: string
- *                   nullable: true
- *                   enum: [SPOUSE, PARENT, CHILD, SIBLING, GRANDPARENT, GUARDIAN, CARER, FRIEND, OTHER]
- *                   description: Relationship of the next of kin to the patient
- *                 medicalSummary: { type: string, nullable: true }
- *                 allergies:
- *                   type: array
- *                   items: { type: string }
- *                 conditions:
- *                   type: array
- *                   items: { type: string }
- *                 notes: { type: string, nullable: true }
- *                 caretaker:
- *                   type: object
- *                   nullable: true
- *                   properties:
- *                     _id: { type: string }
- *                     fullname: { type: string }
- *                     email: { type: string }
- *                 assignedNurses:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       _id: { type: string }
- *                       fullname: { type: string }
- *                       email: { type: string }
- *       400:
- *         description: Invalid patient ID or request error
- *       404:
- *         description: Patient not found
- */
+
 exports.getPatientDetails = async (req, res) => {
   try {
     const { patientId } = req.params;
@@ -812,41 +718,7 @@ exports.getPatientDetails = async (req, res) => {
   }
 };
 
-/**
- * @swagger
- * /api/v1/patients/assign-nurse:
- *   post:
- *     summary: Assign a nurse to a patient
- *     description: Assigns a nurse to a patient and updates both the patient and nurse records.
- *     tags: [Patient]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - nurseId
- *               - patientId
- *             properties:
- *               nurseId:
- *                 type: string
- *               patientId:
- *                 type: string
- *     responses:
- *       200:
- *         description: Nurse assigned successfully
- *       400:
- *         description: Selected user is not a nurse
- *       403:
- *         description: Approved organization members cannot use independent patient routes
- *       404:
- *         description: Invalid nurse or patient ID
- *       500:
- *         description: Internal server error while assigning the nurse
- */
+
 exports.assignNurseToPatient = async (req, res) => {
   try {
     const accessCheck = await blockIndependentPatientWorkForApprovedOrgMember(req.user._id);
@@ -895,29 +767,7 @@ exports.assignNurseToPatient = async (req, res) => {
   }
 };
 
-/**
- * @swagger
- * /api/v1/patients/assigned-patients:
- *   get:
- *     summary: Fetch assigned patients for a nurse or caretaker
- *     description: Returns patients assigned to the authenticated nurse or caretaker.
- *     tags: [Patient]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Assigned patients fetched successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Patient'
- *       403:
- *         description: Unauthorized role or invalid role information
- *       500:
- *         description: Internal server error while fetching assigned patients
- */
+
 exports.getAssignedPatients = async (req, res) => {
   try {
     // Load the authenticated user and role before applying role-based filters
@@ -935,10 +785,7 @@ exports.getAssignedPatients = async (req, res) => {
       return res.status(403).json({ message: 'Unauthorized role' });
     }
 
-    const patients = await Patient.find(query)
-      .populate('assignedNurses', 'fullname email')
-      .populate('caretaker', 'fullname email');
-
+    const patients = await Patient.find(query).populate('assignedNurses', 'fullname email').populate('caretaker', 'fullname email');
     res.status(200).json(patients);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching assigned patients', details: error.message });
@@ -1002,36 +849,7 @@ exports.logEntry = async (req, res) => {
   }
 };
 
-/**
- * @swagger
- * /api/v1/patients/activities:
- *   get:
- *     summary: Fetch activities for a patient
- *     description: Returns all entry reports associated with the provided patient ID.
- *     tags: [EntryReport]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: patientId
- *         required: true
- *         schema:
- *           type: string
- *         description: Patient ID
- *     responses:
- *       200:
- *         description: Patient activities fetched successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/EntryReport'
- *       400:
- *         description: Missing patientId in query
- *       500:
- *         description: Internal server error while fetching patient activities
- */
+
 exports.getPatientActivities = async (req, res) => {
   try {
     const { patientId } = req.query;
