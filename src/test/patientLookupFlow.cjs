@@ -41,7 +41,8 @@ describe('Patient lookup by name', function () {
     delete require.cache[require.resolve('../config/db')];
 
     app = require('../server');
-    await mongoose.connection.asPromise();
+    const db = require('../config/db');
+    await db.dbReady;
 
     Role = require('../models/Role');
     User = require('../models/User');
