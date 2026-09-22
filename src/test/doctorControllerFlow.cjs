@@ -103,7 +103,14 @@ describe('doctor controller flow', function () {
       .set('Authorization', authHeader(doctor));
     expect(forbidden).to.have.status(403);
 
-    const patient = await createPatient({ fullname: 'Doctor Visible Patient', caretaker, assignedDoctor: doctor });
+    const patient = await createPatient({ 
+      firstName: 'Doctor Visible',
+      lastName: 'Patient',
+      caretaker, 
+      assignedDoctor: doctor,
+      createdBy: caretaker._id,
+      createdAt: new Date(),
+    });
     await patient.constructor.updateOne({ _id: patient._id }, { $set: { doctor: doctor._id, assignedDoctor: doctor._id } });
     await User.updateOne({ _id: doctor._id }, { $addToSet: { assignedPatients: patient._id } });
 
@@ -121,7 +128,13 @@ describe('doctor controller flow', function () {
     const caretaker = await createUser({ fullname: 'Assign Doctor Caretaker', email: 'assign-doctor-caretaker@example.com', role: roles.caretaker });
     const doctor = await createUser({ fullname: 'Assignable Doctor', email: 'assignable-doctor@example.com', role: roles.doctor });
     const nurse = await createUser({ fullname: 'Not Assignable Nurse', email: 'not-assignable-nurse@example.com', role: roles.nurse });
-    const patient = await createPatient({ fullname: 'Doctor Assign Patient', caretaker });
+    const patient = await createPatient({ 
+      firstName: 'Doctor Assign',
+      lastName: 'Patient',
+      caretaker,
+      createdBy: caretaker._id,
+      createdAt: new Date(),
+    });
     const doctorController = freshDoctorController();
 
     let res = mockRes();

@@ -39,8 +39,8 @@ describe('care team dashboard and daily report flow', function () {
       .set('Authorization', authHeader(fixture.nurse));
 
     expect(assignedRes).to.have.status(200);
-    expect(assignedRes.body.patients.map((patient) => patient.fullname)).to.include(
-      'Active Dashboard Patient'
+    expect(assignedRes.body.patients.map((patient) => patient.firstName)).to.include(
+      'Active Dashboard'
     );
 
     const summaryRes = await chai

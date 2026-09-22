@@ -67,8 +67,20 @@ describe('care records controller flow', function () {
     const caretaker = await createUser({ fullname: 'Report Health Caretaker', email: 'report-health-caretaker@example.com', role: roles.caretaker });
     const nurse = await createUser({ fullname: 'Report Health Nurse', email: 'report-health-nurse@example.com', role: roles.nurse });
     const otherNurse = await createUser({ fullname: 'Report Other Nurse', email: 'report-other-nurse@example.com', role: roles.nurse });
-    const patient = await createPatient({ fullname: 'Report Health Patient', caretaker, assignedNurses: [nurse] });
-    const emptyPatient = await createPatient({ fullname: 'Empty Health Patient', caretaker, assignedNurses: [nurse] });
+    const patient = await createPatient({ 
+      firstName: 'Report Health',
+      lastName: 'Patient',
+      caretaker, 
+      assignedNurses: [nurse],
+      createdBy: caretaker._id,//for now in this test, createdby will use a caretaker, but in the future it will need to be a user or admin
+    });
+    const emptyPatient = await createPatient({ 
+      firstName: 'Empty Health',
+      lastName: 'Patient',
+      caretaker, 
+      assignedNurses: [nurse],
+      createdBy: caretaker._id,
+    });
 
     const noReport = await chai
       .request(app)
@@ -107,7 +119,13 @@ describe('care records controller flow', function () {
     const admin = await createUser({ fullname: 'Prescription Admin', email: 'prescription-admin@example.com', role: roles.admin });
     const doctor = await createUser({ fullname: 'Prescription Doctor', email: 'prescription-doctor@example.com', role: roles.doctor });
     const caretaker = await createUser({ fullname: 'Prescription Caretaker', email: 'prescription-caretaker@example.com', role: roles.caretaker });
-    const patient = await createPatient({ fullname: 'Prescription Patient', caretaker, assignedDoctor: doctor });
+    const patient = await createPatient({ 
+      firstName: 'Prescription',
+      lastName: 'Patient',
+      caretaker, 
+      assignedDoctor: doctor,
+      createdBy: caretaker._id,
+    });
 
     const noItems = await chai
       .request(app)
@@ -165,7 +183,14 @@ describe('care records controller flow', function () {
     const nurse = await createUser({ fullname: 'Log Nurse', email: 'log-nurse@example.com', role: roles.nurse });
     const otherNurse = await createUser({ fullname: 'Other Log Nurse', email: 'other-log-nurse@example.com', role: roles.nurse });
     const caretaker = await createUser({ fullname: 'Log Caretaker', email: 'log-caretaker@example.com', role: roles.caretaker });
-    const patient = await createPatient({ fullname: 'Log Patient', caretaker, assignedNurses: [nurse] });
+    const patient = await createPatient({ 
+      firstName: 'Log',
+      lastName: 'Patient',
+      caretaker, 
+      assignedNurses: [nurse],
+      createdBy: caretaker._id,
+      createdAt: new Date(),
+    });
 
     const invalidCreate = await chai
       .request(app)
