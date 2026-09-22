@@ -229,9 +229,9 @@ describe('admin patient reassign flow', function () {
       params: { id: String(fixture.patient._id) },
       query: { orgId: String(fixture.organization._id) },
       body: {
-        assignedCaretaker: String(fixture.newCaretaker._id),
-        assignedNurses: [String(fixture.newNurse._id)],
-        assignedDoctor: String(fixture.newDoctor._id),
+        caretakerId: String(fixture.newCaretaker._id),
+        nurseIds: [String(fixture.newNurse._id)],
+        doctorId: String(fixture.newDoctor._id),
       },
       user: { _id: String(fixture.admin._id) },
     };
