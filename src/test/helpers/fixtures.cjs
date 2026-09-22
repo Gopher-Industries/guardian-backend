@@ -167,8 +167,9 @@ async function createDashboardFixture() {
     lastName: 'Patient',
     birthSex: 'Male',
     dateOfBirth: '1990-01-01',
-    assignedDoctor: fixture.doctor,
-    assignedNurses: [fixture.nurse],
+    assignedDoctor: fixture.doctor._id,
+    assignedNurses: [fixture.nurse._id],
+    assignedCaretaker: fixture.caretaker._id,
     createdBy: fixture.admin,
   });
 
@@ -177,7 +178,9 @@ async function createDashboardFixture() {
     lastName: 'Patient',
     birthSex: 'Female',
     dateOfBirth: '1990-01-01',
-    assignedDoctor: fixture.doctor,
+    assignedDoctor: fixture.doctor._id,
+    assignedNurses: [fixture.nurse._id],
+    assignedCaretaker: fixture.caretaker._id,
     createdBy: fixture.admin,
     isDeleted: true,
   });

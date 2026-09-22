@@ -95,7 +95,7 @@ const patientSchema = new Schema(
     pensionHccNumber: { type: String, trim: true },
     pensionCardType: { type: String, enum: PENSION_CARD_TYPE_VALUES },
     dvaNumber: { type: String, trim: true },
-    assignedDoctor: { type: Schema.Types.ObjectId, ref: 'User', set: extractId },//id of doctor
+    //assignedDoctor: { type: Schema.Types.ObjectId, ref: 'User', set: extractId },//id of doctor
     assignedNurses: [{ type: Schema.Types.ObjectId, ref: 'User', set: extractId }],//array of ids of nurses
     assignedCaretaker: { type: Schema.Types.ObjectId, ref: 'User', set: extractId },//id of caretaker
     registeredLocation: { type: String, trim: true },//enum to be defined based on locations could probably be a front end task
