@@ -38,7 +38,7 @@ exports.getPatientOverview = async (req, res) => {
   try {
     const { patientId } = req.params;
 
-    const patientDetails = await Patient.findById(patientId)//I think there's a bug here where the patient details are not being populated with the caretaker and assigned nurses, which might be needed for the overview
+    const patientDetails = await Patient.findById(patientId)
       .populate('caretaker')
       .populate('assignedNurses')
       .lean();

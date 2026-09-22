@@ -29,7 +29,7 @@ describe('patient controller flow', function () {
     await createPatient({ 
       firstName: 'Alice',
       lastName: 'Filter',
-      birthSex: 'Female',
+      birthSex: 'F',
       caretaker, 
       createdBy: caretaker._id,
       createdAt: new Date(),
@@ -37,7 +37,7 @@ describe('patient controller flow', function () {
     await createPatient({ 
       firstName: 'Bob',
       lastName: 'Filter',
-      birthSex: 'Male',
+      birthSex: 'M',
       caretaker, 
       createdBy: caretaker._id,
       createdAt: new Date(),
@@ -79,7 +79,7 @@ describe('patient controller flow', function () {
     const patient = await createPatient({ 
       firstName: 'Delete',
       lastName: 'Me',
-      birthSex: 'Male',
+      birthSex: 'M',
       caretaker: owner, 
       createdBy: owner._id,
       createdAt: new Date(),
@@ -106,7 +106,7 @@ describe('patient controller flow', function () {
       .send({
         firstName: 'Delete Me',
         lastName: 'Updated',
-        birthSex: 'Female',
+        birthSex: 'F',
         dateOfBirth: '1991-02-03',
         description: 'updated',
         image: 'manual-image.png',
@@ -150,7 +150,7 @@ describe('patient controller flow', function () {
     const patient = await createPatient({ 
       firstName: 'Assign',
       lastName: 'Patient',
-      birthSex: 'Male',
+      birthSex: 'M',
       caretaker,
       createdBy: caretaker._id,
     });
@@ -192,7 +192,7 @@ describe('patient controller flow', function () {
     const patient = await createPatient({ 
       firstName: 'Activity',
       lastName: 'Patient',
-      birthSex: 'Male',
+      birthSex: 'M',
       caretaker,
       assignedNurses: [nurse],
       createdBy: caretaker._id,

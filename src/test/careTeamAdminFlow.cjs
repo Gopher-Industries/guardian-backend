@@ -33,6 +33,7 @@ describe('care team and admin controller flow', function () {
           caretaker, 
           assignedNurses: [nurse],
           createdBy: caretaker._id,
+          createdAt: new Date(),
         });
     
     await Task.create({ description: 'Overview Task', dueDate: new Date('2026-06-01'), priority: 'high', status: 'completed', patient: patient._id, caretaker: caretaker._id, nurse_id: nurse._id });
@@ -78,6 +79,7 @@ describe('care team and admin controller flow', function () {
       firstName: 'Caretaker Task',
       lastName: 'Patient',
       caretaker, 
+      assignedNurses: [nurse],
       createdBy: caretaker._id,
     });
     await Task.create({ description: 'Urgent Task', dueDate: new Date('2026-06-01'), priority: 'high', status: 'pending', patient: patient._id, caretaker: caretaker._id });
