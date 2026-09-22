@@ -203,9 +203,7 @@ async function buildSecondOrg(roleIds) {
     otherDoctor,
   };
 }
-// needs some work to make sure that it actually works after removing caretakers and nurses requirements from the patient model.
-// these tests were based on the old model and will need to be updated to reflect the new model and requirements.
-// cannot be updated right now, as how the changes of removing caretakers and nurses from the patient model affects the rest of the codebase is not certain.
+
 describe('admin patient reassign flow', function () {
   this.timeout(15000);
 
@@ -231,9 +229,9 @@ describe('admin patient reassign flow', function () {
       params: { id: String(fixture.patient._id) },
       query: { orgId: String(fixture.organization._id) },
       body: {
-        caretakerId: String(fixture.newCaretaker._id),
-        nurseId: String(fixture.newNurse._id),
-        doctorId: String(fixture.newDoctor._id),
+        assignedCaretaker: String(fixture.newCaretaker._id),
+        assignedNurses: [String(fixture.newNurse._id)],
+        assignedDoctor: String(fixture.newDoctor._id),
       },
       user: { _id: String(fixture.admin._id) },
     };
@@ -290,9 +288,9 @@ describe('admin patient reassign flow', function () {
       params: { id: String(fixture.patient._id) },
       query: { orgId: String(fixture.organization._id) },
       body: {
-        caretakerId: String(fixture.oldCaretaker._id),
-        nurseId: String(fixture.newNurse._id),
-        doctorId: String(fixture.newDoctor._id),
+        assignedCaretaker: String(fixture.oldCaretaker._id),
+        assignedNurses: [String(fixture.newNurse._id)],
+        assignedDoctor: String(fixture.newDoctor._id),
       },
       user: { _id: String(fixture.admin._id) },
     };
