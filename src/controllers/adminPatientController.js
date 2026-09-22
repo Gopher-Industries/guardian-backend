@@ -87,7 +87,7 @@ exports.createPatient = async (req, res) => {
       generalNotes, appointmentNotes, allergies, conditions
     } = req.body || {};
     const postCommitOrgLinks = new Set();
-    const nursesIds = nurseIds == null
+      const nursesIds = nurseIds == null
       ? []
       : (Array.isArray(nursesIds) ? nursesIds : [nursesIds]);
 
@@ -116,7 +116,7 @@ exports.createPatient = async (req, res) => {
     }
 
     const nurses = [];
-    for (const nurseId of nurseIds) {
+      for (const nurseId of nursesIds) {
       const nd = await ensureUserWithRole(toId(nurseId), 'nurse');
       if (!nd) {
         return res.status(400).json({ message: 'nurseIds must be a nurse' });
@@ -175,7 +175,7 @@ exports.createPatient = async (req, res) => {
       dvaNumber,
       doctorId: doctor ? doctor._id : null,
       nurseIds: nurses ? nurses : [],
-      caretakerId: caretaker ? caretaker._id : null,
+        caretakerId: ct ? ct._id : null,
       organization: orgId,
       usualAccount,
       healthInsuranceProvider,
