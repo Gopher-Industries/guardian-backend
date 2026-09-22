@@ -20,7 +20,6 @@ describe('care record, prescription and patient log flow', function () {
   before(connectTestDb);
   beforeEach(clearTestDb);
   after(disconnectTestDb);
-  /* Nurse no longer is "assigned" to a patient, so this test is no longer valid. It will be reworked in the future if needed.
   it('allows an assigned nurse to create and read patient health records', async () => {
     const fixture = await createDashboardFixture();
 
@@ -58,7 +57,6 @@ describe('care record, prescription and patient log flow', function () {
     expect(reportRes).to.have.status(200);
     expect(reportRes.body).to.have.length(1);
   });
-  */
   it('rejects health record creation when required vitals are missing', async () => {
     const fixture = await createDashboardFixture();
 
@@ -169,7 +167,7 @@ describe('care record, prescription and patient log flow', function () {
     const listRes = await chai
       .request(app)
       .get(`/api/v1/patient-logs/${fixture.activePatient._id}`)
-      //.set('Authorization', authHeader(fixture.nurse)); nurse no longer needs to be assigned to a patient, so this test is no longer valid. It will be reworked in the future if needed.
+      .set('Authorization', authHeader(fixture.nurse)); 
 
     expect(listRes).to.have.status(200);
     const logs = Array.isArray(listRes.body)

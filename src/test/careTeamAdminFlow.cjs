@@ -77,7 +77,7 @@ describe('care team and admin controller flow', function () {
     const patient = await createPatient({ 
       firstName: 'Caretaker Task',
       lastName: 'Patient',
-      caretaker, 
+      assignedCaretaker: caretaker._id, 
       createdBy: caretaker._id,
     });
     await Task.create({ description: 'Urgent Task', dueDate: new Date('2026-06-01'), priority: 'high', status: 'pending', patient: patient._id, caretaker: caretaker._id });
@@ -148,8 +148,8 @@ describe('care team and admin controller flow', function () {
     const patient = await createPatient({ 
       firstName: 'Report',
       lastName: 'Patient',
-      caretaker, 
-      assignedNurses: [nurse],
+      assignedCaretaker: caretaker._id,
+      assignedNurses: [nurse._id],
       createdBy: caretaker._id,
     });
     await DailyReport.create({ patient: patient._id, caretaker: caretaker._id, summary: 'Daily summary' });

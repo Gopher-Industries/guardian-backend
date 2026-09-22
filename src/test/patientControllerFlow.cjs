@@ -108,6 +108,7 @@ describe('patient controller flow', function () {
         lastName: 'Updated',
         birthSex: 'Female',
         dateOfBirth: '1991-02-03',
+        assignedCaretaker: owner._id,
         description: 'updated',
         image: 'manual-image.png',
         emergencyContactName: 'Contact',
@@ -151,7 +152,7 @@ describe('patient controller flow', function () {
       firstName: 'Assign',
       lastName: 'Patient',
       birthSex: 'Male',
-      caretaker,
+      assignedCaretaker: caretaker._id,
       createdBy: caretaker._id,
     });
 
@@ -193,8 +194,8 @@ describe('patient controller flow', function () {
       firstName: 'Activity',
       lastName: 'Patient',
       birthSex: 'Male',
-      caretaker,
-      assignedNurses: [nurse],
+      assignedCaretaker: caretaker._id,
+      assignedNurses: [nurse._id],
       createdBy: caretaker._id,
     });
 

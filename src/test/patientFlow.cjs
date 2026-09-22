@@ -45,6 +45,7 @@ describe('patient flow', function () {
         lastName: 'A',
         birthSex: 'Female',
         dateOfBirth: '1990-03-15',
+        assignedCaretaker: caretaker._id,
         emergencyContactName: 'Emergency Contact',
         emergencyContactNumber: '0400000000',
         nextOfKinName: 'Next Kin',
@@ -68,7 +69,7 @@ describe('patient flow', function () {
     expect(savedPatient.allergies).to.deep.equal(['Peanuts']);
   });
 
-  it('returns only the authenticated caretaker own independent patients', async () => {//won't work without caretakers in patient model, expect error of expected 2 to equal 1
+  it('returns only the authenticated caretaker own independent patients', async () => {
     const roles = await seedRoles();
     const caretakerOne = await createUser({
       fullname: 'Caretaker One',
@@ -84,13 +85,13 @@ describe('patient flow', function () {
     await createPatient({ 
       firstName: 'Visible', 
       lastName: 'Patient', 
-      caretaker: caretakerOne,
+      assignedCaretaker: caretakerOne._id,
       createdBy: caretakerOne._id,
     });
     await createPatient({ 
       firstName: 'Hidden', 
       lastName: 'Patient', 
-      caretaker: caretakerTwo,
+      assignedCaretaker: caretakerTwo._id,
       createdBy: caretakerTwo._id,
     });
 
@@ -163,6 +164,7 @@ describe('patient flow', function () {
         firstName: 'Blocked',
         lastName: 'Org Patient',
         dateOfBirth: '1988-01-01',
+        assignedCaretaker: orgCaretaker._id,
         birthSex: 'Female',
         createdBy: orgCaretaker._id,
       });

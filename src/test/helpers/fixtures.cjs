@@ -168,7 +168,7 @@ async function createDashboardFixture() {
     birthSex: 'Male',
     dateOfBirth: '1990-01-01',
     assignedDoctor: fixture.doctor,
-    assignedNurses: [fixture.nurse],//added for the sake of test validation, but only strictly necessary for the test itself
+    assignedNurses: [fixture.nurse],
     createdBy: fixture.admin,
   });
 
