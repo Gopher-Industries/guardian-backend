@@ -126,7 +126,9 @@ async function buildFixture() {
     birthSex: 'Male',
     dateOfBirth: new Date('1980-05-17'),
     organization: organization._id,
-    assignedDoctor: oldDoctor._id,
+    doctorId: oldDoctor._id,
+    nurseIds: [oldNurse._id],
+    caretakerId: oldCaretaker._id,
     createdBy: admin._id,
     createdAt: new Date('2026-03-26'),
   });
