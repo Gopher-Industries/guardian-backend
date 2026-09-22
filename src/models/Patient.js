@@ -96,10 +96,9 @@ const patientSchema = new Schema(
     pensionCardType: { type: String, enum: PENSION_CARD_TYPE_VALUES },
     dvaNumber: { type: String, trim: true },
     //assignedDoctor: { type: Schema.Types.ObjectId, ref: 'User', set: extractId },//id of doctor
-    assignedNurses: [{ type: Schema.Types.ObjectId, ref: 'User', set: extractId }],//array of ids of nurses
-    assignedCaretaker: { type: Schema.Types.ObjectId, ref: 'User', set: extractId },//id of caretaker
-    registeredLocation: { type: String, trim: true },//enum to be defined based on locations could probably be a front end task
-    registeredLocationID: { type: Schema.Types.ObjectId, ref: 'Location', set: extractId },//id of location based on registeredLocation enum
+    nurseIds: [{ type: Schema.Types.ObjectId, ref: 'User', set: extractId }],//array of ids of nurses
+    caretakerId: { type: Schema.Types.ObjectId, ref: 'User', set: extractId },//id of caretaker
+    organization: { type: Schema.Types.ObjectId, ref: 'Organization', set: extractId },//id of organization
 
     //clinical/admin details
     usualAccount: { type: String, enum: USUAL_ACCOUNT_VALUES },//verify enum values
@@ -147,7 +146,7 @@ const patientSchema = new Schema(
     organizationName: { type: String },
 
     // doctor (single link)
-    assignedDoctor: {
+    doctorId: {
       type: Schema.Types.ObjectId,
       ref: 'User',
       set: extractId,

@@ -80,21 +80,20 @@ exports.createPatient = async (req, res) => {
       addressLine1, addressLine2, cityOrSuburb, postCode, homePhone, mobilePhone, workPhone, contactVia, email,
       optOutofDeidentifiedDataSharing, updateAddressOfAllFamilyMembers,
       healthIdentifier, medicareNumber, irn, expiryDate, pensionHccNumber, pensionCardType, dvaNumber,
-      assignedDoctor, assignedNurses, assignedCaretaker,
-      registeredLocation, registeredLocationID,
-      usualAccount, healthInsuranceProvider, healthInsuranceNumber, healthInsuranceExpiryDate,
+      doctorId, nurseIds, caretakerId,
+      organization, usualAccount, healthInsuranceProvider, healthInsuranceNumber, healthInsuranceExpiryDate,
       religion, headOfFamily, nextOfKin, nextOfKinRelationship, emergencyContact,
       occupation, isActive, isDeceased, dateOfDeath, causeOfDeath,
       generalNotes, appointmentNotes, allergies, conditions
     } = req.body || {};
     const postCommitOrgLinks = new Set();
-    const nurseIds = assignedNurses == null
+    const nursesIds = nurseIds == null
       ? []
-      : (Array.isArray(assignedNurses) ? assignedNurses : [assignedNurses]);
+      : (Array.isArray(nursesIds) ? nursesIds : [nursesIds]);
 
-    if (!firstName || !lastName || !birthSex || !dateOfBirth || !assignedCaretaker) {
+    if (!firstName || !lastName || !birthSex || !dateOfBirth || !caretakerId) {
       return res.status(400).json({
-        message: 'firstName, lastName, birthSex, dateOfBirth and assignedCaretaker are required'
+        message: 'firstName, lastName, birthSex, dateOfBirth and caretakerId are required'
       });
     }
 
@@ -102,9 +101,9 @@ exports.createPatient = async (req, res) => {
     if (!adminOrg) return res.status(404).json({ message: 'Organization not found for admin' });
 
     // caretaker must be valid and have role caretaker
-    const ct = await ensureUserWithRole(toId(assignedCaretaker), 'caretaker');
+    const ct = await ensureUserWithRole(toId(caretakerId), 'caretaker');
     if (!ct) {
-      return res.status(400).json({ message: 'assignedCaretaker must be a caretaker' });
+      return res.status(400).json({ message: 'caretakerId must be a caretaker' });
     }
 
     const orgId = adminOrg._id;
@@ -117,8 +116,8 @@ exports.createPatient = async (req, res) => {
     }
 
     const nurses = [];
-    for (const assignedNurses of nurseIds) {
-      const nd = await ensureUserWithRole(toId(assignedNurses), 'nurse');
+    for (const nurseId of nurseIds) {
+      const nd = await ensureUserWithRole(toId(nurseId), 'nurse');
       if (!nd) {
         return res.status(400).json({ message: 'assignedNurses must be a nurse' });
       }
@@ -130,10 +129,10 @@ exports.createPatient = async (req, res) => {
     }
 
     let doctor = null;
-    if (assignedDoctor) {
-      const dd = await ensureUserWithRole(toId(assignedDoctor), 'doctor');
+    if (doctorId) {
+      const dd = await ensureUserWithRole(toId(doctorId), 'doctor');
       if (!dd) {
-        return res.status(400).json({ message: 'assignedDoctor must be a doctor' });
+        return res.status(400).json({ message: 'doctorId must be a doctor' });
       }
 
       const ensured = await ensureStaffBoundToOrg(dd, adminOrg);
@@ -174,11 +173,10 @@ exports.createPatient = async (req, res) => {
       pensionHccNumber,
       pensionCardType,
       dvaNumber,
-      assignedDoctor: doctor ? doctor._id : null,
-      assignedNurses: nurses.map((nurse) => nurse._id),
-      assignedCaretaker: ct._id,
-      registeredLocation,
-      registeredLocationID: registeredLocationID ? toObjectId(registeredLocationID) : null,
+      doctorId: doctor ? doctor._id : null,
+      nurseIds: nurses ? nurses.map((n) => n._id) : [],
+      caretakerId: caretaker ? caretaker._id : null,
+      organization: orgId,
       usualAccount,
       healthInsuranceProvider,
       healthInsuranceNumber,
@@ -192,6 +190,7 @@ exports.createPatient = async (req, res) => {
       isActive: isActive !== undefined ? Boolean(isActive) : true,
       isDeceased: isDeceased !== undefined ? Boolean(isDeceased) : false,
       dateOfDeath: dateOfDeath ? new Date(dateOfDeath) : null,
+      causeOfDeath,
       organization: orgId,
       createdBy: req.user._id,
       updatedBy: req.user._id,
@@ -237,78 +236,78 @@ exports.reassign = async (req, res) => {
       return res.status(403).json({ message: 'Patient not under this organization' });
     }
 
-    const { assignedNurses, assignedCaretaker, assignedDoctor } = req.body || {};
+    const { nurseId, caretakerId, doctorId } = req.body || {};
     const updates = {};
     const reverseLinksToAdd = new Set();
     const reverseLinksToRemove = new Set();
     const postCommitOrgLinks = new Set();
 
-    if (!assignedNurses && !assignedCaretaker && !assignedDoctor) {
+    if (!nurseId && !caretakerId && !doctorId) {
       return res.status(400).json({
-        message: 'At least one of assignedNurses, assignedDoctor, or assignedCaretaker is required'
+        message: 'At least one of nurseId, doctorId, or caretakerId is required'
       });
     }
 
     // Assign nurse
-    if (assignedNurses && assignedNurses.length > 0) {
-      const nurse = await ensureUserWithRole(toId(assignedNurses[0]), 'nurse');
+    if (nurseId) {
+      const nurse = await ensureUserWithRole(toId(nurseId), 'nurse');
       if (!nurse) {
-        return res.status(400).json({ message: 'assignedNurses must be a nurse' });
+        return res.status(400).json({ message: 'nurseId must be a nurse' });
       }
 
       const ensured = await ensureStaffBoundToOrg(nurse, org);
       if (!ensured.ok) {
         return res.status(400).json({
-          message: 'assignedNurses must be a nurse in this org'
+          message: 'nurseId must be a nurse in this org'
         });
       }
       if (ensured.needsOrgLink) postCommitOrgLinks.add(String(nurse._id));
 
-      const currentNurseIds = (patient.assignedNurses || []).map(String);
+      const currentNurseIds = (patient.nurseIds || []).map(String);
       const nextNurseId = String(nurse._id);
       if (!currentNurseIds.includes(nextNurseId)) {
         reverseLinksToAdd.add(nextNurseId);
-        updates.assignedNurses = [
-          ...(patient.assignedNurses || []).map((nId) => toObjectId(nId)),
+        updates.nurseIds = [
+          ...(patient.nurseIds || []).map((nId) => toObjectId(nId)),
           toObjectId(nurse._id),
         ];
       }
     }
 
     // Assign doctor
-    if (assignedDoctor) {
-      const doctor = await ensureUserWithRole(toId(assignedDoctor), 'doctor');
+    if (doctorId) {
+      const doctor = await ensureUserWithRole(toId(doctorId), 'doctor');
       if (!doctor) {
-        return res.status(400).json({ message: 'assignedDoctor must be a doctor' });
+        return res.status(400).json({ message: 'doctorId must be a doctor' });
       }
 
       const ensured = await ensureStaffBoundToOrg(doctor, org);
       if (!ensured.ok) {
         return res.status(400).json({
-          message: 'assignedDoctor must be a doctor in this org'
+          message: 'doctorId must be a doctor in this org'
         });
       }
       if (ensured.needsOrgLink) postCommitOrgLinks.add(String(doctor._id));
 
-      if (patient.assignedDoctor && String(patient.assignedDoctor) !== String(doctor._id)) {
-        reverseLinksToRemove.add(String(patient.assignedDoctor));
+      if (patient.doctorId && String(patient.doctorId) !== String(doctor._id)) {
+        reverseLinksToRemove.add(String(patient.doctorId));
       }
-      if (String(patient.assignedDoctor || '') !== String(doctor._id)) {
+      if (String(patient.doctorId || '') !== String(doctor._id)) {
         reverseLinksToAdd.add(String(doctor._id));
       }
 
-      updates.assignedDoctor = toObjectId(doctor._id);
+      updates.doctorId = toObjectId(doctor._id);
     }
 
     // Assign caretaker
-    if (assignedCaretaker) {
-      const caretaker = await ensureUserWithRole(toId(assignedCaretaker), 'caretaker');
+    if (caretakerId) {
+      const caretaker = await ensureUserWithRole(toId(caretakerId), 'caretaker');
       if (!caretaker) {
-        return res.status(400).json({ message: 'assignedCaretaker must be a caretaker' });
+        return res.status(400).json({ message: 'caretakerId must be a caretaker' });
       }
 
       const caretakerUnchanged =
-        patient.assignedCaretaker && String(patient.assignedCaretaker) === String(caretaker._id);
+        patient.caretakerId && String(patient.caretakerId) === String(caretaker._id);
 
       if (!caretakerUnchanged) {
         const linkResult = await linkCaretakerToOrgIfFreelance(caretaker, org, { applyLink: false });
@@ -318,10 +317,10 @@ exports.reassign = async (req, res) => {
           });
         }
         if (linkResult.needsOrgLink) postCommitOrgLinks.add(String(caretaker._id));
-        if (patient.assignedCaretaker) reverseLinksToRemove.add(String(patient.assignedCaretaker));
+        if (patient.caretakerId) reverseLinksToRemove.add(String(patient.caretakerId));
         reverseLinksToAdd.add(String(caretaker._id));
 
-        updates.assignedCaretaker = toObjectId(caretaker._id);
+        updates.caretakerId = toObjectId(caretaker._id);
       }
     }
 
@@ -335,9 +334,9 @@ exports.reassign = async (req, res) => {
     }
 
     const updated = await Patient.findByIdAndUpdate(id, { $set: updates }, { new: true })
-      .populate('assignedCaretaker', 'fullname email')
-      .populate('assignedNurses', 'fullname email')
-      .populate('assignedDoctor', 'fullname email');
+      .populate('caretakerId', 'fullname email')
+      .populate('nurseIds', 'fullname email')
+      .populate('doctorId', 'fullname email');
 
     const postCommitOps = [];
     for (const userId of postCommitOrgLinks) {
@@ -386,9 +385,9 @@ exports.listPatients = async (req, res) => {
 
     const [docs, total] = await Promise.all([
       Patient.find(filter)
-        .populate('assignedCaretaker', 'fullname email')
-        .populate('assignedNurses', 'fullname email')
-        .populate('assignedDoctor', 'fullname email')
+        .populate('caretakerId', 'fullname email')
+        .populate('nurseIds', 'fullname email')
+        .populate('doctorId', 'fullname email')
         .sort({ createdAt: -1 })
         .skip((p - 1) * l)
         .limit(l)
@@ -417,9 +416,9 @@ exports.patientOverview = async (req, res) => {
     if (!org) return res.status(404).json({ message: 'Organization not found for admin' });
 
     const patient = await Patient.findById(id)
-      .populate('assignedCaretaker', 'fullname email')
-      .populate('assignedNurses', 'fullname email')
-      .populate('assignedDoctor', 'fullname email');
+      .populate('caretakerId', 'fullname email')
+      .populate('nurseIds', 'fullname email')
+      .populate('doctorId', 'fullname email');
 
     if (!patient) return res.status(404).json({ message: 'Patient not found' });
     if (String(patient.organization) !== String(org._id)) {
