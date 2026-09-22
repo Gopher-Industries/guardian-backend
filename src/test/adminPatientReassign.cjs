@@ -327,7 +327,7 @@ describe('admin patient reassign flow', function () {
       params: { id: String(fixture.patient._id) },
       query: { orgId: String(fixture.organization._id) },
       body: {
-        nurseId: String(fixture.newDoctor._id),
+        assignedNurses: [String(fixture.newDoctor._id)],
       },
       user: { _id: String(fixture.admin._id) },
     };
@@ -353,7 +353,7 @@ describe('admin patient reassign flow', function () {
 
     expect(res.statusCode).to.equal(400);
     expect(res.body).to.deep.equal({
-      message: 'At least one of nurseId, doctorId, or caretakerId is required'
+      message: 'At least one of assignedNurses, assignedDoctor, or assignedCaretaker is required'
     });
   });
 
@@ -363,8 +363,8 @@ describe('admin patient reassign flow', function () {
       params: { id: String(fixture.patient._id) },
       query: { orgId: String(fixture.organization._id) },
       body: {
-        nurseId: String(fixture.newNurse._id),
-        doctorId: String(fixture.newCaretaker._id),
+        assignedNurses: [String(fixture.newNurse._id)],
+        assignedDoctor: String(fixture.newCaretaker._id),
       },
       user: { _id: String(fixture.admin._id) },
     };
@@ -476,7 +476,7 @@ describe('admin patient reassign flow', function () {
         gender: 'male',
         dateOfBirth: '1985-01-01',
         assignedCaretaker: String(freelanceCaretaker._id),
-        doctorId: String(fixture.newCaretaker._id),
+        assignedDoctor: String(fixture.newCaretaker._id),
       },
       user: { _id: String(fixture.admin._id) },
     };
@@ -485,7 +485,7 @@ describe('admin patient reassign flow', function () {
     await adminPatientController.createPatient(req, res);
 
     expect(res.statusCode).to.equal(400);
-    expect(res.body).to.deep.equal({ message: 'doctorId must be a doctor' });
+    expect(res.body).to.deep.equal({ message: 'assignedDoctor must be a doctor' });
 
     const reloadedCaretaker = await User.findById(freelanceCaretaker._id).lean();
     const failedPatient = await Patient.findOne({ fullname: 'Failed Patient' }).lean();
@@ -506,7 +506,7 @@ describe('admin patient reassign flow', function () {
       params: { id: String(fixture.patient._id) },
       query: { orgId: String(otherOrg.otherOrganization._id) },
       body: {
-        nurseId: String(fixture.newNurse._id),
+        assignedNurses: [String(fixture.newNurse._id)],
       },
       user: { _id: String(fixture.admin._id) },
     };

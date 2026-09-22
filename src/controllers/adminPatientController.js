@@ -117,14 +117,14 @@ exports.createPatient = async (req, res) => {
     }
 
     const nurses = [];
-    for (const nurseId of nurseIds) {
-      const nd = await ensureUserWithRole(toId(nurseId), 'nurse');
+    for (const assignedNurses of nurseIds) {
+      const nd = await ensureUserWithRole(toId(assignedNurses), 'nurse');
       if (!nd) {
-        return res.status(400).json({ message: 'nurseId must be a nurse' });
+        return res.status(400).json({ message: 'assignedNurses must be a nurse' });
       }
 
       const ensured = await ensureStaffBoundToOrg(nd, adminOrg);
-      if (!ensured.ok) return res.status(400).json({ message: 'nurseId must be a nurse in this org' });
+      if (!ensured.ok) return res.status(400).json({ message: 'assignedNurses must be a nurse in this org' });
       if (ensured.needsOrgLink) postCommitOrgLinks.add(String(nd._id));
       if (!nurses.some((nurse) => String(nurse._id) === String(nd._id))) nurses.push(nd);
     }
@@ -237,29 +237,29 @@ exports.reassign = async (req, res) => {
       return res.status(403).json({ message: 'Patient not under this organization' });
     }
 
-    const { nurseId, caretakerId, doctorId } = req.body || {};
+    const { assignedNurses, assignedCaretaker, assignedDoctor } = req.body || {};
     const updates = {};
     const reverseLinksToAdd = new Set();
     const reverseLinksToRemove = new Set();
     const postCommitOrgLinks = new Set();
 
-    if (!nurseId && !caretakerId && !doctorId) {
+    if (!assignedNurses && !assignedCaretaker && !assignedDoctor) {
       return res.status(400).json({
-        message: 'At least one of nurseId, doctorId, or caretakerId is required'
+        message: 'At least one of assignedNurses, assignedDoctor, or assignedCaretaker is required'
       });
     }
 
     // Assign nurse
-    if (nurseId) {
-      const nurse = await ensureUserWithRole(toId(nurseId), 'nurse');
+    if (assignedNurses && assignedNurses.length > 0) {
+      const nurse = await ensureUserWithRole(toId(assignedNurses[0]), 'nurse');
       if (!nurse) {
-        return res.status(400).json({ message: 'nurseId must be a nurse' });
+        return res.status(400).json({ message: 'assignedNurses must be a nurse' });
       }
 
       const ensured = await ensureStaffBoundToOrg(nurse, org);
       if (!ensured.ok) {
         return res.status(400).json({
-          message: 'nurseId must be a nurse in this org'
+          message: 'assignedNurses must be a nurse in this org'
         });
       }
       if (ensured.needsOrgLink) postCommitOrgLinks.add(String(nurse._id));
@@ -276,16 +276,16 @@ exports.reassign = async (req, res) => {
     }
 
     // Assign doctor
-    if (doctorId) {
-      const doctor = await ensureUserWithRole(toId(doctorId), 'doctor');
+    if (assignedDoctor) {
+      const doctor = await ensureUserWithRole(toId(assignedDoctor), 'doctor');
       if (!doctor) {
-        return res.status(400).json({ message: 'doctorId must be a doctor' });
+        return res.status(400).json({ message: 'assignedDoctor must be a doctor' });
       }
 
       const ensured = await ensureStaffBoundToOrg(doctor, org);
       if (!ensured.ok) {
         return res.status(400).json({
-          message: 'doctorId must be a doctor in this org'
+          message: 'assignedDoctor must be a doctor in this org'
         });
       }
       if (ensured.needsOrgLink) postCommitOrgLinks.add(String(doctor._id));
@@ -301,10 +301,10 @@ exports.reassign = async (req, res) => {
     }
 
     // Assign caretaker
-    if (caretakerId) {
-      const caretaker = await ensureUserWithRole(toId(caretakerId), 'caretaker');
+    if (assignedCaretaker) {
+      const caretaker = await ensureUserWithRole(toId(assignedCaretaker), 'caretaker');
       if (!caretaker) {
-        return res.status(400).json({ message: 'caretakerId must be a caretaker' });
+        return res.status(400).json({ message: 'assignedCaretaker must be a caretaker' });
       }
 
       const caretakerUnchanged =
