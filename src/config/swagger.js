@@ -23,7 +23,8 @@ const swaggerOptions = {
         'to obtain a JWT, then send it as an `Authorization: Bearer <token>` header.'
     },
     servers: [
-      { url: 'http://localhost:3000', description: 'Local development' }
+      { url: 'http://localhost:3000', description: 'Local development' },
+      { url: 'https://guardian-backend-xi.vercel.app', description: 'Production (Vercel)' }
     ],
     components: {
       securitySchemes: {
