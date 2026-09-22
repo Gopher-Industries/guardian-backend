@@ -529,9 +529,9 @@ exports.listPatientsByDoctor = async (req, res) => {
       const skip = (page - 1) * limit;
   
       // Query patients assigned to this doctor
-      const [items, total] = await Promise.all([//not sure if there's a bug here but adjusted select values to match patient schema, not sure if nurses and caretakers are still causing a bug while not present in patient schema
+      const [items, total] = await Promise.all([
         Patient.find({ assignedDoctor: doctorId })
-          .select('_id firstName lastName dateOfBirth birthSex caretaker assignedNurses assignedDoctor createdAt updatedAt')
+          .select('_id firstName lastName dateOfBirth birthSex caretakerId nurseIds doctorId createdAt updatedAt')
           .sort({ firstName: 1 })
           .skip(skip)
           .limit(limit)

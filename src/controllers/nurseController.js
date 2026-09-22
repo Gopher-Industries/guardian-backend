@@ -108,20 +108,14 @@ exports.getAllNurses = async (req, res) => {
 
 exports.getAssignedPatientsForNurse = async (req, res) => {
   try {
-    const nurse = await User.findById(req.user._id)
-      .select('-password_hash -__v')
-      .populate({
-        path: 'assignedPatients',
-        select: 'firstName lastName dateOfBirth birthSex caretakerId nurseIds createdAt updatedAt',
-        populate: [
-          { path: 'caretakerId', select: 'fullname email' },
-          { path: 'nurseIds', select: 'fullname email' }
-        ]
-      });
-
+    const nurse = await User.findById(req.user._id).select('fullname');
     if (!nurse) return res.status(404).json({ error: 'Nurse not found' });
 
-    const patients = (nurse.assignedPatients || []).map(p => p.toObject());
+    const patients = await Patient.find({ nurseIds: nurse._id })
+      .select('firstName lastName dateOfBirth birthSex caretakerId nurseIds createdAt updatedAt')
+      .populate('caretakerId', 'fullname email')
+      .populate('nurseIds', 'fullname email')
+      .lean();
 
     res.status(200).json({ nurse: { id: nurse._id, fullname: nurse.fullname }, patients });
   } catch (err) {
@@ -215,8 +209,8 @@ exports.getDashboardSummary = async (req, res) => {
       overdueTasks,
       recentLogsCount,
     ] = await Promise.all([
-      Patient.countDocuments({ assignedNurses: nurseId }),
-      Patient.countDocuments({ assignedNurses: nurseId, isDeleted: false }),
+      Patient.countDocuments({ nurseIds: nurseId }),
+      Patient.countDocuments({ nurseIds: nurseId, isDeleted: false }),
       Task.countDocuments(taskAssigneeQuery(nurseId)),
       Task.countDocuments({ ...taskAssigneeQuery(nurseId), status: 'completed' }),
       Task.countDocuments({ ...taskAssigneeQuery(nurseId), status: 'in progress' }),

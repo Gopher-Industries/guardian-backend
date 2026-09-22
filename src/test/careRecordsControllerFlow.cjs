@@ -154,11 +154,11 @@ describe('care records controller flow', function () {
       .send({ patientId: new mongoose.Types.ObjectId(), items: [{ name: 'Med', dose: '1', frequency: 'daily', durationDays: 3 }] });
     expect(missingPatient).to.have.status(404);
 
-    const byName = await chai
+    const byName = await chai// will work but needs further valiadation with a surname or other unique identifier to avoid ambiguity
       .request(app)
       .post('/api/v1/prescriptions')
       .set('Authorization', authHeader(admin))
-      .send({ patientName: patient.fullname, items: [{ name: 'Med', dose: '1', frequency: 'daily', durationDays: 3 }] });
+      .send({ patientFirstName: patient.firstName, items: [{ name: 'Med', dose: '1', frequency: 'daily', durationDays: 3 }] });
     expect(byName).to.have.status(201);
 
     const missingId = new mongoose.Types.ObjectId();
