@@ -341,8 +341,6 @@ router.post(
   verifyRole(['admin', 'caretaker']),
   doctorController.assignDoctorToPatient);
 
-// Queries 
-router.get('/find-by-name', verifyToken, patientController.findPatientIdsByName);
 /**
  * @openapi
  * /api/v1/patients/activities:

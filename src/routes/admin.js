@@ -4,7 +4,6 @@ const Role = require('../models/Role');
 const User = require('../models/User');
 const verifyToken = require('../middleware/verifyToken');
 const verifyRole = require('../middleware/verifyRole');
-const upload = require('../middleware/multer');
 const adminController = require('../controllers/adminController');
 
 
@@ -67,11 +66,11 @@ router.get('/patient-overview/:patientId', verifyToken, verifyRole(['admin']), a
 // Support Tickets APIs
 router.post('/support-tickets', verifyToken, adminController.createSupportTicket);
 router.get('/support-tickets', verifyToken, verifyRole(['admin']), adminController.getSupportTickets);
-router.patch('/support-tickets/:ticketId', verifyToken, verifyRole(['admin']), adminController.updateSupportTicket);
+router.put('/support-tickets/:ticketId', verifyToken, verifyRole(['admin']), adminController.updateSupportTicket);
 
 // Task Management APIs
-router.post('/tasks', verifyToken, verifyRole(['admin']), upload.none(), adminController.createTask);
-router.put('/tasks/:taskId', verifyToken, verifyRole(['admin']), upload.none(), adminController.updateTask);
+router.post('/tasks', verifyToken, verifyRole(['admin']), adminController.createTask);
+router.put('/tasks/:taskId', verifyToken, verifyRole(['admin']), adminController.updateTask);
 router.delete('/tasks/:taskId', verifyToken, verifyRole(['admin']), adminController.deleteTask);
 
 // Dashboard Summary API

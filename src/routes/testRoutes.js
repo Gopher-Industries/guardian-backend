@@ -1,8 +1,9 @@
-
-
 const express = require('express');
 const router = express.Router();
-const meds2Controller = require('../controllers/meds2Controller');
+const medsController =require('.. /controllers/medsController');
+
+
+
 /**
  * @openapi
  * /api/v1/add-medication:
@@ -19,12 +20,12 @@ const meds2Controller = require('../controllers/meds2Controller');
  *           schema:
  *             $ref: '#/components/schemas/RegisterRequest'
  *           example:
- *             Name_of_Medication: "amoxicillin"
- *             Doses_sizes: "500 mg"
- *             Company: "GSK"
- *             What_it_does: "antibiotic, it treats bacterial infections"
- *             Potential_Side_Effects: "may cause nausea, diarrhea, or stomach upset"
- *             Directions:  "1 tablet 3 times per day or as doctor advises, take after food"
+ *             Name_of_Medication: "oxy-diphosphate"
+ *             Doses_sizes: "2.5 mg"
+ *             Company: "panadol ltd"
+ *             What_it_does: "antibioits, it kills bacterior"
+ *             Potential_Side_Effects: "may cause drowsyness"
+ *             Directions:  "take twice daily or as directed by doctor"
  *             
  * 
  *     responses:
@@ -43,5 +44,5 @@ const meds2Controller = require('../controllers/meds2Controller');
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/', meds2Controller.registerMeds2); 
+router.post('/add-medication', medsController.registerMeds); 
 module.exports = router;
