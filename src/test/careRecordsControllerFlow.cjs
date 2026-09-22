@@ -27,7 +27,12 @@ describe('care records controller flow', function () {
     const otherCaretaker = await createUser({ fullname: 'Other Health Caretaker', email: 'other-health-caretaker@example.com', role: roles.caretaker });
     const nurse = await createUser({ fullname: 'Health Nurse', email: 'health-nurse@example.com', role: roles.nurse });
     const otherNurse = await createUser({ fullname: 'Other Health Nurse', email: 'other-health-nurse@example.com', role: roles.nurse });
-    const patient = await createPatient({ fullname: 'Health Patient', caretaker, assignedNurses: [nurse] });
+    const patient = await createPatient({ 
+      firstName: 'Health',
+      lastName: 'Patient',
+      caretaker, 
+      createdBy: caretaker._id,
+    });
 
     const invalidId = await chai
       .request(app)

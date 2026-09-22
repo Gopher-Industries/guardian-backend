@@ -77,7 +77,7 @@ const prescriptionController = require('../controllers/prescriptionController');
  *             schema:
  *               $ref: '#/components/schemas/UnauthorizedError'
  *       403:
- *         description: Forbidden — only doctors can add patients
+ *         description: Forbidden
  *         content:
  *           application/json:
  *             schema:
@@ -92,7 +92,7 @@ const prescriptionController = require('../controllers/prescriptionController');
 router.post(
     '/add',
     verifyToken,
-    verifyRole(['doctor']),//change to doctor
+    verifyRole(['admin', 'caretaker', 'doctor', 'nurse']),//changed to allow all roles to add patients
     patientController.addPatient
   );
 

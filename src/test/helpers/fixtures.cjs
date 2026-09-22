@@ -166,7 +166,9 @@ async function createDashboardFixture() {
     firstName: 'Active Dashboard',
     lastName: 'Patient',
     birthSex: 'Male',
+    dateOfBirth: '1990-01-01',
     assignedDoctor: fixture.doctor,
+    assignedNurses: [fixture.nurse],//added for the sake of test validation, but only strictly necessary for the test itself
     createdBy: fixture.admin,
   });
 
@@ -174,6 +176,7 @@ async function createDashboardFixture() {
     firstName: 'Deleted Dashboard',
     lastName: 'Patient',
     birthSex: 'Female',
+    dateOfBirth: '1990-01-01',
     assignedDoctor: fixture.doctor,
     createdBy: fixture.admin,
     isDeleted: true,
