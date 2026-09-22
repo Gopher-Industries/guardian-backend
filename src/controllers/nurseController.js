@@ -112,7 +112,7 @@ exports.getAssignedPatientsForNurse = async (req, res) => {
       .select('-password_hash -__v')
       .populate({
         path: 'assignedPatients',
-        select: 'fullname dateOfBirth gender caretaker assignedNurses created_at updated_at',
+        select: 'firstName lastName dateOfBirth birthSex caretaker assignedNurses createdAt updatedAt',
         populate: [
           { path: 'caretaker', select: 'fullname email' },
           { path: 'assignedNurses', select: 'fullname email' }
