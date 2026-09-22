@@ -70,7 +70,6 @@ function signToken(user) {
       email: user.email,
       role: user.role ? String(user.role._id || user.role) : undefined,
       organization: organizationId,
-      organisation: organizationId,
     },
     process.env.JWT_SECRET,
     { expiresIn: '1h', algorithm: 'HS256' }
@@ -96,7 +95,9 @@ async function createPatient({
   lastName = 'Patient',
   birthSex = 'Female',
   dateOfBirth = '1985-01-01',
-  assignedDoctor,
+  doctorId,
+  nurseIds,
+  caretakerId,
   organization,
   isDeleted = false,
   createdBy,
@@ -106,14 +107,16 @@ async function createPatient({
     lastName,
     birthSex,
     dateOfBirth: new Date(dateOfBirth),
-    assignedDoctor: assignedDoctor ? assignedDoctor._id || assignedDoctor : undefined,
+    doctorId: doctorId ? doctorId._id || doctorId : undefined,
+    nurseIds: nurseIds ? Array.isArray(nurseIds) ? nurseIds : [nurseIds] : [],
+    caretakerId: caretakerId ? caretakerId._id || caretakerId : undefined,
     organization: organization ? organization._id || organization : undefined,
     isDeleted,
     createdBy: createdBy ? createdBy._id || createdBy : undefined,
     createdAt: new Date('2026-04-01'),
   });
 
-  const linkedUsers = [assignedDoctor].filter(Boolean);
+  const linkedUsers = [doctorId].filter(Boolean);
   await Promise.all(
     linkedUsers.map((user) =>
       User.updateOne(
@@ -167,9 +170,9 @@ async function createDashboardFixture() {
     lastName: 'Patient',
     birthSex: 'Male',
     dateOfBirth: '1990-01-01',
-    assignedDoctor: fixture.doctor._id,
-    assignedNurses: [fixture.nurse._id],
-    assignedCaretaker: fixture.caretaker._id,
+    doctorId: fixture.doctor._id,
+    nurseIds: [fixture.nurse._id],
+    caretakerId: fixture.caretaker._id,
     createdBy: fixture.admin,
   });
 
@@ -178,9 +181,9 @@ async function createDashboardFixture() {
     lastName: 'Patient',
     birthSex: 'Female',
     dateOfBirth: '1990-01-01',
-    assignedDoctor: fixture.doctor._id,
-    assignedNurses: [fixture.nurse._id],
-    assignedCaretaker: fixture.caretaker._id,
+    doctorId: fixture.doctor._id,
+    nurseIds: [fixture.nurse._id],
+    caretakerId: fixture.caretaker._id,
     createdBy: fixture.admin,
     isDeleted: true,
   });

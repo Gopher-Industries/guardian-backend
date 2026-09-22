@@ -444,7 +444,7 @@ describe('admin patient reassign flow', function () {
         lastName: 'Patient',
         birthSex: 'Male',
         dateOfBirth: '1985-01-01',
-        assignedCaretaker: String(otherOrg.otherCaretaker._id),
+        caretakerId: String(otherOrg.otherCaretaker._id),
       },
       user: { _id: String(fixture.admin._id) },
     };
@@ -472,11 +472,12 @@ describe('admin patient reassign flow', function () {
     const req = {
       query: { orgId: String(fixture.organization._id) },
       body: {
-        fullname: 'Failed Patient',
-        gender: 'male',
+        firstName: 'Failed',
+        lastName: 'Patient',
+        birthSex: 'Male',
         dateOfBirth: '1985-01-01',
-        assignedCaretaker: String(freelanceCaretaker._id),
-        assignedDoctor: String(fixture.newCaretaker._id),
+        caretakerId: String(freelanceCaretaker._id),
+        doctorId: String(fixture.newCaretaker._id),
       },
       user: { _id: String(fixture.admin._id) },
     };
@@ -485,10 +486,10 @@ describe('admin patient reassign flow', function () {
     await adminPatientController.createPatient(req, res);
 
     expect(res.statusCode).to.equal(400);
-    expect(res.body).to.deep.equal({ message: 'assignedDoctor must be a doctor' });
+    expect(res.body).to.deep.equal({ message: 'doctorId must be a doctor' });
 
     const reloadedCaretaker = await User.findById(freelanceCaretaker._id).lean();
-    const failedPatient = await Patient.findOne({ fullname: 'Failed Patient' }).lean();
+    const failedPatient = await Patient.findOne({ firstName: 'Failed', lastName: 'Patient' }).lean();
 
     expect(reloadedCaretaker.organization || null).to.equal(null);
     expect(failedPatient).to.equal(null);

@@ -119,11 +119,11 @@ exports.createPatient = async (req, res) => {
     for (const nurseId of nurseIds) {
       const nd = await ensureUserWithRole(toId(nurseId), 'nurse');
       if (!nd) {
-        return res.status(400).json({ message: 'assignedNurses must be a nurse' });
+        return res.status(400).json({ message: 'nurseIds must be a nurse' });
       }
 
       const ensured = await ensureStaffBoundToOrg(nd, adminOrg);
-      if (!ensured.ok) return res.status(400).json({ message: 'assignedNurses must be a nurse in this org' });
+      if (!ensured.ok) return res.status(400).json({ message: 'nurseIds must be a nurse in this org' });
       if (ensured.needsOrgLink) postCommitOrgLinks.add(String(nd._id));
       if (!nurses.some((nurse) => String(nurse._id) === String(nd._id))) nurses.push(nd);
     }
@@ -136,7 +136,7 @@ exports.createPatient = async (req, res) => {
       }
 
       const ensured = await ensureStaffBoundToOrg(dd, adminOrg);
-      if (!ensured.ok) return res.status(400).json({ message: 'assignedDoctor must be a doctor in this org' });
+      if (!ensured.ok) return res.status(400).json({ message: 'doctorId must be a doctor in this org' });
       if (ensured.needsOrgLink) postCommitOrgLinks.add(String(dd._id));
       doctor = dd;
     }
