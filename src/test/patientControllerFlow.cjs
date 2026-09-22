@@ -30,7 +30,7 @@ describe('patient controller flow', function () {
       firstName: 'Alice',
       lastName: 'Filter',
       birthSex: 'Female',
-      caretaker, 
+      caretakerId: caretaker._id, 
       createdBy: caretaker._id,
       createdAt: new Date(),
     });
@@ -38,7 +38,7 @@ describe('patient controller flow', function () {
       firstName: 'Bob',
       lastName: 'Filter',
       birthSex: 'Male',
-      caretaker, 
+      caretakerId: caretaker._id, 
       createdBy: caretaker._id,
       createdAt: new Date(),
       isDeleted: true
@@ -80,7 +80,7 @@ describe('patient controller flow', function () {
       firstName: 'Delete',
       lastName: 'Me',
       birthSex: 'Male',
-      caretaker: owner, 
+      caretakerId: owner._id, 
       createdBy: owner._id,
       createdAt: new Date(),
     });
@@ -108,7 +108,7 @@ describe('patient controller flow', function () {
         lastName: 'Updated',
         birthSex: 'Female',
         dateOfBirth: '1991-02-03',
-        assignedCaretaker: owner._id,
+        caretakerId: owner._id,
         description: 'updated',
         image: 'manual-image.png',
         emergencyContactName: 'Contact',
@@ -152,7 +152,7 @@ describe('patient controller flow', function () {
       firstName: 'Assign',
       lastName: 'Patient',
       birthSex: 'Male',
-      assignedCaretaker: caretaker._id,
+      caretakerId: caretaker._id,
       createdBy: caretaker._id,
     });
 

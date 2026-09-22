@@ -30,7 +30,8 @@ describe('care records controller flow', function () {
     const patient = await createPatient({ 
       firstName: 'Health',
       lastName: 'Patient',
-      assignedCaretaker: caretaker._id,
+      caretakerId: caretaker._id,
+      nurseIds: [nurse._id],
       createdBy: caretaker._id,
     });
 
@@ -75,15 +76,15 @@ describe('care records controller flow', function () {
     const patient = await createPatient({ 
       firstName: 'Report Health',
       lastName: 'Patient',
-      assignedCaretaker: caretaker._id, 
-      assignedNurses: [nurse._id],
+      caretakerId: caretaker._id, 
+      nurseIds: [nurse._id],
       createdBy: caretaker._id,
     });
     const emptyPatient = await createPatient({ 
       firstName: 'Empty Health',
       lastName: 'Patient',
-      assignedCaretaker: caretaker._id, 
-      assignedNurses: [nurse._id],
+      caretakerId: caretaker._id, 
+      nurseIds: [nurse._id],
       createdBy: caretaker._id,
     });
 
@@ -127,8 +128,8 @@ describe('care records controller flow', function () {
     const patient = await createPatient({ 
       firstName: 'Prescription',
       lastName: 'Patient',
-      assignedCaretaker: caretaker._id,
-      assignedDoctor: doctor,
+      caretakerId: caretaker._id,
+      doctorId: doctor._id,
       createdBy: caretaker._id,
     });
 
@@ -191,8 +192,8 @@ describe('care records controller flow', function () {
     const patient = await createPatient({ 
       firstName: 'Log',
       lastName: 'Patient',
-      assignedCaretaker: caretaker._id, 
-      assignedNurses: [nurse],
+      caretakerId: caretaker._id, 
+      nurseIds: [nurse._id],
       createdBy: caretaker._id,
       createdAt: new Date(),
     });

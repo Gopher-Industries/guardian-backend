@@ -82,8 +82,8 @@ exports.getAllNurses = async (req, res) => {
       User.find(filter)
         .select('-password_hash -__v')
         .populate('role', 'name')
-        .populate('assignedPatients', 'fullname gender dateOfBirth')
-        .sort({ fullname: 1 })
+        .populate('assignedPatients', 'firstName lastName birthSex dateOfBirth caretakerId')
+        .sort({ firstName: 1 })
         .skip((parseInt(page) - 1) * parseInt(limit))
         .limit(parseInt(limit))
         .lean(),
@@ -112,10 +112,10 @@ exports.getAssignedPatientsForNurse = async (req, res) => {
       .select('-password_hash -__v')
       .populate({
         path: 'assignedPatients',
-        select: 'firstName lastName dateOfBirth birthSex caretaker assignedNurses createdAt updatedAt',
+        select: 'firstName lastName dateOfBirth birthSex caretakerId nurseIds createdAt updatedAt',
         populate: [
-          { path: 'caretaker', select: 'fullname email' },
-          { path: 'assignedNurses', select: 'fullname email' }
+          { path: 'caretakerId', select: 'fullname email' },
+          { path: 'nurseIds', select: 'fullname email' }
         ]
       });
 

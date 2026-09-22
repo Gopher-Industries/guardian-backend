@@ -85,13 +85,13 @@ describe('patient flow', function () {
     await createPatient({ 
       firstName: 'Visible', 
       lastName: 'Patient', 
-      assignedCaretaker: caretakerOne._id,
+      caretakerId: caretakerOne._id,
       createdBy: caretakerOne._id,
     });
     await createPatient({ 
       firstName: 'Hidden', 
       lastName: 'Patient', 
-      assignedCaretaker: caretakerTwo._id,
+      caretakerId: caretakerTwo._id,
       createdBy: caretakerTwo._id,
     });
 
@@ -120,7 +120,7 @@ describe('patient flow', function () {
     const patient = await createPatient({
       firstName: 'Nurse Editable',
       lastName: 'Patient',
-      caretaker,
+      caretakerId: caretaker._id,
       assignedNurses: [nurse],
       createdBy: caretaker._id,
     });
@@ -164,7 +164,7 @@ describe('patient flow', function () {
         firstName: 'Blocked',
         lastName: 'Org Patient',
         dateOfBirth: '1988-01-01',
-        assignedCaretaker: orgCaretaker._id,
+        caretakerId: orgCaretaker._id,
         birthSex: 'Female',
         createdBy: orgCaretaker._id,
       });
