@@ -695,7 +695,7 @@ exports.createTask = async (req, res) => {
       })
     ).catch(() => {});
 
-    queueTaskAssignedEmail(newTask, { assignedById: req.user?._id });
+    await queueTaskAssignedEmail(newTask, { assignedById: req.user?._id });
 
     return res.status(201).json({
       message: 'Task created successfully',
