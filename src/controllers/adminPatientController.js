@@ -7,6 +7,7 @@ const { parseStringArray } = require('../utils/arrayUtils');
 const HealthRecord = require('../models/HealthRecord');
 const Task = require('../models/Task');
 const CarePlan = require('../models/CarePlan');
+const PatientLog = require('../models/PatientLog');
 const EntryReport = require('../models/EntryReport');
 
 const {
@@ -361,7 +362,192 @@ exports.listPatients = async (req, res) => {
 };
 
 /* ---------------------------------------------------------------------- */
-
+/**
+ * @swagger
+ * /api/v1/admin/patients/{id}/overview:
+ *   get:
+ *     summary: Get a complete overview of a patient
+ *     description: Returns a detailed patient overview including profile data, health records, care plan, tasks, patient notes, and task completion rate.
+ *     tags: [AdminPatients]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: orgId
+ *         required: false
+ *         description: Organization context for admins managing multiple organizations
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Patient ID
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Patient overview returned successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - patient
+ *                 - healthRecords
+ *                 - carePlan
+ *                 - tasks
+ *                 - logs
+ *                 - taskCompletionRate
+ *               properties:
+ *                 patient:
+ *                   type: object
+ *                   required:
+ *                     - _id
+ *                     - fullname
+ *                     - gender
+ *                     - dateOfBirth
+ *                   properties:
+ *                     _id: { type: string }
+ *                     fullname: { type: string }
+ *                     gender: { type: string, enum: [M, F, other] }
+ *                     dateOfBirth: { type: string, format: date }
+ *                     age: { type: integer }
+ *                     profilePhoto: { type: string, nullable: true, description: "URL or filename of the patient's profile photo" }
+ *                     dateOfAdmitting: { type: string, format: date, nullable: true }
+ *                     description: { type: string, description: General notes about the patient }
+ *                     emergencyContactName:
+ *                       type: string
+ *                       nullable: true
+ *                       description: Full name of the emergency contact
+ *                     emergencyContactNumber:
+ *                       type: string
+ *                       nullable: true
+ *                       description: Phone number of the emergency contact
+ *                     nextOfKinName:
+ *                       type: string
+ *                       nullable: true
+ *                       description: Full name of the patient's next of kin
+ *                     nextOfKinRelationship:
+ *                       type: string
+ *                       nullable: true
+ *                       enum: [SPOUSE, PARENT, CHILD, SIBLING, GRANDPARENT, GUARDIAN, CARER, FRIEND, OTHER]
+ *                       description: Relationship of the next of kin to the patient
+ *                     medicalSummary:
+ *                       type: string
+ *                       nullable: true
+ *                       description: Brief summary of the patient's overall medical history and status
+ *                     allergies:
+ *                       type: array
+ *                       items: { type: string }
+ *                       description: List of known allergies (e.g. penicillin, peanuts)
+ *                     conditions:
+ *                       type: array
+ *                       items: { type: string }
+ *                       description: List of diagnosed medical conditions (e.g. Type 2 Diabetes, Hypertension)
+ *                     notes:
+ *                       type: string
+ *                       nullable: true
+ *                       description: Free-text clinical or care notes for the patient
+ *                     caretaker:
+ *                       type: object
+ *                       nullable: true
+ *                       properties:
+ *                         _id:
+ *                           type: string
+ *                         fullname:
+ *                           type: string
+ *                         email:
+ *                           type: string
+ *                     assignedNurses:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           _id:
+ *                             type: string
+ *                           fullname:
+ *                             type: string
+ *                           email:
+ *                             type: string
+ *                     assignedDoctor:
+ *                       type: object
+ *                       nullable: true
+ *                       properties:
+ *                         _id:
+ *                           type: string
+ *                         fullname:
+ *                           type: string
+ *                         email:
+ *                           type: string
+ *                 healthRecords:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       _id:
+ *                         type: string
+ *                       patient:
+ *                         type: string
+ *                       title:
+ *                         type: string
+ *                       details:
+ *                         type: string
+ *                       created_at:
+ *                         type: string
+ *                         format: date-time
+ *                 carePlan:
+ *                   type: object
+ *                   nullable: true
+ *                   properties:
+ *                     _id:
+ *                       type: string
+ *                     patient:
+ *                       type: string
+ *                     title:
+ *                       type: string
+ *                     tasks:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                 tasks:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       _id:
+ *                         type: string
+ *                       title:
+ *                         type: string
+ *                       status:
+ *                         type: string
+ *                         example: completed
+ *                 logs:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       _id:
+ *                         type: string
+ *                       patient:
+ *                         type: string
+ *                       title:
+ *                         type: string
+ *                       observations:
+ *                         type: string
+ *                       recordedAt:
+ *                         type: string
+ *                         format: date-time
+ *                 taskCompletionRate:
+ *                   type: number
+ *                   format: float
+ *                   example: 66.7
+ *       403:
+ *         description: Patient does not belong to the selected organization
+ *       404:
+ *         description: Organization or patient not found
+ *       500:
+ *         description: Internal server error while fetching patient overview
+ */
 exports.patientOverview = async (req, res) => {
   try {
     const { id } = req.params;
@@ -383,7 +569,10 @@ exports.patientOverview = async (req, res) => {
       HealthRecord.find({ patient: id }).sort({ created_at: -1 }).lean(),
       CarePlan.findOne({ patient: id, status: 'active' }).sort({ created_at: -1 }).populate('tasks').lean(),
       Task.find({ patient: id }).lean(),
-      EntryReport.find({ patient: id }).sort({ activityTimestamp: -1 }).lean(),
+      PatientLog.find({ patient: id })
+        .populate('createdBy', 'fullname email role')
+        .sort({ recordedAt: -1, createdAt: -1 })
+        .lean(),
     ]);
 
     const taskCompletionRate = tasks.length

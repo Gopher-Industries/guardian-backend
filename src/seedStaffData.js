@@ -241,58 +241,60 @@ const seedStaffData = async () => {
       // Jane logs
       {
         title: 'BP reading — slightly elevated',
-        description: 'Patient One BP was 148/90. Caretaker notified. Plan to monitor again tomorrow.',
+        observations: 'Patient One BP was 148/90. Caretaker notified. Plan to monitor again tomorrow.',
         patient: patient1._id,
-        createdBy: jane._id,
-        createdAt: daysAgo(1),
+        author: jane._id,
+        recordedAt: daysAgo(1),
       },
       {
         title: 'Wound showing signs of improvement',
-        description: 'Wound site clean with no signs of infection. Dressing changed successfully.',
+        observations: 'Wound site clean with no signs of infection. Dressing changed successfully.',
         patient: patient1._id,
-        createdBy: jane._id,
-        createdAt: daysAgo(3),
+        author: jane._id,
+        recordedAt: daysAgo(3),
       },
       {
         title: 'Post-meal glucose within target range',
-        description: 'Patient Two glucose 7.4 mmol/L two hours post-lunch. Within acceptable range.',
+        observations: 'Patient Two glucose 7.4 mmol/L two hours post-lunch. Within acceptable range.',
         patient: patient2._id,
-        createdBy: jane._id,
-        createdAt: daysAgo(2),
+        author: jane._id,
+        recordedAt: daysAgo(2),
       },
+
       // Mike logs
       {
         title: 'Evening obs normal',
-        description: 'All vitals stable. Patient Two resting comfortably. No concerns to report.',
+        observations: 'All vitals stable. Patient Two resting comfortably. No concerns to report.',
         patient: patient2._id,
-        createdBy: mike._id,
-        createdAt: daysAgo(1),
+        author: mike._id,
+        recordedAt: daysAgo(1),
       },
       {
         title: 'Insulin dose reviewed',
-        description: 'Discussed insulin timing adjustment with caretaker. Will trial new schedule tomorrow.',
+        observations: 'Discussed insulin timing adjustment with caretaker. Will trial new schedule tomorrow.',
         patient: patient2._id,
-        createdBy: mike._id,
-        createdAt: daysAgo(4),
+        author: mike._id,
+        recordedAt: daysAgo(4),
       },
+
       // Alice logs
       {
         title: 'Physio exercises completed',
-        description: 'Patient One completed morning physiotherapy session with good participation.',
+        observations: 'Patient One completed morning physiotherapy session with good participation.',
         patient: patient1._id,
-        createdBy: alice._id,
-        createdAt: daysAgo(2),
+        author: alice._id,
+        recordedAt: daysAgo(2),
       },
+
       // Bob logs
       {
         title: 'Dietary log updated',
-        description: 'Patient Two consumed all meals within dietary guidelines. Blood sugar stable post-dinner.',
+        observations: 'Patient Two consumed all meals within dietary guidelines. Blood sugar stable post-dinner.',
         patient: patient2._id,
-        createdBy: bob._id,
-        createdAt: daysAgo(3),
+        author: bob._id,
+        recordedAt: daysAgo(3),
       },
     ]);
-
     console.log('✅ Staff seed complete — tasks and logs created for jane, mike, alice, bob.');
   } catch (err) {
     console.error('❌ Error seeding staff data:', err.message);

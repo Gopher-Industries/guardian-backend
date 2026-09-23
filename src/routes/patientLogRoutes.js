@@ -7,13 +7,13 @@ const verifyRole = require('../middleware/verifyRole');
 const controller = require('../controllers/patientLogController');
 
 // Create patient log
-router.post('/',verifyToken,verifyRole(['nurse', 'caretaker', 'doctor']),controller.createLog);
+router.post('/', verifyToken, verifyRole(['admin', 'nurse', 'caretaker', 'doctor']), controller.createLog);
 
 // Fetch logs by patient with pagination
-router.get('/:patientId',verifyToken,verifyRole(['admin', 'nurse', 'caretaker', 'doctor']),controller.getLogsByPatient);
+router.get('/:patientId', verifyToken, verifyRole(['admin', 'nurse', 'caretaker', 'doctor']), controller.getLogsByPatient);
 
 // Update patient log
-router.put('/:id',verifyToken,verifyRole(['admin', 'nurse', 'caretaker', 'doctor']),controller.updateLog);
+router.put('/:id', verifyToken, verifyRole(['admin', 'nurse', 'caretaker', 'doctor']), controller.updateLog);
 
 // Delete patient log
 router.delete('/:id',verifyToken,verifyRole(['admin', 'nurse', 'caretaker', 'doctor']),controller.deleteLog);

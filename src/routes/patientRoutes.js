@@ -432,7 +432,6 @@ router.get('/find-by-name', verifyToken, patientController.findPatientIdsByName)
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get('/assigned-patients', verifyToken, patientController.getAssignedPatients);
-
 /**
  * @openapi
  * /api/v1/patients/activities:
