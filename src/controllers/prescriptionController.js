@@ -27,10 +27,10 @@ const notifyRules = require('../services/notifyRules');
  *           type: string
  *           description: How often to take it
  *           example: "twice daily"
- *        timeOfDay:
- *          type: string
- *         description: Time(s) of day
- *         example: "Morning""
+  *        timeOfDay:
+  *         type: string
+  *         description: Time(s) of day
+  *         example: "Morning""
  *         durationDays:
  *           type: integer
  *           description: Number of days
