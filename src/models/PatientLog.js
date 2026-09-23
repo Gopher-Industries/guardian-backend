@@ -9,11 +9,17 @@ const PatientLogSchema = new mongoose.Schema({
     default: 'other'
   },
   address: { type: String, default: '' },
-  author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  updatedAt: { type: Date },
   title: { type: String, required: true },
   observations: { type: String, required: true },
   actionsRequired: { type: mongoose.Schema.Types.Mixed, default: [] },
-  recordedAt: { type: Date, default: Date.now }
+  recordedAt: { type: Date, default: Date.now },
+  createdAt: { type: Date, default: Date.now }
 });
+
+PatientLogSchema.index({ patient: 1, createdAt: -1 });
+PatientLogSchema.index({ createdBy: 1, createdAt: -1 });
 
 module.exports = mongoose.model('PatientLog', PatientLogSchema);

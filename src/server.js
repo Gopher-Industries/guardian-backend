@@ -6,21 +6,20 @@ const database = require('./config/db');
 const multer = require('multer');
 const http = require('http');
 const socketIO = require('socket.io');
-
 const cors = require('cors');
 
-
 const swaggerUi = require('swagger-ui-express');
-const swaggerJsdoc = require('swagger-jsdoc');
 const { setEmit } = require('../socket');
 
 const app = express();
-//cors fix
+
+// CORS fix
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
+
 app.options('*', (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS,PATCH');
@@ -51,6 +50,7 @@ const storage = process.env.VERCEL
 exports.upload = multer({ storage });
 
 app.use('/uploads', express.static('uploads'));
+app.use('/swagger-assets', express.static(path.join(__dirname, 'public')));
 
 const blockScriptRequests = (req, res, next) => {
   const userAgent = req.headers['user-agent'] || '';
@@ -81,26 +81,35 @@ const blockScriptRequests = (req, res, next) => {
 
   if (!userAgent || disallowedUserAgents.some(ua => normalizedUserAgent.includes(ua))) {
     console.log('Blocked Request - Disallowed User-Agent Detected');
-    return res.status(403).json({ error: 'Forbidden: CLI or script-based requests are not allowed.' });
+    return res.status(403).json({
+      error: 'Forbidden: CLI or script-based requests are not allowed.'
+    });
   }
 
   for (const [header, pattern] of Object.entries(requiredBrowserHeaders)) {
     const headerValue = req.headers[header];
+
     if (['sec-fetch-site', 'sec-fetch-mode', 'sec-fetch-dest'].includes(header) && !headerValue) {
       continue;
     }
+
     if (header === 'referer' && !headerValue) {
       continue;
     }
+
     if (!headerValue || !pattern.test(headerValue)) {
       console.log(`Blocked Request - Missing or Invalid Header: ${header}`);
-      return res.status(403).json({ error: `Forbidden: Missing or invalid ${header} header.` });
+      return res.status(403).json({
+        error: `Forbidden: Missing or invalid ${header} header.`
+      });
     }
   }
 
   if (!req.headers['cookie']) {
     console.log('Blocked Request - Missing Cookie Header');
-    return res.status(403).json({ error: 'Forbidden: Missing browser-specific cookie header.' });
+    return res.status(403).json({
+      error: 'Forbidden: Missing browser-specific cookie header.'
+    });
   }
 
   next();
@@ -110,6 +119,7 @@ const blockScriptRequests = (req, res, next) => {
 app.set('trust proxy', 1);
 
 const rateLimit = require('express-rate-limit');
+
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
@@ -120,37 +130,10 @@ const limiter = rateLimit({
   legacyHeaders: false,
 });
 
-
 app.use(limiter);
 
-const swaggerOptions = {
-  definition: {
-    openapi: '3.0.0',
-    info: {
-      title: 'Guardian API',
-      version: '1.0.0',
-      description: 'API documentation with Swagger UI and Redoc',
-    },
-    components: {
-      securitySchemes: {
-        bearerAuth: {
-          type: 'http',
-          scheme: 'bearer',
-          bearerFormat: 'JWT',
-        },
-      },
-    },
-    security: [
-      {
-        bearerAuth: [],
-      },
-    ],
-  },
-  apis: ['./src/routes/*.js', './src/routes/**/*.js', './src/controllers/*.js'],
-};
-
-
-const swaggerSpec = swaggerJsdoc(swaggerOptions);
+const { buildSwaggerSpec } = require('./config/swagger');
+const swaggerSpec = buildSwaggerSpec();
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -174,6 +157,19 @@ const adminPatientRoutes = require('./routes/adminPatientRoutes');
 const adminStaffRoutes = require('./routes/adminStaffRoutes');
 const orgRoutes = require('./routes/orgRoutes');
 const prescriptionRoutes = require('./routes/prescriptionRoutes');
+const taskRoutes = require('./routes/taskRoutes');
+const carePlanRoutes = require('./routes/carePlanRoutes');
+const resourceRoutes = require('./routes/resourceRoutes');
+const medicalRecordRoutes = require('./routes/medicalRecordRoutes');
+const vitalRoutes = require('./routes/vitalRoutes');
+const meds2Routes = require('./routes/meds2Routes');
+const managementPlanRoutes = require('./routes/managementPlanRoutes');
+const billingRoutes = require('./routes/billingRoutes');
+const referralRoutes = require('./routes/referralRoutes');
+const rosterRoutes = require('./routes/rosterRoutes');
+const locationRoutes = require('./routes/location');
+const correspondenceRoutes = require('./routes/correspondence');
+const emailRoutes = require('./routes/emailRoutes');
 
 app.use('/api/v1/auth', userRoutes);
 app.use('/api/v1/caretaker', caretakerRoutes);
@@ -191,6 +187,22 @@ app.use('/api/v1/prescriptions', prescriptionRoutes);
 app.use('/api/v1/admin', adminStaffRoutes);
 app.use('/api/v1/admin', adminPatientRoutes);
 app.use('/api/v1/orgs', orgRoutes);
+app.use('/api/v1/tasks', taskRoutes);
+app.use('/api/v1/care-plans', carePlanRoutes);
+app.use('/api/v1/resources', resourceRoutes);
+app.use('/api/v1/medical-records', medicalRecordRoutes);
+app.use('/api/v1/vitals', vitalRoutes);
+
+
+ 
+app.use('/api/v1/add-medication', meds2Routes);
+app.use('/api/v1/management-plans', managementPlanRoutes);
+app.use('/api/v1/billing', billingRoutes);
+app.use('/api/v1/referral', referralRoutes);
+app.use('/api/v1/rosters', rosterRoutes);
+app.use('/api/v1/locations', locationRoutes);
+app.use('/api/v1/correspondence', correspondenceRoutes);
+app.use('/api/v1/email', emailRoutes);
 
 app.use(
   '/swaggerDocs',
@@ -201,7 +213,8 @@ app.use(
       'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.1/swagger-ui.min.css',
     customJs: [
       'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.1/swagger-ui-bundle.min.js',
-      'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.1/swagger-ui-standalone-preset.min.js'
+      'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.1/swagger-ui-standalone-preset.min.js',
+      '/swagger-assets/swaggerEmailForm.js'
     ]
   })
 );
@@ -225,6 +238,8 @@ app.get('/redoc', (req, res) => {
 });
 
 app.get('/openapi.json', (req, res) => {
+  // Serve the live, generated spec so Redoc and any downloaded/imported copy
+  // always match the running API.
   res.json(swaggerSpec);
 });
 
@@ -287,10 +302,14 @@ app.get('/', (req, res) => {
   `);
 });
 
-
-
 const server = http.createServer(app);
-const io = socketIO(server, { cors: { origin: '*', methods: ['GET', 'POST'] } });
+const io = socketIO(server, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST']
+  }
+});
+
 const connectedUsers = Object.create(null);
 
 io.on('connection', socket => {
@@ -298,6 +317,7 @@ io.on('connection', socket => {
     if (!userId) return;
     connectedUsers[String(userId)] = socket.id;
   });
+
   socket.on('disconnect', () => {
     for (const [uid, sid] of Object.entries(connectedUsers)) {
       if (sid === socket.id) {
@@ -310,10 +330,12 @@ io.on('connection', socket => {
 
 function emitToUser(userId, event, payload) {
   const sid = connectedUsers[String(userId)];
-  if (sid) io.to(sid).emit(event, payload);
+  if (sid) {
+    io.to(sid).emit(event, payload);
+  }
 }
-setEmit(emitToUser);
 
+setEmit(emitToUser);
 
 const PORT = process.env.PORT || 3000;
 

@@ -39,8 +39,20 @@ const PrescriptionSchema = new mongoose.Schema(
       enum: ['active', 'discontinued', 'completed'],
       default: 'active',
     },
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    updateNotes: {
+      type: String,
+      default: '',
+    },
   },
   { timestamps: true } // adds createdAt & updatedAt
 );
+
+PrescriptionSchema.index({ patient: 1, status: 1 });
+PrescriptionSchema.index({ prescriber: 1 });
 
 module.exports = mongoose.model('Prescription', PrescriptionSchema);
