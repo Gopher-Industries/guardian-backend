@@ -1,3 +1,4 @@
+const crypto = require('node:crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
@@ -5,6 +6,13 @@ const Role = require('../models/Role');
 const normalizeName = require("../utils/normalizeName");
 const { OTP, generateOTP } = require("../models/otp");
 const { sendPasswordResetEmail, sendPinCodeVerificationEmail } = require('../utils/mailer');
+
+function getResetTokenFingerprint(user) {
+  return crypto
+    .createHmac('sha256', process.env.JWT_SECRET)
+    .update(user.password_hash)
+    .digest('hex');
+}
 
 /**
  * @swagger
@@ -420,17 +428,24 @@ exports.requestPasswordReset = async (req, res) => {
     const user = await User.findOne({ email });
 
     if (!user) {
-      // TODO? Maybe we should consider returning a success message so attackers can't brute force to find valid email addresses
-      return res.status(404).send({ error: 'User not found' });
-    }
+      return res.status(200).json({
+        message: 'If an account exists for this email, a password reset link has been sent'
+      });
+  }
 
-    const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, { expiresIn: '15m' });
+    const token = jwt.sign(
+      { _id: user._id, purpose: 'password-reset', fingerprint: getResetTokenFingerprint(user) },
+        process.env.JWT_SECRET,
+      { expiresIn: '15m' }
+    );
 
     const firstName = user.fullname.split(" ")[0];
 
     // Send the token to the user's email
     await sendPasswordResetEmail(email, firstName, token);
-    res.status(200).json({ message: 'Password reset link sent' });
+    res.status(200).json({
+     message: 'If an account exists for this email, a password reset link has been sent'
+  });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -523,6 +538,13 @@ exports.resetPassword = async (req, res) => {
 
     if (!user) {
       return res.status(400).send({ error: 'Invalid token or user not found.' });
+    }
+    if (
+      decoded.purpose !== 'password-reset' ||
+      typeof decoded.fingerprint !== 'string' ||
+    decoded.fingerprint !== getResetTokenFingerprint(user)
+    ) {
+    return res.status(400).json({ error: 'Invalid or expired token' });
     }
 
     user.password_hash = newPassword;
