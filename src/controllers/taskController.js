@@ -4,6 +4,7 @@ const User = require('../models/User');
 const Organization = require('../models/Organization');
 const mongoose = require('mongoose');
 const notifyRules = require('../services/notifyRules');
+const { queueTaskAssignedEmail } = require('../services/taskEmailService');
 const {
   getAccessiblePatientIds,
   validateAccessiblePatient
@@ -321,6 +322,8 @@ exports.createTask = async (req, res) => {
       dueDate: task.dueDate,
       actorId: req.user?._id
     }));
+
+    queueTaskAssignedEmail(task, { assignedById: req.user?._id });
 
     return res.status(201).json({ message: 'Task created', task });
   } catch (error) {
