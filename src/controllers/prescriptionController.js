@@ -27,10 +27,10 @@ const notifyRules = require('../services/notifyRules');
  *           type: string
  *           description: How often to take it
  *           example: "twice daily"
-  *        timeOfDay:
-  *         type: string
-  *         description: Time(s) of day
-  *         example: "Morning""
+ *         timeOfDay:
+ *           type: string
+ *           description: Time(s) of day
+ *           example: "Morning"
  *         durationDays:
  *           type: integer
  *           description: Number of days
@@ -46,31 +46,7 @@ const notifyRules = require('../services/notifyRules');
  *
  *     PrescriptionCreateRequest:
  *       type: object
- *       description: Create prescription request body
- *       required:
- *         - items
- *       properties:
- *         patientId:
- *           type: string
- *           description: Patient ObjectId, required if patientName is not provided
- *           example: "68c268a3097a71d5162ac23a"
- *         patientName:
- *           type: string
- *           description: Patient full name, required if patientId is not provided
- *           example: "Asha Patel"
- *         items:
- *           type: array
- *           minItems: 1
- *           items:
- *             $ref: '#/components/schemas/PrescriptionItem'
- *         notes:
- *           type: string
- *           description: Optional notes for the prescription
- *           example: "For acute sinusitis"
- *       oneOf:
- *         - required: [patientId]
- *         - required: [patientName]
- */
+ *       description: Create prescription request
 
 /**
  * @swagger
