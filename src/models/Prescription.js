@@ -63,6 +63,7 @@ const PrescriptionSchema = new mongoose.Schema(
 
     comment: {
       type: String,
+    },
     updatedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
