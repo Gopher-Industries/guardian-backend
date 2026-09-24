@@ -10,12 +10,12 @@ const notifyRules = require('../services/notifyRules');
  *     PrescriptionItem:
  *       type: object
  *       required:
- *         - name
+ *         - medicationName
  *         - dose
  *         - frequency
  *         - durationDays
  *       properties:
- *         name:
+ *         medicationName:
  *           type: string
  *           description: Medicine name
  *           example: Amoxicillin
@@ -27,45 +27,26 @@ const notifyRules = require('../services/notifyRules');
  *           type: string
  *           description: How often to take it
  *           example: "twice daily"
+ *         timeOfDay:
+ *           type: string
+ *           description: Time(s) of day
+ *           example: "Morning"
  *         durationDays:
  *           type: integer
  *           description: Number of days
  *           example: 7
- *         quantity:
+ *         howMany:
  *           type: integer
  *           description: Total tablets or capsules
  *           example: 14
- *         instructions:
+ *         comments:
  *           type: string
  *           description: Extra guidance
  *           example: "Take after food"
  *
  *     PrescriptionCreateRequest:
  *       type: object
- *       description: Create prescription request body
- *       required:
- *         - items
- *       properties:
- *         patientId:
- *           type: string
- *           description: Patient ObjectId, required if patientName is not provided
- *           example: "68c268a3097a71d5162ac23a"
- *         patientName:
- *           type: string
- *           description: Patient full name, required if patientId is not provided
- *           example: "Asha Patel"
- *         items:
- *           type: array
- *           minItems: 1
- *           items:
- *             $ref: '#/components/schemas/PrescriptionItem'
- *         notes:
- *           type: string
- *           description: Optional notes for the prescription
- *           example: "For acute sinusitis"
- *       oneOf:
- *         - required: [patientId]
- *         - required: [patientName]
+ *       description: Create prescription request
  */
 
 /**
@@ -88,21 +69,23 @@ const notifyRules = require('../services/notifyRules');
  *               value:
  *                 patientId: "68c268a3097a71d5162ac23a"
  *                 items:
- *                   - name: "Amoxicillin"
+ *                   - medicationName: "Amoxicillin"
  *                     dose: "500 mg"
  *                     frequency: "twice daily"
+ *                     timeOfDay: "Morning"
  *                     durationDays: 7
  *             full:
  *               summary: With optional fields
  *               value:
  *                 patientName: "Asha Patel"
  *                 items:
- *                   - name: "Amoxicillin"
+ *                   - medicationName: "Amoxicillin"
  *                     dose: "500 mg"
  *                     frequency: "twice daily"
+ *                     timeOfDay: "Morning" 
  *                     durationDays: 7
- *                     quantity: 14
- *                     instructions: "Take after food"
+ *                     howMany: 14
+ *                     comments: "Take after food"
  *                 notes: "For acute sinusitis"
  *     responses:
  *       201:
@@ -137,15 +120,15 @@ exports.createPrescription = async (req, res) => {
     }
 
     for (const [i, it] of items.entries()) {
-      if (!it?.name || !it?.dose || !it?.frequency || !it?.durationDays) {
+      if (!it?.medicationName  || !it?.dose || !it?.frequency || !it?.durationDays) {
         return res.status(400).json({
-          error: `Item ${i + 1} missing required fields: name, dose, frequency, durationDays`
+          error: `Item ${i + 1} missing required fields: medicationName, dose, frequency, durationDays`
         });
       }
 
-      if (typeof it.name !== 'string' || !it.name.trim()) {
+      if (typeof it.medicationName !== 'string' || !it.medicationName.trim()) {
         return res.status(400).json({
-          error: `Item ${i + 1}: medicine name is required and cannot be empty`
+          error: `Item ${i + 1}: medication name is required and cannot be empty`
         });
       }
 
@@ -175,11 +158,11 @@ exports.createPrescription = async (req, res) => {
       }
 
       if (
-        it.quantity !== undefined &&
-        (!Number.isInteger(it.quantity) || it.quantity <= 0)
+        it.howMany !== undefined &&
+        (!Number.isInteger(it.howMany) || it.howMany <= 0)
       ) {
         return res.status(400).json({
-          error: `Item ${i + 1}: quantity must be a positive integer`
+          error: `Item ${i + 1}: howMany must be a positive integer`
         });
       }
     }

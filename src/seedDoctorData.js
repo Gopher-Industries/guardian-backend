@@ -136,14 +136,14 @@ const seedDoctorData = async () => {
         prescriber: doctor._id,
         status: 'active',
         notes: 'Monitor BP weekly.',
-        items: [{ name: 'Warfarin', dose: '5mg', frequency: 'daily', durationDays: 90 }],
+        items: [{ medicationName: 'Warfarin', dose: '5mg', frequency: 'daily', durationDays: 90 }],
       },
       {
         patient: p1._id,
         prescriber: doctor._id,
         status: 'active',
         notes: 'For pain management.',
-        items: [{ name: 'Paracetamol', dose: '500mg', frequency: 'twice daily', durationDays: 30 }],
+        items: [{ medicationName: 'Paracetamol', dose: '500mg', frequency: 'twice daily', durationDays: 30 }],
       },
       {
         patient: p2._id,
@@ -151,8 +151,8 @@ const seedDoctorData = async () => {
         status: 'active',
         notes: 'Check HbA1c monthly.',
         items: [
-          { name: 'Metformin', dose: '500mg', frequency: 'twice daily', durationDays: 90 },
-          { name: 'Insulin Glargine', dose: '10 units', frequency: 'nightly', durationDays: 90 },
+          { medicationName: 'Metformin', dose: '500mg', frequency: 'twice daily', durationDays: 90 },
+          { medicationName: 'Insulin Glargine', dose: '10 units', frequency: 'nightly', durationDays: 90 },
         ],
       },
       {
@@ -160,21 +160,21 @@ const seedDoctorData = async () => {
         prescriber: doctor._id,
         status: 'completed',
         notes: 'Short course completed.',
-        items: [{ name: 'Amoxicillin', dose: '250mg', frequency: 'three times daily', durationDays: 7 }],
+        items: [{ medicationName: 'Amoxicillin', dose: '250mg', frequency: 'three times daily', durationDays: 7 }],
       },
       {
         patient: p3._id,
         prescriber: doctor._id,
         status: 'active',
         notes: 'Review in 3 months.',
-        items: [{ name: 'Donepezil', dose: '10mg', frequency: 'nightly', durationDays: 90 }],
+        items: [{ medicationName: 'Donepezil', dose: '10mg', frequency: 'nightly', durationDays: 90 }],
       },
       {
         patient: p3._id,
         prescriber: doctor._id,
         status: 'discontinued',
         notes: 'Discontinued due to adverse reaction.',
-        items: [{ name: 'Rivastigmine', dose: '3mg', frequency: 'twice daily', durationDays: 60 }],
+        items: [{ medicationName: 'Rivastigmine', dose: '3mg', frequency: 'twice daily', durationDays: 60 }],
       },
     ]);
 
