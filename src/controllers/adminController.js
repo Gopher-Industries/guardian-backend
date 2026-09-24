@@ -8,6 +8,7 @@ const mongoose = require('mongoose');
 const SupportTicket = require('../models/SupportTicket');
 const PatientLog = require('../models/PatientLog');
 const notifyRules = require('../services/notifyRules');
+const { queueTaskAssignedEmail } = require('../services/taskEmailService');
 const { findAdminOrg, assertSameOrg, isUserInOrg } = require('../services/orgService');
 
 const SUPPORT_TICKET_STATUSES = ['open', 'in_progress', 'resolved', 'closed'];
@@ -421,7 +422,7 @@ exports.getSupportTickets = async (req, res) => {
 /**
  * @swagger
  * /api/v1/admin/support-tickets/{ticketId}:
- *   put:
+ *   patch:
  *     summary: Update a support ticket
  *     tags: [Admin]
  *     parameters:
@@ -693,6 +694,8 @@ exports.createTask = async (req, res) => {
         actorId: req.user?._id,
       })
     ).catch(() => {});
+
+    queueTaskAssignedEmail(newTask, { assignedById: req.user?._id });
 
     return res.status(201).json({
       message: 'Task created successfully',

@@ -5,6 +5,7 @@ const verifyToken = require('../middleware/verifyToken');
 const checkPasswordExpiry = require('../middleware/checkPasswordExpiry');
 const { registerSchema, loginSchema, validationMiddleware } = require('../middleware/validationMiddleware');
 
+
 /**
  * @openapi
  * /api/v1/auth/register:
@@ -22,12 +23,24 @@ const { registerSchema, loginSchema, validationMiddleware } = require('../middle
  *           schema:
  *             $ref: '#/components/schemas/RegisterRequest'
  *           example:
- *             name: "John Doe"
+ *             fullname: "John Doe"
  *             email: "john.doe@guardianmonitor.com"
  *             password: "SecurePass@123"
  *             role: "nurse"
  *             phone: "+61412345678"
  *             organizationId: "664f1c2e8b1a2c3d4e5f6a7b"
+ *             title: "Mr"
+ *             surname: "Doe"
+ *             firstName: "John"
+ *             dateOfBirth: "1995-05-10"
+ *             primaryContactNumber: "+61412345678"
+ *             medicareProviderNumber: "MED12345"
+ *             taxFileNumber: "123456789"
+ *             superannuationFundName: "AustralianSuper"
+ *             superMemberNumber: "SUP123456"
+ *             bankAccountName: "John Doe"
+ *             accountNumber: "12345678"
+ *             bsb: "063000"
  *     responses:
  *       201:
  *         description: User registered successfully
@@ -396,10 +409,71 @@ router.post('/reset-password-request', userController.requestPasswordReset);
  */
 router.get('/reset-password', userController.renderPasswordResetPage);
 router.post('/reset-password', userController.resetPassword);
-
+/**
+ * @swagger
+ * /api/v1/auth/search-user:
+ *   get:
+ *     summary: Search users by name or user ID
+ *     description: |
+ *       Searches users using either a user ID or a name.
+ *
+ *       - If the search value exactly matches a user ID, the corresponding user is returned.
+ *       - Otherwise, a case-insensitive name search is performed by matching one or more name terms.
+ *
+ *       Returns the matching user's ID and full name.
+ *     tags:
+ *       - Authentication
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: |
+ *           User ID or name to search for.
+ *
+ *           Examples:
+ *           - 689f7d2a1b7c4f3d91ab1234
+ *           - John
+ *           - John Smith
+ *     responses:
+ *       200:
+ *         description: User(s) found successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 count:
+ *                   type: integer
+ *                   example: 1
+ *                 users:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       userId:
+ *                         type: string
+ *                         example: 689f7d2a1b7c4f3d91ab1234
+ *                       fullname:
+ *                         type: string
+ *                         example: John Smith
+ *       400:
+ *         description: Search text is required.
+ *       404:
+ *         description: No users found.
+ *       500:
+ *         description: Internal server error.
+ */
+router.get('/search-user', verifyToken, userController.searchUser);
 router.get('/', verifyToken, async (req, res) => {
   try {
-    const users = await User.find().select('-password_hash');
+    const users = await User.find().select('-password_hash -taxFileNumber -superannuationFundName -superMemberNumber -bankAccountName -accountNumber -bsb');
     res.status(200).json(users);
   } catch (error) {
     res.status(400).json({ error: error.message });

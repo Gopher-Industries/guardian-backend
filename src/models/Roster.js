@@ -62,6 +62,11 @@ const RosterSchema = new mongoose.Schema(
       default: null
     },
 
+    reminderSentAt: {
+      type: Date,
+      default: null
+   },
+
     assignedStaff: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
