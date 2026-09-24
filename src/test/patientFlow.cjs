@@ -121,7 +121,7 @@ describe('patient flow', function () {
       firstName: 'Nurse Editable',
       lastName: 'Patient',
       caretakerId: caretaker._id,
-      assignedNurses: [nurse],
+      nurseIds: [nurse._id],
       createdBy: caretaker._id,
     });
     const res = await chai

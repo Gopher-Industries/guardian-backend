@@ -211,6 +211,12 @@ exports.addPatient = async (req, res) => {
  */
 exports.getAllPatients = async (req, res) => {
   try {
+    const actor = await User.findById(req.user?._id).populate('role', 'name').lean();
+    const actorRole = actor?.role?.name?.toLowerCase();
+    if (!actor || !actorRole) {
+      return res.status(401).json({ message: 'User context is required' });
+    }
+
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
     const skip = (page - 1) * limit;
@@ -221,6 +227,16 @@ exports.getAllPatients = async (req, res) => {
 
     if (!(String(includeDeleted).toLowerCase() === 'true')) {
       filter.isDeleted = { $ne: true };
+    }
+
+    if (actorRole === 'caretaker') {
+      filter.caretakerId = actor._id;
+    } else if (actorRole === 'nurse') {
+      filter.nurseIds = actor._id;
+    } else if (actorRole === 'doctor') {
+      filter.doctorId = actor._id;
+    } else if (actorRole !== 'admin') {
+      return res.status(403).json({ message: 'You are not authorized to list patients' });
     }
 
     if (search) {
@@ -387,7 +403,7 @@ exports.updatePatient = async (req, res) => {
       nextOfKinRelationship,
       emergencyContact, occupation, generalNotes, appointmentNotes,
       isActive, isDeceased, dateOfDeath, causeOfDeath, assignedDoctor,
-      allergies,
+      allergies, medicalSummary, notes,
       conditions
     } = req.body;
 
@@ -403,7 +419,7 @@ exports.updatePatient = async (req, res) => {
       healthInsuranceNumber, healthInsuranceExpiryDate, religion, headOfFamily,
       nextOfKin, nextOfKinRelationship, emergencyContact, occupation,
       generalNotes, appointmentNotes, isActive, isDeceased, dateOfDeath,
-      causeOfDeath, assignedDoctor
+      causeOfDeath, assignedDoctor, medicalSummary, notes
     };
 
     for (const [field, value] of Object.entries(patientFields)) {

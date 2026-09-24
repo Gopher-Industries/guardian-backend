@@ -530,15 +530,15 @@ exports.listPatientsByDoctor = async (req, res) => {
   
       // Query patients assigned to this doctor
       const [items, total] = await Promise.all([
-        Patient.find({ assignedDoctor: doctorId })
+        Patient.find({ doctorId })
           .select('_id firstName lastName dateOfBirth birthSex caretakerId nurseIds doctorId createdAt updatedAt')
           .sort({ firstName: 1 })
           .skip(skip)
           .limit(limit)
-          .populate('caretaker', 'fullname email')
-          .populate('assignedNurses', 'fullname email')
+          .populate('caretakerId', 'fullname email')
+          .populate('nurseIds', 'fullname email')
           .lean(),
-        Patient.countDocuments({ assignedDoctor: doctorId })
+        Patient.countDocuments({ doctorId })
       ]);
   
       return res.status(200).json({

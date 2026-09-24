@@ -130,7 +130,7 @@ describe('doctor controller flow', function () {
     const patient = await createPatient({ 
       firstName: 'Doctor Assign',
       lastName: 'Patient',
-      assignedCaretaker: caretaker._id,
+      caretakerId: caretaker._id,
       createdBy: caretaker._id,
       createdAt: new Date(),
     });
