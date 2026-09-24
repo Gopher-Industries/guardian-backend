@@ -158,7 +158,7 @@ describe('care record, prescription and patient log flow', function () {
       .set('Authorization', authHeader(fixture.nurse))
       .send({
         title: 'Patient mobility note',
-        description: 'Patient walked with support in the morning.',
+        observations: 'Patient walked with support in the morning.',
         patient: String(fixture.activePatient._id),
       });
 
