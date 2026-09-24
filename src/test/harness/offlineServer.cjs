@@ -162,34 +162,45 @@ app.use((error, _req, res, _next) => {
  * Boot
  * ------------------------------------------------------------------ */
 
-app.listen(PORT, () => {
-  const line = '─'.repeat(78);
-  console.log('\n' + line);
-  console.log('  Guardian — offline access-control server (in-memory, no database)');
-  console.log(line);
-  console.log(`  Mode      : ${STRICT ? 'STRICT — only explicit grants open a record' : 'RELATIONSHIP — care relationships also grant access'}`);
-  console.log(`  Console   : http://localhost:${PORT}/api/v1/access/console`);
-  console.log(`  Password  : ${DEMO_PASSWORD}   (any demo user below)`);
-  console.log(line);
-  console.log('  Sign in as                              email');
-  PEOPLE.forEach(([, fullname, email, roleName]) =>
-    console.log(`  ${(fullname + ' (' + roleName + ')').padEnd(38)}${email}`)
-  );
-  console.log(line);
-  console.log('  Patients');
-  ['alice', 'bob', 'chen'].forEach((key) => {
-    const patient = repository.store.patients.get(ids[key]);
-    console.log(`  ${patient.fullname.padEnd(18)}${ids[key]}`);
+/**
+ * Only listen when invoked directly. The project's test script globs every
+ * .cjs file under src/test, so mocha requires this file too — without this guard it
+ * would bind a port during every CI run.
+ */
+function start() {
+  return app.listen(PORT, () => {
+    const line = '─'.repeat(78);
+    console.log('\n' + line);
+    console.log('  Guardian — offline access-control server (in-memory, no database)');
+    console.log(line);
+    console.log(`  Mode      : ${STRICT ? 'STRICT — only explicit grants open a record' : 'RELATIONSHIP — care relationships also grant access'}`);
+    console.log(`  Console   : http://localhost:${PORT}/api/v1/access/console`);
+    console.log(`  Password  : ${DEMO_PASSWORD}   (any demo user below)`);
+    console.log(line);
+    console.log('  Sign in as                              email');
+    PEOPLE.forEach(([, fullname, email, roleName]) =>
+      console.log(`  ${(fullname + ' (' + roleName + ')').padEnd(38)}${email}`)
+    );
+    console.log(line);
+    console.log('  Patients');
+    ['alice', 'bob', 'chen'].forEach((key) => {
+      const patient = repository.store.patients.get(ids[key]);
+      console.log(`  ${patient.fullname.padEnd(18)}${ids[key]}`);
+    });
+    console.log(line);
+    console.log('  Bearer tokens (paste into the console, or Swagger Authorize):\n');
+    PEOPLE.forEach(([key, fullname, , roleName]) => {
+      console.log(`  ${fullname} (${roleName}):`);
+      console.log(`  ${signFor(repository.store.users.get(ids[key]))}\n`);
+    });
+    console.log(line);
+    console.log('  Data is in memory only and resets on restart. Ctrl-C to stop.');
+    console.log(line + '\n');
   });
-  console.log(line);
-  console.log('  Bearer tokens (paste into the console, or Swagger Authorize):\n');
-  PEOPLE.forEach(([key, fullname, , roleName]) => {
-    console.log(`  ${fullname} (${roleName}):`);
-    console.log(`  ${signFor(repository.store.users.get(ids[key]))}\n`);
-  });
-  console.log(line);
-  console.log('  Data is in memory only and resets on restart. Ctrl-C to stop.');
-  console.log(line + '\n');
-});
+}
 
-module.exports = { app, service, repository, ids };
+if (require.main === module) {
+  start();
+}
+
+module.exports = { app, start, service, repository, ids };

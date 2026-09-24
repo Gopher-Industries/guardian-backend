@@ -278,7 +278,17 @@ async function main() {
   console.log(green('  All expectations held. The mechanism behaves as designed.\n'));
 }
 
-main().catch((error) => {
-  console.error(red('\nHarness failed: ' + error.stack));
-  process.exit(1);
-});
+/**
+ * Only run when invoked directly. The project's test script globs every
+ * .cjs file under src/test, so mocha requires this file too — without this guard the
+ * whole scenario would execute inside the test run and could call process.exit
+ * part way through it.
+ */
+if (require.main === module) {
+  main().catch((error) => {
+    console.error(red('\nHarness failed: ' + error.stack));
+    process.exit(1);
+  });
+}
+
+module.exports = { main, service, repository, ids };
