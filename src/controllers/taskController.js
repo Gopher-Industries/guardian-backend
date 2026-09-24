@@ -2,6 +2,7 @@ const Task = require('../models/Task');
 const Patient = require('../models/Patient');
 const User = require('../models/User');
 const notifyRules = require('../services/notifyRules');
+const { queueTaskAssignedEmail } = require('../services/taskEmailService');
 const {
   getAccessiblePatientIds,
   validateAccessiblePatient
@@ -120,6 +121,8 @@ exports.createTask = async (req, res) => {
       dueDate: task.dueDate,
       actorId: req.user?._id
     }));
+
+    queueTaskAssignedEmail(task, { assignedById: req.user?._id });
 
     return res.status(201).json({ message: 'Task created', task });
   } catch (error) {
