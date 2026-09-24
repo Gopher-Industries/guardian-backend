@@ -30,6 +30,7 @@ const connectDB = async () => {
   }
 };
 
-connectDB();
+const dbReady = connectDB();
 
 module.exports = mongoose;
+module.exports.dbReady = dbReady;

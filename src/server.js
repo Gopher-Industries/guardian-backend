@@ -3,6 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const database = require('./config/db');
+const { startScheduler } = require('./scheduler');
 const multer = require('multer');
 const http = require('http');
 const socketIO = require('socket.io');
@@ -50,6 +51,7 @@ const storage = process.env.VERCEL
 exports.upload = multer({ storage });
 
 app.use('/uploads', express.static('uploads'));
+app.use('/swagger-assets', express.static(path.join(__dirname, 'public')));
 
 const blockScriptRequests = (req, res, next) => {
   const userAgent = req.headers['user-agent'] || '';
@@ -159,14 +161,22 @@ const prescriptionRoutes = require('./routes/prescriptionRoutes');
 const taskRoutes = require('./routes/taskRoutes');
 const carePlanRoutes = require('./routes/carePlanRoutes');
 const resourceRoutes = require('./routes/resourceRoutes');
+const medicalRecordRoutes = require('./routes/medicalRecordRoutes');
+const vitalRoutes = require('./routes/vitalRoutes');
 const meds2Routes = require('./routes/meds2Routes');
 const managementPlanRoutes = require('./routes/managementPlanRoutes');
 const billingRoutes = require('./routes/billingRoutes');
+const appointmentReminderRoutes = require('./routes/appointmentReminderRoutes');
 const referralRoutes = require('./routes/referralRoutes');
 const rosterRoutes = require('./routes/rosterRoutes');
+const clinicRoutes = require('./routes/clinicRoutes');
+const roomRoutes = require('./routes/roomRoutes');
+const doctorLetterRoutes = require('./routes/doctorLetterRoutes');
 const locationRoutes = require('./routes/location');
 const correspondenceRoutes = require('./routes/correspondence');
 const emailRoutes = require('./routes/emailRoutes');
+const blobStoreRoutes = require('./routes/blobStoreRoutes'); 
+const { startShiftReminderScheduler } = require('./services/shiftReminderScheduler');
 
 app.use('/api/v1/auth', userRoutes);
 app.use('/api/v1/caretaker', caretakerRoutes);
@@ -187,17 +197,24 @@ app.use('/api/v1/orgs', orgRoutes);
 app.use('/api/v1/tasks', taskRoutes);
 app.use('/api/v1/care-plans', carePlanRoutes);
 app.use('/api/v1/resources', resourceRoutes);
+app.use('/api/v1/medical-records', medicalRecordRoutes);
+app.use('/api/v1/vitals', vitalRoutes);
 
 
  
 app.use('/api/v1/add-medication', meds2Routes);
 app.use('/api/v1/management-plans', managementPlanRoutes);
 app.use('/api/v1/billing', billingRoutes);
+app.use('/api/v1/appointment-reminders', appointmentReminderRoutes);
 app.use('/api/v1/referral', referralRoutes);
 app.use('/api/v1/rosters', rosterRoutes);
+app.use('/api/v1/clinics', clinicRoutes);
+app.use('/api/v1/rooms', roomRoutes);
+app.use('/api/v1/doctor-letters', doctorLetterRoutes);
 app.use('/api/v1/locations', locationRoutes);
 app.use('/api/v1/correspondence', correspondenceRoutes);
 app.use('/api/v1/email', emailRoutes);
+app.use('/api/v1/blob_store', blobStoreRoutes);
 
 app.use(
   '/swaggerDocs',
@@ -208,7 +225,8 @@ app.use(
       'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.1/swagger-ui.min.css',
     customJs: [
       'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.1/swagger-ui-bundle.min.js',
-      'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.1/swagger-ui-standalone-preset.min.js'
+      'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.1/swagger-ui-standalone-preset.min.js',
+      '/swagger-assets/swaggerEmailForm.js'
     ]
   })
 );
@@ -334,8 +352,12 @@ setEmit(emitToUser);
 const PORT = process.env.PORT || 3000;
 
 if (process.env.NODE_ENV !== 'test') {
+  startScheduler();
   server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+
+    // Start the shift reminder scheduler
+    startShiftReminderScheduler();
   });
 }
 
