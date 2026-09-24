@@ -40,6 +40,31 @@ const PrescriptionSchema = new mongoose.Schema(
       enum: ['active', 'discontinued', 'completed'],
       default: 'active',
     },
+
+    medicationName: {
+      type: String,
+    },
+
+    dose: {
+      type: String,
+    },
+
+    howMany: {
+      type: Number,
+    },
+
+    timesPerDay: {
+      type: Number,
+    },
+
+    timesOfDay: {
+      type: [String],
+      default: [],
+    },
+
+    comment: {
+      type: String,
+    },
     updatedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

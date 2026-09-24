@@ -2,46 +2,27 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Role = require('../models/Role');
-const normalizeName = require("../utils/normalizeName");
-const { OTP, generateOTP } = require("../models/otp");
+const { sendTemplatedEmail } = require('../services/emailService');
+
+const { OTP, generateOTP } = require('../models/otp');
 const { sendPasswordResetEmail, sendPinCodeVerificationEmail } = require('../utils/mailer');
 
-/**
- * @swagger
- * /api/v1/auth/register:
- *   post:
- *     summary: Register a new user
- *     description: Registers a new user with the provided fullname, email, and password.
- *     tags:
- *       - Authentication
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               fullname:
- *                 type: string
- *                 example: John Doe
- *               email:
- *                 type: string
- *                 example: johndoe@example.com
- *               password:
- *                 type: string
- *                 example: Password123
- *               role:
- *                 type: string
- *                 example: nurse
- *     responses:
- *       201:
- *         description: User registered successfully.
- *       400:
- *         description: Bad request. Could be due to missing fields or an invalid email/password.
- */
 exports.registerUser = async (req, res) => {
   try {
-    const { fullname, email, password, role } = req.body;
+    const { fullname, email, password, role, phone,
+      organizationId,
+      title, 
+      surname, 
+      firstName, 
+      dateOfBirth, 
+      primaryContactNumber,
+      medicareProviderNumber,
+      taxFileNumber,
+      superannuationFundName,
+      superMemberNumber,
+      bankAccountName,
+      accountNumber,
+      bsb} = req.body;
 
     if (!fullname || !email || !password) {
       return res.status(400).json({ error: 'All fields (fullname, email, password) are required' });
@@ -73,7 +54,21 @@ exports.registerUser = async (req, res) => {
     const newUser = new User({
       fullname: fullname,
       email: email,
-      password_hash: password
+      password_hash: password,
+      phone,
+      organization: organizationId,
+      title,
+      surname,
+      firstName,
+      dateOfBirth,
+      primaryContactNumber,
+      medicareProviderNumber,
+      taxFileNumber,
+      superannuationFundName,
+      superMemberNumber,
+      bankAccountName,
+      accountNumber,
+      bsb
     });
 
     if (userRole) {
@@ -81,6 +76,15 @@ exports.registerUser = async (req, res) => {
     }
 
     await newUser.save();
+    try {
+    await sendTemplatedEmail('welcome', {
+      to: newUser.email,
+      name: newUser.fullname,
+      role: userRole ? userRole.name : undefined
+    });
+    } catch (emailError) {
+     console.error('Welcome email failed:', emailError.message);
+    }
 
     const token = jwt.sign(
       { _id: newUser._id, email: newUser.email },

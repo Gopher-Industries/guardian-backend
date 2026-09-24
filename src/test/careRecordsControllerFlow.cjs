@@ -174,7 +174,7 @@ describe('care records controller flow', function () {
       .send({ title: 'Missing fields' });
     expect(invalidCreate).to.have.status(400);
 
-    const log = await PatientLog.create({ title: 'Private Log', description: 'Only creator deletes', patient: patient._id, createdBy: nurse._id });
+    const log = await PatientLog.create({ title: 'Private Log', observations: 'Only creator deletes', patient: patient._id, createdBy: nurse._id });
 
     const forbiddenDelete = await chai
       .request(app)
