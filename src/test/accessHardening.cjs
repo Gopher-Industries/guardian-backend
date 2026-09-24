@@ -312,3 +312,53 @@ describe('hardening — audit completeness', () => {
     expect(row.subjectRole).to.equal('analyst,auditor');
   });
 });
+
+describe('hardening — malformed ids never reach the query layer', () => {
+  /**
+   * These exercise the MONGO repository directly, with no database connection.
+   * The guards short-circuit before mongoose is called, which is the whole
+   * point: an unvalidated id reaching find() raises a CastError and surfaces
+   * as a 500 instead of a 403.
+   *
+   * The in-memory repository cannot catch this class of bug — its ids are
+   * opaque strings and it never casts — so the API suites passed while the
+   * mongo path was broken. Matching method names is not the same as matching
+   * behaviour.
+   */
+  const { createMongoRepository } = require('../access/accessRepository.mongo');
+
+  let repository;
+  before(() => { repository = createMongoRepository(); });
+
+  it('getGrants returns nothing for a malformed patient id', async () => {
+    const grants = await repository.getGrants({ subjectId: '66f1a2b3c4d5e6f708192a3b', patientId: 'not-an-object-id' });
+    expect(grants).to.deep.equal([]);
+  });
+
+  it('getGrants returns nothing for a malformed subject id', async () => {
+    const grants = await repository.getGrants({ subjectId: 'nope', patientId: '66f1a2b3c4d5e6f708192a3b' });
+    expect(grants).to.deep.equal([]);
+  });
+
+  it('getPatient returns null for a malformed id', async () => {
+    expect(await repository.getPatient('not-an-object-id')).to.equal(null);
+  });
+
+  it('listGrants returns an empty page for a malformed filter id', async () => {
+    const result = await repository.listGrants({ patient: 'not-an-object-id' });
+    expect(result.total).to.equal(0);
+    expect(result.grants).to.deep.equal([]);
+  });
+
+  it('listAudit returns an empty page for a malformed filter id', async () => {
+    const result = await repository.listAudit({ subject: 'not-an-object-id' });
+    expect(result.total).to.equal(0);
+    expect(result.entries).to.deep.equal([]);
+  });
+
+  it('rejects a 12-character string that mongoose isValid() would accept', async () => {
+    // 'not-an-obj-i' is 12 chars, so ObjectId.isValid() passes it and it
+    // round-trips to something entirely different.
+    expect(await repository.getPatient('not-an-obj-i')).to.equal(null);
+  });
+});

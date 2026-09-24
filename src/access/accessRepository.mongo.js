@@ -382,10 +382,22 @@ function createMongoRepository() {
    * Grants
    * ------------------------------------------------------------------ */
 
+  /**
+   * Grants for a subject, a patient, or the pair.
+   *
+   * Ids are validated before they reach mongoose. A malformed id from a URL
+   * would otherwise raise a CastError inside find(), which surfaces as a 500 —
+   * turning "that patient identifier is not real" into "the server broke". An
+   * id that cannot exist matches nothing, so an empty list is the honest answer.
+   */
   async function getGrants({ subjectId, patientId }) {
+    if (subjectId !== undefined && subjectId !== null && !isValidId(subjectId)) return [];
+    if (patientId !== undefined && patientId !== null && !isValidId(patientId)) return [];
+
     const filter = {};
     if (subjectId) filter.subject = subjectId;
     if (patientId) filter.patient = patientId;
+
     const grants = await PatientAccessGrant.find(filter).lean();
     return grants.map(grantToPlain);
   }
@@ -407,6 +419,11 @@ function createMongoRepository() {
   }
 
   async function listGrants(filter = {}, { page = 1, limit = 50 } = {}) {
+    // Same reasoning as getGrants: a malformed filter id is an empty result,
+    // not a server error.
+    if (filter.subject && !isValidId(filter.subject)) return { total: 0, page, limit, grants: [] };
+    if (filter.patient && !isValidId(filter.patient)) return { total: 0, page, limit, grants: [] };
+
     const query = {};
     if (filter.subject) query.subject = filter.subject;
     if (filter.patient) query.patient = filter.patient;
@@ -453,6 +470,9 @@ function createMongoRepository() {
   }
 
   async function listAudit(filter = {}, { page = 1, limit = 100 } = {}) {
+    if (filter.subject && !isValidId(filter.subject)) return { total: 0, page, limit, entries: [] };
+    if (filter.patient && !isValidId(filter.patient)) return { total: 0, page, limit, entries: [] };
+
     const query = {};
     if (filter.subject) query.subject = filter.subject;
     if (filter.patient) query.patient = filter.patient;

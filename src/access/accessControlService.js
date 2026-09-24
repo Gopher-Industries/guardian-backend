@@ -87,7 +87,13 @@ function createAccessControlService({ repository, options } = {}) {
 
     if (subject && patientId) {
       patient = await repository.getPatient(patientId);
-      grants = await repository.getGrants({ subjectId: subject.id, patientId });
+
+      // Only look for grants once the patient has actually resolved. Grants are
+      // keyed to a real patient, so there is nothing to find otherwise, and it
+      // keeps a malformed identifier away from the query layer entirely.
+      if (patient) {
+        grants = await repository.getGrants({ subjectId: subject.id, patientId: patient.id });
+      }
     }
 
     const decision = policy.evaluate({
