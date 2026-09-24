@@ -47,6 +47,7 @@ const notifyRules = require('../services/notifyRules');
  *     PrescriptionCreateRequest:
  *       type: object
  *       description: Create prescription request
+ */
 
 /**
  * @swagger
