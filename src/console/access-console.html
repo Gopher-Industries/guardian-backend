@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<!--
+  Guardian — patient access control
+  administration console
+
+  Author:  Graeme Thomas
+  Module:  guardian-access-control
+  Version: 1.1.0
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guardian — Access Control Console</title>
+<style>
+  :root {
+    --bg: #0f1720;
+    --panel: #16202b;
+    --panel-2: #1c2836;
+    --line: #2a3a4b;
+    --text: #dbe6f0;
+    --muted: #8fa3b8;
+    --accent: #3fb6a8;
+    --accent-dim: #2a7d74;
+    --allow: #3fb96a;
+    --deny: #e0574f;
+    --warn: #e0a94f;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  header {
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    padding: 14px 20px; background: var(--panel); border-bottom: 1px solid var(--line);
+  }
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; letter-spacing: .3px; }
+  header h1 span { color: var(--accent); }
+  .spacer { flex: 1; }
+  .pill {
+    font-family: var(--mono); font-size: 11px; padding: 3px 9px; border-radius: 99px;
+    border: 1px solid var(--line); color: var(--muted);
+  }
+  .pill.ok { color: var(--allow); border-color: var(--allow); }
+  .pill.bad { color: var(--deny); border-color: var(--deny); }
+
+  nav { display: flex; gap: 2px; padding: 0 20px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  nav button {
+    background: none; border: none; border-bottom: 2px solid transparent; color: var(--muted);
+    padding: 10px 16px; cursor: pointer; font-size: 13px;
+  }
+  nav button.active { color: var(--text); border-bottom-color: var(--accent); }
+  nav button:hover { color: var(--text); }
+
+  main { padding: 20px; max-width: 1400px; }
+  section { display: none; }
+  section.active { display: block; }
+
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+    padding: 16px; margin-bottom: 16px;
+  }
+  .card h2 { margin: 0 0 12px; font-size: 13px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); font-weight: 600; }
+
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 4px; min-width: 180px; flex: 1; }
+  .field label { font-size: 11px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); }
+  input, select, textarea {
+    background: var(--panel-2); border: 1px solid var(--line); color: var(--text);
+    padding: 8px 10px; border-radius: 5px; font: inherit; width: 100%;
+  }
+  textarea { min-height: 60px; resize: vertical; }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
+
+  button.btn {
+    background: var(--accent-dim); border: 1px solid var(--accent); color: #eafffb;
+    padding: 8px 16px; border-radius: 5px; cursor: pointer; font: inherit; white-space: nowrap;
+  }
+  button.btn:hover { background: var(--accent); color: #05221f; }
+  button.btn.ghost { background: none; border-color: var(--line); color: var(--muted); }
+  button.btn.ghost:hover { color: var(--text); border-color: var(--muted); background: none; }
+  button.btn.danger { background: none; border-color: var(--deny); color: var(--deny); }
+  button.btn.danger:hover { background: var(--deny); color: #fff; }
+  button.btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); font-weight: 600; }
+  tbody tr:hover { background: var(--panel-2); }
+  td.mono, .mono { font-family: var(--mono); font-size: 12px; }
+
+  .tag {
+    display: inline-block; font-family: var(--mono); font-size: 11px; padding: 2px 7px;
+    border-radius: 4px; background: var(--panel-2); border: 1px solid var(--line); margin: 1px 2px 1px 0;
+  }
+  .tag.allow { color: var(--allow); border-color: var(--allow); }
+  .tag.deny  { color: var(--deny);  border-color: var(--deny); }
+  .tag.warn  { color: var(--warn);  border-color: var(--warn); }
+
+  .perm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px; }
+  .perm-grid label { display: flex; gap: 8px; align-items: center; font-size: 12px; font-family: var(--mono); cursor: pointer; }
+  .perm-grid input { width: auto; }
+
+  .matrix-wrap { overflow-x: auto; }
+  .matrix td, .matrix th { text-align: center; }
+  .matrix td:first-child, .matrix th:first-child { text-align: left; position: sticky; left: 0; background: var(--panel); }
+  .matrix th.vert { font-family: var(--mono); font-size: 10px; text-transform: none; letter-spacing: 0; white-space: nowrap; }
+
+  .verdict { padding: 14px; border-radius: 6px; border: 1px solid var(--line); margin-top: 12px; }
+  .verdict.allow { border-color: var(--allow); background: rgba(63,185,106,.08); }
+  .verdict.deny  { border-color: var(--deny);  background: rgba(224,87,79,.08); }
+  .verdict h3 { margin: 0 0 6px; font-size: 18px; }
+  .verdict.allow h3 { color: var(--allow); }
+  .verdict.deny h3 { color: var(--deny); }
+
+  .toast {
+    position: fixed; right: 20px; bottom: 20px; max-width: 420px;
+    background: var(--panel-2); border: 1px solid var(--line); border-left-width: 3px;
+    padding: 12px 16px; border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,.4);
+    opacity: 0; transform: translateY(8px); transition: .2s;
+  }
+  .toast.show { opacity: 1; transform: none; }
+  .toast.ok { border-left-color: var(--allow); }
+  .toast.err { border-left-color: var(--deny); }
+  .muted { color: var(--muted); }
+  .empty { padding: 24px; text-align: center; color: var(--muted); font-size: 13px; }
+  code { font-family: var(--mono); background: var(--panel-2); padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Guardian <span>Access Control</span></h1>
+  <span id="whoami" class="pill">not connected</span>
+  <div class="spacer"></div>
+  <span id="apiPill" class="pill mono"></span>
+  <button class="btn ghost" onclick="showTab('connect')">Connection</button>
+</header>
+
+<nav>
+  <button data-tab="connect" class="active" onclick="showTab('connect')">Connect</button>
+  <button data-tab="grants" onclick="showTab('grants')">Grants</button>
+  <button data-tab="issue" onclick="showTab('issue')">Authorise</button>
+  <button data-tab="matrix" onclick="showTab('matrix')">Role matrix</button>
+  <button data-tab="roles" onclick="showTab('roles')">Roles</button>
+  <button data-tab="members" onclick="showTab('members')">Members</button>
+  <button data-tab="simulator" onclick="showTab('simulator')">Simulator</button>
+  <button data-tab="audit" onclick="showTab('audit')">Audit log</button>
+</nav>
+
+<main>
+
+<!-- ============ CONNECT ============ -->
+<section id="tab-connect" class="active">
+  <div class="card">
+    <h2>API connection</h2>
+    <div class="row">
+      <div class="field" style="flex:2">
+        <label>API base URL</label>
+        <input id="apiBase" value="" placeholder="http://localhost:3000">
+      </div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <div class="field"><label>Email</label><input id="loginEmail" type="email" placeholder="doctor@example.com"></div>
+      <div class="field"><label>Password</label><input id="loginPassword" type="password"></div>
+      <button class="btn" onclick="doLogin()">Sign in</button>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <div class="field" style="flex:3">
+        <label>…or paste a bearer token directly</label>
+        <input id="tokenInput" class="mono" placeholder="eyJhbGciOi...">
+      </div>
+      <button class="btn ghost" onclick="useToken()">Use token</button>
+      <button class="btn ghost" onclick="signOut()">Sign out</button>
+    </div>
+    <p class="muted" style="margin-bottom:0">
+      The console is a plain client of the API. Everything it can do is enforced server side —
+      signing in as a nurse and opening the Grants tab returns <code>403</code>, not a hidden button.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>The model</h2>
+    <p class="muted" style="margin-top:0">
+      <strong>Capability</strong> (role matrix) decides what kind of action a user may ever perform.
+      <strong>Scope</strong> (patient access grants) decides which patients they may perform it on.
+      A request is allowed only when both agree, and every decision is written to the audit log.
+    </p>
+  </div>
+</section>
+
+<!-- ============ GRANTS ============ -->
+<section id="tab-grants">
+  <div class="card">
+    <h2>Filter</h2>
+    <div class="row">
+      <div class="field"><label>User</label><select id="grantFilterSubject"><option value="">Any</option></select></div>
+      <div class="field"><label>Patient</label><select id="grantFilterPatient"><option value="">Any</option></select></div>
+      <div class="field"><label>Status</label>
+        <select id="grantFilterStatus">
+          <option value="">Any</option><option value="active">active</option>
+          <option value="suspended">suspended</option><option value="revoked">revoked</option>
+        </select>
+      </div>
+      <button class="btn" onclick="loadGrants()">Refresh</button>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Patient access grants</h2>
+    <div id="grantsTable"><div class="empty">Connect and refresh to load grants.</div></div>
+  </div>
+</section>
+
+<!-- ============ ISSUE ============ -->
+<section id="tab-issue">
+  <div class="card">
+    <h2>Authorise a user to access a patient</h2>
+    <div class="row">
+      <div class="field"><label>User being authorised</label><select id="issueSubject"></select></div>
+      <div class="field"><label>Patient</label><select id="issuePatient"></select></div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <div class="field"><label>Purpose of use</label>
+        <select id="issuePurpose">
+          <option value="direct-care">direct-care</option>
+          <option value="care-coordination">care-coordination</option>
+          <option value="audit">audit</option>
+          <option value="research">research</option>
+          <option value="other">other</option>
+        </select>
+      </div>
+      <div class="field"><label>Expires (blank = open-ended)</label><input id="issueValidUntil" type="datetime-local"></div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <div class="field"><label>Reason (required, recorded in the audit log)</label>
+        <textarea id="issueReason" placeholder="e.g. Night cover for ward 4, 12–19 Sep"></textarea>
+      </div>
+    </div>
+    <div style="margin-top:14px">
+      <label class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.6px">Permissions conveyed</label>
+      <div id="issuePermissions" class="perm-grid" style="margin-top:8px"></div>
+    </div>
+    <div class="row" style="margin-top:16px">
+      <button class="btn" onclick="issueGrant()">Issue grant</button>
+      <span class="muted" style="font-size:12px">
+        Anything above the recipient's role ceiling is dropped and reported back — a grant can never escalate a role.
+      </span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MATRIX ============ -->
+<section id="tab-matrix">
+  <div class="card">
+    <h2>Role capability matrix</h2>
+    <div class="matrix-wrap"><div id="matrixTable"><div class="empty">Connect and refresh to load the matrix.</div></div></div>
+    <div class="row" style="margin-top:14px">
+      <button class="btn" onclick="loadMatrix()">Refresh</button>
+      <button class="btn" onclick="saveMatrix()">Save changes</button>
+      <span class="muted" style="font-size:12px">
+        <span class="tag">U</span> unscoped (bypasses patient scoping) &nbsp;
+        <span class="tag">G</span> may issue grants
+      </span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ROLES ============ -->
+<section id="tab-roles">
+  <div class="card">
+    <h2>Create a role</h2>
+    <div class="row">
+      <div class="field"><label>Role name</label><input id="newRoleName" class="mono" placeholder="ward-coordinator"></div>
+      <div class="field"><label>Display name</label><input id="newRoleDisplay" placeholder="Ward Coordinator"></div>
+      <div class="field"><label>Clone permissions from</label><select id="newRoleClone"><option value="">Nothing — start empty</option></select></div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <div class="field" style="flex:2">
+        <label>Inherits from (transitive)</label>
+        <div id="newRoleInherits" class="perm-grid" style="margin-top:4px"></div>
+      </div>
+      <div class="field" style="max-width:220px">
+        <label>Flags</label>
+        <label class="mono" style="font-size:12px;display:flex;gap:8px;align-items:center">
+          <input type="checkbox" id="newRoleCanGrant" style="width:auto"> may issue grants
+        </label>
+        <label class="mono" style="font-size:12px;display:flex;gap:8px;align-items:center">
+          <input type="checkbox" id="newRoleUnscoped" style="width:auto"> unscoped (admin)
+        </label>
+      </div>
+    </div>
+    <div style="margin-top:14px">
+      <label class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.6px">Own permissions (added to anything inherited)</label>
+      <div id="newRolePermissions" class="perm-grid" style="margin-top:8px"></div>
+    </div>
+    <div class="row" style="margin-top:16px">
+      <button class="btn" onclick="createRole()">Create role</button>
+      <span class="muted" style="font-size:12px">Creates the capability set and the Role record together, so the role can actually be held.</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Existing roles</h2>
+    <div id="rolesTable"><div class="empty">Connect and refresh to load roles.</div></div>
+    <div class="row" style="margin-top:12px"><button class="btn ghost" onclick="loadRoles()">Refresh</button></div>
+  </div>
+</section>
+
+<!-- ============ MEMBERS ============ -->
+<section id="tab-members">
+  <div class="card">
+    <h2>Give a user an additional role</h2>
+    <div class="row">
+      <div class="field"><label>User</label><select id="assignUser"></select></div>
+      <div class="field"><label>Role</label><select id="assignRole"></select></div>
+      <div class="field"><label>Expires (blank = open-ended)</label><input id="assignUntil" type="datetime-local"></div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <div class="field"><label>Reason</label><input id="assignReason" placeholder="Acting up while Priya is on leave"></div>
+      <button class="btn" onclick="assignRole()">Assign</button>
+    </div>
+    <p class="muted" style="margin-bottom:0;font-size:12px">
+      Capabilities are the <strong>union</strong> of every role held, each expanded through its inheritance chain.
+      Adding a role can only widen access, never narrow it. The user's primary role is untouched.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>Explain a user's access</h2>
+    <div class="row">
+      <div class="field"><label>User</label><select id="explainUser"></select></div>
+      <button class="btn" onclick="explainUser()">Explain</button>
+    </div>
+    <div id="explainResult"></div>
+  </div>
+
+  <div class="card">
+    <h2>Additional role assignments</h2>
+    <div id="assignmentsTable"><div class="empty">Connect and refresh to load assignments.</div></div>
+    <div class="row" style="margin-top:12px"><button class="btn ghost" onclick="loadAssignments()">Refresh</button></div>
+  </div>
+</section>
+
+<!-- ============ SIMULATOR ============ -->
+<section id="tab-simulator">
+  <div class="card">
+    <h2>Decision simulator</h2>
+    <p class="muted" style="margin-top:0">Ask the live policy engine a question without performing the action.</p>
+    <div class="row">
+      <div class="field"><label>User</label><select id="simUser"></select></div>
+      <div class="field"><label>Patient</label><select id="simPatient"></select></div>
+      <div class="field"><label>Permission</label><select id="simPermission"></select></div>
+      <button class="btn" onclick="simulate()">Evaluate</button>
+    </div>
+    <div id="simResult"></div>
+  </div>
+</section>
+
+<!-- ============ AUDIT ============ -->
+<section id="tab-audit">
+  <div class="card">
+    <h2>Filter</h2>
+    <div class="row">
+      <div class="field"><label>Event</label>
+        <select id="auditEvent">
+          <option value="">Any</option>
+          <option value="access.decision">access.decision</option>
+          <option value="grant.issued">grant.issued</option>
+          <option value="grant.revoked">grant.revoked</option>
+          <option value="breakglass.invoked">breakglass.invoked</option>
+          <option value="matrix.updated">matrix.updated</option>
+        </select>
+      </div>
+      <div class="field"><label>Outcome</label>
+        <select id="auditAllowed"><option value="">Any</option><option value="true">allowed</option><option value="false">denied</option></select>
+      </div>
+      <div class="field"><label>Patient</label><select id="auditPatient"><option value="">Any</option></select></div>
+      <button class="btn" onclick="loadAudit()">Refresh</button>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Access decision log</h2>
+    <div id="auditTable"><div class="empty">Connect and refresh to load the audit log.</div></div>
+  </div>
+</section>
+
+</main>
+
+<div id="toast" class="toast"></div>
+
+<script>
+/* ------------------------------------------------------------------ *
+ * State
+ * ------------------------------------------------------------------ */
+const state = {
+  base: '',
+  token: '',
+  me: null,
+  permissions: [],
+  users: [],
+  patients: [],
+  matrix: {}
+};
+
+document.getElementById('apiBase').value = location.origin.startsWith('http')
+  ? location.origin
+  : 'http://localhost:3000';
+
+/* ------------------------------------------------------------------ *
+ * Plumbing
+ * ------------------------------------------------------------------ */
+function toast(message, kind) {
+  const el = document.getElementById('toast');
+  el.textContent = message;
+  el.className = 'toast show ' + (kind || '');
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => { el.className = 'toast ' + (kind || ''); }, 4200);
+}
+
+/**
+ * HTML-escape. Single quotes matter here as much as double: several tables
+ * interpolate ids and role names into single-quoted onclick handlers, so
+ * leaving ' intact would let a crafted value break out of the attribute.
+ */
+function esc(value) {
+  return String(value === null || value === undefined ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function shortId(value) { return value ? String(value).slice(-6) : '—'; }
+
+function when(value) {
+  if (!value) return '—';
+  const d = new Date(value);
+  return isNaN(d) ? '—' : d.toLocaleString();
+}
+
+async function api(path, options) {
+  const opts = Object.assign({ headers: {} }, options || {});
+  opts.headers['Content-Type'] = 'application/json';
+  if (state.token) opts.headers.Authorization = 'Bearer ' + state.token;
+
+  const response = await fetch(state.base.replace(/\/$/, '') + path, opts);
+  let body = null;
+  try { body = await response.json(); } catch (_) { body = {}; }
+
+  if (!response.ok) {
+    const error = new Error(body.message || ('HTTP ' + response.status));
+    error.status = response.status;
+    error.body = body;
+    throw error;
+  }
+  return body;
+}
+
+function showTab(name) {
+  document.querySelectorAll('section').forEach((s) => s.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
+  const section = document.getElementById('tab-' + name);
+  if (section) section.classList.add('active');
+
+  if (!state.token) return;
+  if (name === 'grants') loadGrants();
+  if (name === 'matrix') loadMatrix();
+  if (name === 'audit') loadAudit();
+  if (name === 'roles') loadRoles();
+  if (name === 'members') loadAssignments();
+}
+
+/* ------------------------------------------------------------------ *
+ * Auth
+ * ------------------------------------------------------------------ */
+async function doLogin() {
+  state.base = document.getElementById('apiBase').value.trim();
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  if (!email || !password) return toast('Email and password are required', 'err');
+
+  try {
+    const result = await api('/api/v1/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
+    state.token = result.token;
+    document.getElementById('tokenInput').value = result.token;
+    await bootstrap();
+    toast('Signed in', 'ok');
+  } catch (error) {
+    toast('Sign in failed: ' + error.message, 'err');
+  }
+}
+
+async function useToken() {
+  state.base = document.getElementById('apiBase').value.trim();
+  state.token = document.getElementById('tokenInput').value.trim();
+  if (!state.token) return toast('Paste a token first', 'err');
+  try {
+    await bootstrap();
+    toast('Token accepted', 'ok');
+  } catch (error) {
+    toast('Token rejected: ' + error.message, 'err');
+  }
+}
+
+function signOut() {
+  state.token = '';
+  state.me = null;
+  document.getElementById('tokenInput').value = '';
+  document.getElementById('whoami').textContent = 'not connected';
+  document.getElementById('whoami').className = 'pill';
+  toast('Signed out');
+}
+
+async function bootstrap() {
+  document.getElementById('apiPill').textContent = state.base;
+
+  const catalogue = await api('/api/v1/access/permissions');
+  state.permissions = catalogue.permissions || [];
+  renderPermissionPickers();
+
+  // These require access.grant:manage. A nurse's token will fail here, which is
+  // exactly the point — the console has no privileges of its own.
+  try {
+    const [users, patients] = await Promise.all([
+      api('/api/v1/access/users'),
+      api('/api/v1/access/patients')
+    ]);
+    state.users = users.users || [];
+    state.patients = patients.patients || [];
+    renderPickers();
+    document.getElementById('whoami').textContent = 'connected — administration enabled';
+    document.getElementById('whoami').className = 'pill ok';
+  } catch (error) {
+    state.users = [];
+    state.patients = [];
+    renderPickers();
+    document.getElementById('whoami').textContent = 'connected — read only (' + error.status + ')';
+    document.getElementById('whoami').className = 'pill bad';
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Pickers
+ * ------------------------------------------------------------------ */
+function fillSelect(id, items, blankLabel) {
+  const select = document.getElementById(id);
+  if (!select) return;
+  const current = select.value;
+  select.innerHTML = (blankLabel ? '<option value="">' + esc(blankLabel) + '</option>' : '') +
+    items.map((item) => '<option value="' + esc(item.value) + '">' + esc(item.label) + '</option>').join('');
+  if (current) select.value = current;
+}
+
+function renderPickers() {
+  const userItems = state.users.map((u) => ({ value: u.id, label: u.fullname + ' — ' + (u.roleName || 'no role') }));
+  const patientItems = state.patients.map((p) => ({ value: p.id, label: p.fullname }));
+
+  fillSelect('issueSubject', userItems);
+  fillSelect('simUser', userItems);
+  fillSelect('grantFilterSubject', userItems, 'Any');
+  fillSelect('issuePatient', patientItems);
+  fillSelect('simPatient', patientItems);
+  fillSelect('grantFilterPatient', patientItems, 'Any');
+  fillSelect('auditPatient', patientItems, 'Any');
+  fillSelect('assignUser', userItems);
+  fillSelect('explainUser', userItems);
+}
+
+function renderPermissionPickers() {
+  document.getElementById('issuePermissions').innerHTML = state.permissions
+    .filter((p) => p.category !== 'access')
+    .map((p) => '<label title="' + esc(p.description) + '"><input type="checkbox" value="' + esc(p.code) + '"' +
+      (p.code === 'patient:read' ? ' checked' : '') + '>' + esc(p.code) + '</label>')
+    .join('');
+
+  document.getElementById('newRolePermissions').innerHTML = state.permissions
+    .map((p) => '<label title="' + esc(p.description) + '"><input type="checkbox" value="' + esc(p.code) + '">' + esc(p.code) + '</label>')
+    .join('');
+
+  fillSelect('simPermission', state.permissions.map((p) => ({ value: p.code, label: p.code })));
+}
+
+/* ------------------------------------------------------------------ *
+ * Grants
+ * ------------------------------------------------------------------ */
+async function loadGrants() {
+  const query = new URLSearchParams();
+  const subject = document.getElementById('grantFilterSubject').value;
+  const patient = document.getElementById('grantFilterPatient').value;
+  const status = document.getElementById('grantFilterStatus').value;
+  if (subject) query.set('subject', subject);
+  if (patient) query.set('patient', patient);
+  if (status) query.set('status', status);
+
+  try {
+    const result = await api('/api/v1/access/grants?' + query.toString());
+    renderGrants(result.grants || []);
+  } catch (error) {
+    document.getElementById('grantsTable').innerHTML =
+      '<div class="empty">' + esc(error.message) + ' (HTTP ' + error.status + ')</div>';
+  }
+}
+
+function grantStatusTag(grant) {
+  const expired = grant.validUntil && new Date(grant.validUntil) <= new Date();
+  if (grant.status === 'revoked') return '<span class="tag deny">revoked</span>';
+  if (expired) return '<span class="tag warn">expired</span>';
+  if (grant.status === 'suspended') return '<span class="tag warn">suspended</span>';
+  return '<span class="tag allow">active</span>';
+}
+
+function renderGrants(grants) {
+  if (!grants.length) {
+    document.getElementById('grantsTable').innerHTML = '<div class="empty">No grants match this filter.</div>';
+    return;
+  }
+  document.getElementById('grantsTable').innerHTML = '<table><thead><tr>' +
+    '<th>User</th><th>Patient</th><th>Permissions</th><th>Status</th><th>Expires</th>' +
+    '<th>Authorised by</th><th>Reason</th><th></th></tr></thead><tbody>' +
+    grants.map((g) =>
+      '<tr>' +
+      '<td>' + esc(g.subjectName || shortId(g.subject)) + '<div class="muted mono">' + esc(g.subjectEmail || '') + '</div></td>' +
+      '<td>' + esc(g.patientName || shortId(g.patient)) + '</td>' +
+      '<td>' + (g.permissions || []).map((p) => '<span class="tag">' + esc(p) + '</span>').join('') +
+        (g.grantType === 'break-glass' ? '<div><span class="tag warn">break-glass</span></div>' : '') + '</td>' +
+      '<td>' + grantStatusTag(g) + '</td>' +
+      '<td class="mono">' + esc(g.validUntil ? when(g.validUntil) : 'open-ended') + '</td>' +
+      '<td>' + esc(g.grantedByName || shortId(g.grantedBy)) + '<div class="muted mono">' + esc(g.grantedByRole || '') + '</div></td>' +
+      '<td class="muted">' + esc(g.reason || '') + '</td>' +
+      '<td>' + (g.status === 'revoked' ? '' :
+        '<button class="btn danger" onclick="revokeGrant(\'' + esc(g.id) + '\')">Revoke</button>') + '</td>' +
+      '</tr>').join('') +
+    '</tbody></table>';
+}
+
+async function revokeGrant(grantId) {
+  const reason = prompt('Reason for revoking this access:');
+  if (reason === null) return;
+  try {
+    await api('/api/v1/access/grants/' + grantId, { method: 'DELETE', body: JSON.stringify({ reason }) });
+    toast('Access revoked', 'ok');
+    loadGrants();
+  } catch (error) {
+    toast('Revoke failed: ' + error.message, 'err');
+  }
+}
+
+async function issueGrant() {
+  const permissions = [...document.querySelectorAll('#issuePermissions input:checked')].map((i) => i.value);
+  const validUntilRaw = document.getElementById('issueValidUntil').value;
+
+  const payload = {
+    subjectId: document.getElementById('issueSubject').value,
+    patientId: document.getElementById('issuePatient').value,
+    permissions,
+    reason: document.getElementById('issueReason').value.trim(),
+    purpose: document.getElementById('issuePurpose').value,
+    validUntil: validUntilRaw ? new Date(validUntilRaw).toISOString() : null
+  };
+
+  if (!payload.subjectId || !payload.patientId) return toast('Pick a user and a patient', 'err');
+  if (!permissions.length) return toast('Select at least one permission', 'err');
+  if (!payload.reason) return toast('A reason is required', 'err');
+
+  try {
+    const result = await api('/api/v1/access/grants', { method: 'POST', body: JSON.stringify(payload) });
+    const dropped = result.droppedByRoleCeiling || [];
+    toast(dropped.length
+      ? 'Granted. Dropped above role ceiling: ' + dropped.join(', ')
+      : 'Access granted', 'ok');
+    document.getElementById('issueReason').value = '';
+    showTab('grants');
+  } catch (error) {
+    toast('Grant failed: ' + error.message, 'err');
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Role matrix
+ * ------------------------------------------------------------------ */
+async function loadMatrix() {
+  try {
+    const result = await api('/api/v1/access/matrix');
+    state.matrix = result.matrix || {};
+    renderMatrix();
+  } catch (error) {
+    document.getElementById('matrixTable').innerHTML =
+      '<div class="empty">' + esc(error.message) + ' (HTTP ' + error.status + ')</div>';
+  }
+}
+
+function renderMatrix() {
+  const roles = Object.keys(state.matrix).sort();
+  const codes = state.permissions.map((p) => p.code);
+  if (!roles.length) {
+    document.getElementById('matrixTable').innerHTML = '<div class="empty">No roles configured.</div>';
+    return;
+  }
+
+  const head = '<tr><th>Role</th><th class="vert">U</th><th class="vert">G</th>' +
+    codes.map((c) => '<th class="vert">' + esc(c) + '</th>').join('') + '</tr>';
+
+  const body = roles.map((role) => {
+    const entry = state.matrix[role];
+    const wildcard = (entry.permissions || []).includes('*');
+    const cells = codes.map((code) => {
+      const on = wildcard || (entry.permissions || []).includes(code);
+      return '<td><input type="checkbox" data-role="' + esc(role) + '" data-code="' + esc(code) + '"' +
+        (on ? ' checked' : '') + (wildcard ? ' disabled title="role holds *"' : '') + '></td>';
+    }).join('');
+
+    return '<tr><td><strong>' + esc(role) + '</strong>' +
+      (wildcard ? ' <span class="tag allow">*</span>' : '') +
+      (entry.isSystem ? ' <span class="tag">system</span>' : '') +
+      ((entry.inherits || []).length
+        ? '<div class="muted mono" style="font-size:11px">&#8627; inherits ' + esc((entry.inherits || []).join(', ')) + '</div>'
+        : '') +
+      '<div class="muted" style="font-size:11px">' + esc(entry.description || '') + '</div></td>' +
+      '<td><input type="checkbox" data-role="' + esc(role) + '" data-flag="unscoped"' + (entry.unscoped ? ' checked' : '') + '></td>' +
+      '<td><input type="checkbox" data-role="' + esc(role) + '" data-flag="canGrant"' + (entry.canGrant ? ' checked' : '') + '></td>' +
+      cells + '</tr>';
+  }).join('');
+
+  document.getElementById('matrixTable').innerHTML =
+    '<table class="matrix"><thead>' + head + '</thead><tbody>' + body + '</tbody></table>';
+}
+
+async function saveMatrix() {
+  const roles = Object.keys(state.matrix);
+  let saved = 0;
+
+  for (const role of roles) {
+    const entry = state.matrix[role];
+    if ((entry.permissions || []).includes('*')) continue; // leave wildcard roles alone
+
+    const permissions = [...document.querySelectorAll('input[data-role="' + role + '"][data-code]:checked')]
+      .map((i) => i.dataset.code);
+    const unscoped = document.querySelector('input[data-role="' + role + '"][data-flag="unscoped"]').checked;
+    const canGrant = document.querySelector('input[data-role="' + role + '"][data-flag="canGrant"]').checked;
+
+    try {
+      await api('/api/v1/access/matrix/' + encodeURIComponent(role), {
+        method: 'PUT',
+        body: JSON.stringify({ permissions, unscoped, canGrant })
+      });
+      saved += 1;
+    } catch (error) {
+      return toast('Saving ' + role + ' failed: ' + error.message, 'err');
+    }
+  }
+
+  toast('Saved ' + saved + ' role(s)', 'ok');
+  loadMatrix();
+}
+
+/* ------------------------------------------------------------------ *
+ * Simulator
+ * ------------------------------------------------------------------ */
+async function simulate() {
+  const payload = {
+    userId: document.getElementById('simUser').value,
+    patientId: document.getElementById('simPatient').value,
+    permission: document.getElementById('simPermission').value
+  };
+  if (!payload.userId || !payload.permission) return toast('Pick a user and a permission', 'err');
+
+  try {
+    const result = await api('/api/v1/access/check', { method: 'POST', body: JSON.stringify(payload) });
+    renderVerdict(result);
+  } catch (error) {
+    document.getElementById('simResult').innerHTML =
+      '<div class="verdict deny"><h3>Could not evaluate</h3><p class="muted">' +
+      esc(error.message) + ' (HTTP ' + error.status + ')</p></div>';
+  }
+}
+
+function renderVerdict(result) {
+  const considered = (result.consideredGrants || []).map((g) =>
+    '<tr><td class="mono">' + esc(shortId(g.id)) + '</td>' +
+    '<td>' + (g.permissions || []).map((p) => '<span class="tag">' + esc(p) + '</span>').join('') + '</td>' +
+    '<td class="mono">' + esc(g.status) + '</td>' +
+    '<td class="mono">' + esc(g.validUntil ? when(g.validUntil) : 'open-ended') + '</td>' +
+    '<td>' + (g.verdict && g.verdict.rank === 0
+      ? '<span class="tag allow">applies</span>'
+      : '<span class="tag deny">' + esc((g.verdict && g.verdict.reason) || 'n/a') + '</span>') + '</td></tr>'
+  ).join('');
+
+  document.getElementById('simResult').innerHTML =
+    '<div class="verdict ' + (result.allowed ? 'allow' : 'deny') + '">' +
+    '<h3>' + (result.allowed ? 'ALLOW' : 'DENY') + '</h3>' +
+    '<div class="mono">' + esc(result.reason) + '</div>' +
+    '<p class="muted" style="margin-bottom:8px">' + esc(result.message) + '</p>' +
+    (result.subject
+      ? '<div class="muted" style="font-size:12px">Role <code>' + esc(result.subject.roleName) + '</code>' +
+        (result.subject.unscoped ? ' <span class="tag allow">unscoped</span>' : '') +
+        ' — capabilities: ' + (result.subject.capabilities || []).map((c) => '<span class="tag">' + esc(c) + '</span>').join('') +
+        '</div>'
+      : '') +
+    (result.relationship ? '<div class="muted" style="font-size:12px">Care relationship: <code>' + esc(result.relationship) + '</code></div>' : '') +
+    '</div>' +
+    (considered
+      ? '<div class="card" style="margin-top:14px"><h2>Grants considered</h2><table><thead><tr>' +
+        '<th>Grant</th><th>Permissions</th><th>Status</th><th>Expires</th><th>Verdict</th>' +
+        '</tr></thead><tbody>' + considered + '</tbody></table></div>'
+      : '<div class="card" style="margin-top:14px"><div class="empty">No grants exist for this user and patient.</div></div>');
+}
+
+/* ------------------------------------------------------------------ *
+ * Roles
+ * ------------------------------------------------------------------ */
+function renderRolePickers() {
+  const roles = Object.keys(state.matrix).sort();
+  fillSelect('newRoleClone', roles.map((r) => ({ value: r, label: r })), 'Nothing — start empty');
+  fillSelect('assignRole', roles.map((r) => ({ value: r, label: r })));
+
+  document.getElementById('newRoleInherits').innerHTML = roles
+    .map((r) => '<label><input type="checkbox" class="inherit-box" value="' + esc(r) + '">' + esc(r) + '</label>')
+    .join('');
+}
+
+async function loadRoles() {
+  try {
+    const result = await api('/api/v1/access/matrix');
+    state.matrix = result.matrix || {};
+    renderRolePickers();
+
+    const roles = Object.keys(state.matrix).sort();
+    const usage = {};
+    await Promise.all(roles.map(async (role) => {
+      try { usage[role] = await api('/api/v1/access/roles/' + encodeURIComponent(role) + '/usage'); }
+      catch (_) { usage[role] = null; }
+    }));
+
+    document.getElementById('rolesTable').innerHTML = '<table><thead><tr>' +
+      '<th>Role</th><th>Inherits</th><th>Own permissions</th><th>Flags</th><th>Holders</th><th>Depended on by</th><th></th>' +
+      '</tr></thead><tbody>' +
+      roles.map((role) => {
+        const entry = state.matrix[role];
+        const use = usage[role] || {};
+        const holders = (use.primaryHolders || 0) + (use.assignedHolders || 0);
+        return '<tr>' +
+          '<td><strong>' + esc(role) + '</strong>' + (entry.isSystem ? ' <span class="tag">system</span>' : '') +
+            '<div class="muted" style="font-size:11px">' + esc(entry.displayName || '') + '</div></td>' +
+          '<td class="mono">' + ((entry.inherits || []).map((i) => '<span class="tag">' + esc(i) + '</span>').join('') || '<span class="muted">—</span>') + '</td>' +
+          '<td class="mono">' + (entry.permissions || []).length + '</td>' +
+          '<td>' + (entry.unscoped ? '<span class="tag allow">unscoped</span>' : '') +
+            (entry.canGrant ? '<span class="tag">may grant</span>' : '') + '</td>' +
+          '<td class="mono">' + holders + '</td>' +
+          '<td class="mono">' + ((use.descendants || []).join(', ') || '<span class="muted">—</span>') + '</td>' +
+          '<td>' + (entry.isSystem ? '' :
+            '<button class="btn danger" onclick="deleteRole(\'' + esc(role) + '\',' + holders + ')">Delete</button>') + '</td>' +
+          '</tr>';
+      }).join('') + '</tbody></table>';
+  } catch (error) {
+    document.getElementById('rolesTable').innerHTML =
+      '<div class="empty">' + esc(error.message) + ' (HTTP ' + error.status + ')</div>';
+  }
+}
+
+async function createRole() {
+  const payload = {
+    roleName: document.getElementById('newRoleName').value.trim().toLowerCase(),
+    displayName: document.getElementById('newRoleDisplay').value.trim(),
+    cloneFrom: document.getElementById('newRoleClone').value || undefined,
+    inherits: [...document.querySelectorAll('.inherit-box:checked')].map((i) => i.value),
+    permissions: [...document.querySelectorAll('#newRolePermissions input:checked')].map((i) => i.value),
+    canGrant: document.getElementById('newRoleCanGrant').checked,
+    unscoped: document.getElementById('newRoleUnscoped').checked
+  };
+  if (!payload.roleName) return toast('A role name is required', 'err');
+
+  try {
+    const result = await api('/api/v1/access/roles', { method: 'POST', body: JSON.stringify(payload) });
+    toast("Role '" + result.role.roleName + "' created", 'ok');
+    document.getElementById('newRoleName').value = '';
+    document.getElementById('newRoleDisplay').value = '';
+    loadRoles();
+  } catch (error) {
+    toast('Create failed: ' + error.message, 'err');
+  }
+}
+
+async function deleteRole(role, holders) {
+  const warning = holders
+    ? "Delete '" + role + "'? " + holders + " user(s) still hold it — they will lose those capabilities."
+    : "Delete '" + role + "'?";
+  if (!confirm(warning)) return;
+
+  try {
+    await api('/api/v1/access/roles/' + encodeURIComponent(role) + (holders ? '?force=true' : ''), { method: 'DELETE' });
+    toast("Role '" + role + "' deleted", 'ok');
+    loadRoles();
+  } catch (error) {
+    toast('Delete failed: ' + error.message, 'err');
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Members
+ * ------------------------------------------------------------------ */
+async function loadAssignments() {
+  if (!Object.keys(state.matrix).length) { try { await loadRoles(); } catch (_) {} }
+  try {
+    const result = await api('/api/v1/access/role-assignments');
+    const rows = result.assignments || [];
+    document.getElementById('assignmentsTable').innerHTML = rows.length
+      ? '<table><thead><tr><th>User</th><th>Role</th><th>Status</th><th>Expires</th><th>Assigned by</th><th>Reason</th><th></th></tr></thead><tbody>' +
+        rows.map((a) =>
+          '<tr>' +
+          '<td>' + esc(a.userName || shortId(a.user)) + '<div class="muted mono">' + esc(a.userEmail || '') + '</div></td>' +
+          '<td class="mono">' + esc(a.roleName) + (a.isPrimary ? ' <span class="tag">primary</span>' : '') + '</td>' +
+          '<td>' + (a.status === 'revoked' ? '<span class="tag deny">revoked</span>'
+                  : (a.validUntil && new Date(a.validUntil) <= new Date()) ? '<span class="tag warn">expired</span>'
+                  : '<span class="tag allow">active</span>') + '</td>' +
+          '<td class="mono">' + esc(a.validUntil ? when(a.validUntil) : 'open-ended') + '</td>' +
+          '<td>' + esc(a.assignedByName || '—') + '</td>' +
+          '<td class="muted">' + esc(a.reason || '') + '</td>' +
+          '<td>' + (a.status === 'revoked' || a.isPrimary ? '' :
+            '<button class="btn danger" onclick="unassignRole(\'' + esc(a.id) + '\')">Remove</button>') + '</td>' +
+          '</tr>').join('') + '</tbody></table>'
+      : '<div class="empty">No additional role assignments.</div>';
+  } catch (error) {
+    document.getElementById('assignmentsTable').innerHTML =
+      '<div class="empty">' + esc(error.message) + ' (HTTP ' + error.status + ')</div>';
+  }
+}
+
+async function assignRole() {
+  const untilRaw = document.getElementById('assignUntil').value;
+  const payload = {
+    userId: document.getElementById('assignUser').value,
+    roleName: document.getElementById('assignRole').value,
+    reason: document.getElementById('assignReason').value.trim(),
+    validUntil: untilRaw ? new Date(untilRaw).toISOString() : null
+  };
+  if (!payload.userId || !payload.roleName) return toast('Pick a user and a role', 'err');
+
+  try {
+    const result = await api('/api/v1/access/role-assignments', { method: 'POST', body: JSON.stringify(payload) });
+    toast('Now holds: ' + (result.effectiveRoles || []).join(', '), 'ok');
+    document.getElementById('assignReason').value = '';
+    loadAssignments();
+  } catch (error) {
+    toast('Assign failed: ' + error.message, 'err');
+  }
+}
+
+async function unassignRole(assignmentId) {
+  const reason = prompt('Reason for removing this role:');
+  if (reason === null) return;
+  try {
+    const result = await api('/api/v1/access/role-assignments/' + assignmentId, {
+      method: 'DELETE', body: JSON.stringify({ reason })
+    });
+    toast('Now holds: ' + (result.effectiveRoles || []).join(', '), 'ok');
+    loadAssignments();
+  } catch (error) {
+    toast('Remove failed: ' + error.message, 'err');
+  }
+}
+
+async function explainUser() {
+  const userId = document.getElementById('explainUser').value;
+  if (!userId) return toast('Pick a user', 'err');
+
+  try {
+    const r = await api('/api/v1/access/users/' + userId + '/roles');
+    const perRole = (r.perRole || []).map((entry) =>
+      '<tr><td class="mono">' + esc(entry.roleName) + '</td>' +
+      '<td class="mono">' + esc((entry.inheritanceChain || []).join(' → ')) + '</td>' +
+      '<td>' + (entry.contributes || []).map((c) => '<span class="tag">' + esc(c) + '</span>').join('') + '</td>' +
+      '<td>' + (entry.unscoped ? '<span class="tag allow">unscoped</span>' : '') +
+        (entry.canGrant ? '<span class="tag">may grant</span>' : '') + '</td></tr>'
+    ).join('');
+
+    document.getElementById('explainResult').innerHTML =
+      '<div class="verdict ' + (r.unscoped ? 'allow' : '') + '" style="margin-top:12px">' +
+      '<h3 style="font-size:15px">' + esc(r.user.fullname) + '</h3>' +
+      '<div class="muted" style="font-size:12px">Primary role <code>' + esc(r.primaryRole || '—') + '</code> · effective: ' +
+        (r.effectiveRoles || []).map((x) => '<span class="tag">' + esc(x) + '</span>').join('') + '</div>' +
+      '<div style="margin-top:8px">' + (r.capabilities || []).map((c) => '<span class="tag">' + esc(c) + '</span>').join('') + '</div>' +
+      ((r.warnings || []).length
+        ? '<div style="margin-top:8px">' + r.warnings.map((w) => '<span class="tag deny">' + esc(w) + '</span>').join('') + '</div>'
+        : '') +
+      '</div>' +
+      '<div class="card" style="margin-top:14px"><h2>Where each capability came from</h2>' +
+      '<table><thead><tr><th>Role</th><th>Inheritance chain</th><th>Contributes</th><th>Flags</th></tr></thead>' +
+      '<tbody>' + perRole + '</tbody></table></div>';
+  } catch (error) {
+    document.getElementById('explainResult').innerHTML =
+      '<div class="verdict deny" style="margin-top:12px"><h3>Could not explain</h3><p class="muted">' +
+      esc(error.message) + ' (HTTP ' + error.status + ')</p></div>';
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Audit
+ * ------------------------------------------------------------------ */
+async function loadAudit() {
+  const query = new URLSearchParams();
+  const event = document.getElementById('auditEvent').value;
+  const allowed = document.getElementById('auditAllowed').value;
+  const patient = document.getElementById('auditPatient').value;
+  if (event) query.set('event', event);
+  if (allowed) query.set('allowed', allowed);
+  if (patient) query.set('patient', patient);
+
+  try {
+    const result = await api('/api/v1/access/audit?' + query.toString());
+    renderAudit(result.entries || []);
+  } catch (error) {
+    document.getElementById('auditTable').innerHTML =
+      '<div class="empty">' + esc(error.message) + ' (HTTP ' + error.status + ')</div>';
+  }
+}
+
+function renderAudit(entries) {
+  if (!entries.length) {
+    document.getElementById('auditTable').innerHTML = '<div class="empty">No audit entries match this filter.</div>';
+    return;
+  }
+  document.getElementById('auditTable').innerHTML = '<table><thead><tr>' +
+    '<th>When</th><th>Event</th><th>User</th><th>Patient</th><th>Permission</th><th>Outcome</th><th>Reason</th><th>Request</th>' +
+    '</tr></thead><tbody>' +
+    entries.map((e) =>
+      '<tr>' +
+      '<td class="mono">' + esc(when(e.at)) + '</td>' +
+      '<td class="mono">' + esc(e.event) + '</td>' +
+      '<td>' + esc(e.subjectName || shortId(e.subject)) + '<div class="muted mono">' + esc(e.subjectRole || '') + '</div></td>' +
+      '<td>' + esc(e.patientName || shortId(e.patient)) + '</td>' +
+      '<td class="mono">' + esc(e.permission) + '</td>' +
+      '<td>' + (e.allowed === true ? '<span class="tag allow">allow</span>'
+              : e.allowed === false ? '<span class="tag deny">deny</span>' : '<span class="tag">—</span>') + '</td>' +
+      '<td class="mono">' + esc(e.reason) + '</td>' +
+      '<td class="muted mono" style="font-size:11px">' + esc((e.method || '') + ' ' + (e.path || '')) + '</td>' +
+      '</tr>').join('') +
+    '</tbody></table>';
+}
+</script>
+</body>
+</html>
