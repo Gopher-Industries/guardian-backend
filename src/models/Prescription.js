@@ -2,12 +2,13 @@ const mongoose = require('mongoose');
 
 const PrescriptionItemSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true },          // medicine name
+    medicationName: { type: String, required: true },          // medicine name
     dose: { type: String, required: true },          // dosage info
     frequency: { type: String, required: true },     // how often to take
+    timeOfDay: { type: String },                     // time(s) of day
     durationDays: { type: Number, required: true },  // number of days
-    quantity: { type: Number },                      // optional total units
-    instructions: { type: String },                  // optional extra guidance
+    howMany: { type: Number },                      // optional total units
+    comments: { type: String },                  // optional comments
   },
   { _id: false } // no need for separate _id per item
 );

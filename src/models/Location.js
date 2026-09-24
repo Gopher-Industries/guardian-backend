@@ -53,6 +53,11 @@ const LocationSchema = new mongoose.Schema(
       type: String
     },
 
+    subClinics: {
+      type: Array,
+     default: []
+    },
+
     facilities: {
       type: String
     },

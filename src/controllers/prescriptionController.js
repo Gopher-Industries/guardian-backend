@@ -27,15 +27,15 @@ exports.createPrescription = async (req, res) => {
     }
 
     for (const [i, it] of items.entries()) {
-      if (!it?.name || !it?.dose || !it?.frequency || !it?.durationDays) {
+      if (!it?.medicationName  || !it?.dose || !it?.frequency || !it?.durationDays) {
         return res.status(400).json({
-          error: `Item ${i + 1} missing required fields: name, dose, frequency, durationDays`
+          error: `Item ${i + 1} missing required fields: medicationName, dose, frequency, durationDays`
         });
       }
 
-      if (typeof it.name !== 'string' || !it.name.trim()) {
+      if (typeof it.medicationName !== 'string' || !it.medicationName.trim()) {
         return res.status(400).json({
-          error: `Item ${i + 1}: medicine name is required and cannot be empty`
+          error: `Item ${i + 1}: medication name is required and cannot be empty`
         });
       }
 
@@ -65,11 +65,11 @@ exports.createPrescription = async (req, res) => {
       }
 
       if (
-        it.quantity !== undefined &&
-        (!Number.isInteger(it.quantity) || it.quantity <= 0)
+        it.howMany !== undefined &&
+        (!Number.isInteger(it.howMany) || it.howMany <= 0)
       ) {
         return res.status(400).json({
-          error: `Item ${i + 1}: quantity must be a positive integer`
+          error: `Item ${i + 1}: howMany must be a positive integer`
         });
       }
     }

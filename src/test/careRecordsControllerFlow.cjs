@@ -120,21 +120,21 @@ describe('care records controller flow', function () {
       .request(app)
       .post('/api/v1/prescriptions')
       .set('Authorization', authHeader(doctor))
-      .send({ patientId: patient._id, items: [{ name: 'Med' }] });
+      .send({ patientId: patient._id, items: [{ medicationName: 'Med' }] });
     expect(badItem).to.have.status(400);
 
     const missingPatient = await chai
       .request(app)
       .post('/api/v1/prescriptions')
       .set('Authorization', authHeader(doctor))
-      .send({ patientId: new mongoose.Types.ObjectId(), items: [{ name: 'Med', dose: '1', frequency: 'daily', durationDays: 3 }] });
+      .send({ patientId: new mongoose.Types.ObjectId(), items: [{ medicationName: 'Med', dose: '1', frequency: 'daily', durationDays: 3 }] });
     expect(missingPatient).to.have.status(404);
 
     const byName = await chai
       .request(app)
       .post('/api/v1/prescriptions')
       .set('Authorization', authHeader(admin))
-      .send({ patientName: patient.fullname, items: [{ name: 'Med', dose: '1', frequency: 'daily', durationDays: 3 }] });
+      .send({ patientName: patient.fullname, items: [{ medicationName: 'Med', dose: '1', frequency: 'daily', durationDays: 3 }] });
     expect(byName).to.have.status(201);
 
     const missingId = new mongoose.Types.ObjectId();
