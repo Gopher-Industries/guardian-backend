@@ -34,6 +34,21 @@ describe('Patient lookup by name', function () {
     process.env.NODE_ENV = 'test';
     process.env.JWT_SECRET = process.env.JWT_SECRET || 'patient-lookup-test-secret';
 
+    // If an earlier test file left a connectDB() call still in flight, let it finish first
+  try {
+    const existingDbPath = require.resolve('../config/db');
+    if (require.cache[existingDbPath] && require.cache[existingDbPath].exports.dbReady) {
+      await require.cache[existingDbPath].exports.dbReady;
+    }
+  } catch (_e) {
+    // no cached module yet, or it already failed — safe to continue
+  }
+
+  if (mongoose.connection.readyState !== 0) {
+    await mongoose.disconnect();
+  }
+  
+
     mongoServer = await MongoMemoryServer.create();
     process.env.MONGODB_URI = mongoServer.getUri('guardian-patient-lookup-test');
 
@@ -43,6 +58,14 @@ describe('Patient lookup by name', function () {
     app = require('../server');
     const db = require('../config/db');
     await db.dbReady;
+
+        // Guard against a connection that resolved but isn't actually live yet
+    if (mongoose.connection.readyState !== 1) {
+      await mongoose.connect(process.env.MONGODB_URI, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+      });
+    }
 
     Role = require('../models/Role');
     User = require('../models/User');
