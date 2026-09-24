@@ -175,6 +175,7 @@ const doctorLetterRoutes = require('./routes/doctorLetterRoutes');
 const locationRoutes = require('./routes/location');
 const correspondenceRoutes = require('./routes/correspondence');
 const emailRoutes = require('./routes/emailRoutes');
+const blobStoreRoutes = require('./routes/blobStoreRoutes'); 
 const { startShiftReminderScheduler } = require('./services/shiftReminderScheduler');
 
 app.use('/api/v1/auth', userRoutes);
@@ -213,6 +214,7 @@ app.use('/api/v1/doctor-letters', doctorLetterRoutes);
 app.use('/api/v1/locations', locationRoutes);
 app.use('/api/v1/correspondence', correspondenceRoutes);
 app.use('/api/v1/email', emailRoutes);
+app.use('/api/v1/blob_store', blobStoreRoutes);
 
 app.use(
   '/swaggerDocs',

@@ -1,8 +1,14 @@
+// npm install @aws-sdk/client-s3 @aws-sdk/s3-request-presigner dotenv
+
 // src/r2-client.js
 require('dotenv/config');
-const { S3Client, PutObjectCommand, GetObjectCommand, ListObjectsV2Command } = require('@aws-sdk/client-s3');
+const {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  ListObjectsV2Command,
+} = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
-
 
 const s3 = new S3Client({
   region: 'auto',
@@ -27,21 +33,23 @@ async function getSignedDownloadUrl(objectKey, expiresInSeconds = 3600, filename
   const command = new GetObjectCommand({
     Bucket: BUCKET,
     Key: objectKey,
-    ResponseContentDisposition: `attachment; filename="${filename}"`, // forces real download, not inline view
+    ...(filename ? { ResponseContentDisposition: `attachment; filename="${filename}"` } : {}),
   });
   return getSignedUrl(s3, command, { expiresIn: expiresInSeconds });
 }
 
-
-async function getList(prefix){
+async function getList(prefix) {
   const params = {
     Bucket: BUCKET,
     ...(prefix ? { Prefix: prefix } : {}),
   };
   const result = await s3.send(new ListObjectsV2Command(params));
-  return result;
+  return (result.Contents || []).map(obj => ({
+    key: obj.Key,
+    size: obj.Size,
+    lastModified: obj.LastModified,
+  }));
 }
-
 
 async function uploadGeneratedPdf(pdfBytes, objectKey) {
   await s3.send(new PutObjectCommand({
@@ -53,4 +61,12 @@ async function uploadGeneratedPdf(pdfBytes, objectKey) {
   return objectKey;
 }
 
-module.exports = { getSignedUploadUrl, getSignedDownloadUrl, getList, uploadGeneratedPdf };
+module.exports = {
+  getSignedUploadUrl,
+  getSignedDownloadUrl,
+  getList,
+  uploadGeneratedPdf,
+};
+
+
+
