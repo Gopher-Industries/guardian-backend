@@ -255,38 +255,38 @@ const seedDoctorData = async () => {
     ]);
 
     // Recent patient logs (within last 7 days)
-    await PatientLog.create([
+        await PatientLog.create([
       {
         title: 'BP elevated — action taken',
-        description: "Eleanor's BP was 155/95. Warfarin dose reviewed and caretaker notified.",
+        observations: "Eleanor's BP was 155/95. Warfarin dose reviewed and caretaker notified.",
         patient: p1._id,
         createdBy: doctor._id,
         createdAt: daysAgo(1),
       },
       {
         title: 'Post-stroke mobility progress noted',
-        description: 'Eleanor walked 50m unassisted in morning session. Improvement from last week.',
+        observations: 'Eleanor walked 50m unassisted in morning session. Improvement from last week.',
         patient: p1._id,
         createdBy: doctor._id,
         createdAt: daysAgo(3),
       },
       {
         title: 'Blood glucose high — insulin adjusted',
-        description: "Raymond's fasting glucose was 11.2 mmol/L. Insulin dose increased by 2 units.",
+        observations: "Raymond's fasting glucose was 11.2 mmol/L. Insulin dose increased by 2 units.",
         patient: p2._id,
         createdBy: doctor._id,
         createdAt: daysAgo(2),
       },
       {
         title: 'Cognitive assessment completed',
-        description: 'Margaret scored 18/30 on MMSE. Slight decline from last month — family informed.',
+        observations: 'Margaret scored 18/30 on MMSE. Slight decline from last month — family informed.',
         patient: p3._id,
         createdBy: doctor._id,
         createdAt: daysAgo(4),
       },
       {
         title: 'Fall incident reported',
-        description: 'Margaret experienced a minor fall in the bathroom. No injury. Safety rails requested.',
+        observations: 'Margaret experienced a minor fall in the bathroom. No injury. Safety rails requested.',
         patient: p3._id,
         createdBy: doctor._id,
         createdAt: daysAgo(6),
