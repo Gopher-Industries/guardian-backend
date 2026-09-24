@@ -1,0 +1,68 @@
+const Patient = require('../models/Patient');
+const User = require('../models/User');
+const { getEmailConfig } = require('../config/emailConfig');
+const emailService = require('./emailService');
+const { formatDateTime } = require('../utils/datetime');
+
+async function sendTaskAssignedEmail(task, options = {}) {
+  if (!task || !task.assignee) {
+    throw new Error('A saved task with an assignee is required to send the task email');
+  }
+
+  const assignedById = task.setBy || options.assignedById;
+  const [assignee, assignedBy, patient] = await Promise.all([
+    User.findById(task.assignee).select('fullname email').lean(),
+    assignedById
+      ? User.findById(assignedById).select('fullname').lean()
+      : Promise.resolve(null),
+    task.patient
+      ? Patient.findById(task.patient).select('fullname uuid').lean()
+      : Promise.resolve(null)
+  ]);
+
+  if (!assignee) {
+    throw new Error('Task assignee was not found');
+  }
+
+  if (!assignee.email) {
+    throw new Error('Task assignee does not have an email address');
+  }
+
+  const title = task.title || task.description;
+  const config = getEmailConfig();
+
+  return emailService.sendTemplatedEmail('task-assigned', {
+    to: assignee.email,
+    name: assignee.fullname,
+    taskTitle: title,
+    patientName: patient?.fullname,
+    patientId: patient?.uuid,
+    dueDate: formatDateTime(task.dueDate, {
+      timeZone: config.timezone,
+      locale: config.locale
+    }),
+    priority: task.priority,
+    assignedBy: assignedBy?.fullname,
+    notes: task.description && task.description !== title
+      ? task.description
+      : undefined,
+    taskUrl: `${config.appUrl.replace(/\/$/, '')}/tasks/${task._id}`
+  });
+}
+
+function queueTaskAssignedEmail(task, options = {}) {
+  return Promise.resolve()
+    .then(() => sendTaskAssignedEmail(task, options))
+    .catch((error) => {
+      console.error(JSON.stringify({
+        event: 'task_assignment_email_failed',
+        taskId: task?._id ? String(task._id) : null,
+        assigneeId: task?.assignee ? String(task.assignee) : null,
+        outboxId: error.outboxId || null,
+        error: error.message
+      }));
+      return null;
+    });
+}
+
+module.exports = { sendTaskAssignedEmail, queueTaskAssignedEmail };

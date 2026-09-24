@@ -67,7 +67,7 @@ router.get('/patient-overview/:patientId', verifyToken, verifyRole(['admin']), a
 // Support Tickets APIs
 router.post('/support-tickets', verifyToken, adminController.createSupportTicket);
 router.get('/support-tickets', verifyToken, verifyRole(['admin']), adminController.getSupportTickets);
-router.put('/support-tickets/:ticketId', verifyToken, verifyRole(['admin']), adminController.updateSupportTicket);
+router.patch('/support-tickets/:ticketId', verifyToken, verifyRole(['admin']), adminController.updateSupportTicket);
 
 // Task Management APIs
 router.post('/tasks', verifyToken, verifyRole(['admin']), upload.none(), adminController.createTask);

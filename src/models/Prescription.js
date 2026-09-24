@@ -63,6 +63,14 @@ const PrescriptionSchema = new mongoose.Schema(
 
     comment: {
       type: String,
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    updateNotes: {
+      type: String,
+      default: '',
     },
   },
   { timestamps: true } // adds createdAt & updatedAt
