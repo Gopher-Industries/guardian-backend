@@ -7,6 +7,7 @@ const chaiHttp = require('chai-http');
 const createTestApp = require('./helpers/testApp.cjs');
 const { connectTestDb, clearTestDb, disconnectTestDb } = require('./helpers/db.cjs');
 const { createDashboardFixture, authHeader } = require('./helpers/fixtures.cjs');
+const Patient = require('../models/Patient');
 
 chai.use(chaiHttp);
 const { expect } = chai;
@@ -39,9 +40,15 @@ describe('care team dashboard and daily report flow', function () {
       .set('Authorization', authHeader(fixture.nurse));
 
     expect(assignedRes).to.have.status(200);
-    expect(assignedRes.body.patients.map((patient) => patient.firstName)).to.include(
-      'Active Dashboard'
+    const persistedPatient = await Patient.findById(fixture.activePatient._id).lean();
+    expect(persistedPatient).to.exist;
+    expect(persistedPatient.nurseIds.map(String)).to.include(String(fixture.nurse._id));
+
+    const assignedPatient = assignedRes.body.patients.find(
+      (patient) => String(patient._id) === String(fixture.activePatient._id)
     );
+    expect(assignedPatient, JSON.stringify(assignedRes.body)).to.exist;
+    expect(assignedPatient.firstName).to.equal('Active Dashboard');
 
     const summaryRes = await chai
       .request(app)

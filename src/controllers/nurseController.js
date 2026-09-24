@@ -105,7 +105,6 @@ exports.getAllNurses = async (req, res) => {
 };
 
 
-
 exports.getAssignedPatientsForNurse = async (req, res) => {
   try {
     const nurse = await User.findById(req.user._id).select('fullname');

@@ -45,7 +45,7 @@ describe('patient flow', function () {
         lastName: 'A',
         birthSex: 'Female',
         dateOfBirth: '1990-03-15',
-        assignedCaretaker: caretaker._id,
+        caretakerId: caretaker._id,
         emergencyContactName: 'Emergency Contact',
         emergencyContactNumber: '0400000000',
         nextOfKinName: 'Next Kin',
@@ -64,7 +64,7 @@ describe('patient flow', function () {
     expect(res.body.patient.age).to.be.a('number');
 
     const savedPatient = await Patient.findById(res.body.patient._id).lean();
-    expect(String(savedPatient.caretaker)).to.equal(String(caretaker._id));
+    expect(String(savedPatient.caretakerId)).to.equal(String(caretaker._id));
     expect(savedPatient.medicalSummary).to.equal('Patient has mild asthma.');
     expect(savedPatient.allergies).to.deep.equal(['Peanuts']);
   });

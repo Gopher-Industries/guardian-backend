@@ -45,7 +45,7 @@ describe('patient controller flow', function () {
     });
     const list = await chai
       .request(app)
-      .get('/api/v1/patients?search=Filter&includeDeleted=true&sort=fullname&page=1&limit=10')
+      .get('/api/v1/patients?search=Filter&includeDeleted=true&sort=firstName&page=1&limit=10')
       .set('Authorization', authHeader(admin));
     expect(list).to.have.status(200);
     expect(list.body.total).to.equal(2);

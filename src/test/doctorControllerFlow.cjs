@@ -106,12 +106,11 @@ describe('doctor controller flow', function () {
     const patient = await createPatient({ 
       firstName: 'Doctor Visible',
       lastName: 'Patient',
-      assignedCaretaker: caretaker._id, 
-      assignedDoctor: doctor._id,
+      caretakerId: caretaker._id, 
+      doctorId: doctor._id,
       createdBy: caretaker._id,
-      createdAt: new Date(),
     });
-    await patient.constructor.updateOne({ _id: patient._id }, { $set: { doctor: doctor._id, assignedDoctor: doctor._id } });
+    await patient.constructor.updateOne({ _id: patient._id }, { $set: { doctor: doctor._id, doctorId: doctor._id } });
     await User.updateOne({ _id: doctor._id }, { $addToSet: { assignedPatients: patient._id } });
 
     const success = await chai

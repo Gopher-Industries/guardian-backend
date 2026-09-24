@@ -1,6 +1,22 @@
 const Patient = require('../models/Patient');
 const EntryReport = require('../models/EntryReport');
+const User = require('../models/User');
+const Role = require('../models/Role');
 const { parseStringArray } = require('../utils/arrayUtils');
+
+const isPatientAuthorized = async (patient, userId) => {
+  const actor = await User.findById(userId).populate('role', 'name');
+  const actorRole = actor?.role?.name?.toLowerCase();
+
+  return Boolean(actor && (
+    actorRole === 'admin' ||
+    (actorRole === 'caretaker' && String(patient.caretakerId) === String(actor._id)) ||
+    (actorRole === 'nurse' && (patient.nurseIds || []).some(
+      nurseId => String(nurseId) === String(actor._id)
+    )) ||
+    (actorRole === 'doctor' && String(patient.doctorId) === String(actor._id))
+  ));
+};
 
 /**
  * @swagger
@@ -85,6 +101,13 @@ const { parseStringArray } = require('../utils/arrayUtils');
  */
 exports.addPatient = async (req, res) => {
   try {
+    const actor = await User.findById(req.user?._id).select('organization approvalStatus');
+    if (actor?.organization && actor.approvalStatus === 'approved') {
+      return res.status(403).json({
+        message: 'Approved organization members cannot manage patients independently'
+      });
+    }
+
     const {
       title, firstName, lastName, middleName, preferredName, dateOfBirth,
       birthSex, genderIdentity, pronouns, ethnicity, countryOfBirth,
@@ -97,7 +120,8 @@ exports.addPatient = async (req, res) => {
       healthInsuranceNumber, healthInsuranceExpiryDate, religion, headOfFamily,
       nextOfKin, nextOfKinRelationship, emergencyContact, occupation,
       generalNotes, appointmentNotes, isDeceased, dateOfDeath, causeOfDeath,
-      assignedDoctor, allergies, conditions
+      allergies, conditions, caretakerId, createdBy,
+      medicalSummary, notes
     } = req.body;
 
 
@@ -117,6 +141,11 @@ exports.addPatient = async (req, res) => {
       healthInsuranceNumber, healthInsuranceExpiryDate, religion, headOfFamily,
       nextOfKin, nextOfKinRelationship, emergencyContact, occupation,
       generalNotes, appointmentNotes, isDeceased, dateOfDeath, causeOfDeath,
+      allergies, conditions,
+      caretakerId: caretakerId || req.user?._id,
+      createdBy: createdBy || req.user?._id,
+      medicalSummary,
+      notes,
     });
 
     await newPatient.save();
@@ -212,7 +241,7 @@ exports.getAllPatients = async (req, res) => {
     const total = await Patient.countDocuments(filter);
 
     const patients = await Patient.find(filter)
-      .populate('assignedDoctor', 'fullname email')
+      .populate('doctorId', 'fullname email')
       .sort(sort)
       .skip(skip)
       .limit(limit);
@@ -340,6 +369,10 @@ exports.updatePatient = async (req, res) => {
       return res.status(404).json({ message: 'Patient not found' });
     }
 
+    if (!await isPatientAuthorized(patient, req.user?._id)) {
+      return res.status(403).json({ message: 'You are not authorized to update this patient' });
+    }
+
     const {
       title, firstName, lastName, middleName, preferredName, dateOfBirth,
       birthSex, genderIdentity, pronouns, ethnicity, countryOfBirth,
@@ -409,6 +442,59 @@ exports.updatePatient = async (req, res) => {
   }
 };
 
+exports.assignNurse = async (req, res) => {
+  try {
+    const { nurseId, patientId } = req.body || {};
+    const patient = await Patient.findById(patientId);
+
+    if (!patient) {
+      return res.status(404).json({ message: 'Patient not found' });
+    }
+
+    const nurseRole = await Role.findOne({ name: 'nurse' });
+    const nurse = nurseRole
+      ? await User.findOne({ _id: nurseId, role: nurseRole._id })
+      : null;
+
+    if (!nurse) {
+      return res.status(400).json({ message: 'User must be a nurse' });
+    }
+
+    const alreadyAssigned = (patient.nurseIds || [])
+      .some(assignedId => String(assignedId) === String(nurse._id));
+
+    if (!alreadyAssigned) {
+      patient.nurseIds.push(nurse._id);
+      await patient.save();
+      await User.updateOne(
+        { _id: nurse._id },
+        { $addToSet: { assignedPatients: patient._id } }
+      );
+    }
+
+    return res.status(200).json({ message: 'Nurse assigned successfully', patient });
+  } catch (error) {
+    return res.status(400).json({ message: 'Error assigning nurse', details: error.message });
+  }
+};
+
+exports.getAssignedPatients = async (req, res) => {
+  try {
+    const actor = await User.findById(req.user._id).populate('role', 'name');
+    if (!actor) return res.status(404).json({ message: 'User not found' });
+
+    const roleName = actor.role?.name?.toLowerCase();
+    const filter = roleName === 'nurse'
+      ? { nurseIds: actor._id, isDeleted: { $ne: true } }
+      : { caretakerId: actor._id, isDeleted: { $ne: true } };
+    const patients = await Patient.find(filter).sort({ firstName: 1 }).lean();
+
+    return res.status(200).json({ patients });
+  } catch (error) {
+    return res.status(500).json({ message: 'Error fetching assigned patients', details: error.message });
+  }
+};
+
 /**
  * @swagger
  * /api/v1/patients/{patientId}:
@@ -444,6 +530,10 @@ exports.deletePatient = async (req, res) => {
 
     if (!patient) {
       return res.status(404).json({ message: 'Patient not found' });
+    }
+
+    if (!await isPatientAuthorized(patient, req.user?._id)) {
+      return res.status(403).json({ message: 'You are not authorized to delete this patient' });
     }
 
     patient.isDeleted = true;
@@ -518,7 +608,7 @@ exports.getPatientDetails = async (req, res) => {
     try {
       patient = await Patient.findOne({ _id: patientId, isDeleted: { $ne: true } })
         .populate('createdBy', 'fullname email')
-        .populate('assignedDoctor', 'fullname email');
+        .populate('doctorId', 'fullname email');
     } catch (e) {
       if (e.name === 'CastError') {
         return res.status(400).json({ message: 'Invalid patient id' });

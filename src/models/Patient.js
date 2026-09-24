@@ -95,9 +95,9 @@ const patientSchema = new Schema(
     pensionHccNumber: { type: String, trim: true },
     pensionCardType: { type: String, enum: PENSION_CARD_TYPE_VALUES },
     dvaNumber: { type: String, trim: true },
-    //assignedDoctor: { type: Schema.Types.ObjectId, ref: 'User', set: extractId },//id of doctor
     nurseIds: [{ type: Schema.Types.ObjectId, ref: 'User', set: extractId }],//array of ids of nurses
     caretakerId: { type: Schema.Types.ObjectId, ref: 'User', set: extractId },//id of caretaker
+    caretaker: { type: Schema.Types.ObjectId, ref: 'User', set: extractId },
     organization: { type: Schema.Types.ObjectId, ref: 'Organization', set: extractId },//id of organization
 
     //clinical/admin details
@@ -126,10 +126,12 @@ const patientSchema = new Schema(
 
     //General and Appointment Notes
     //generalNotes: sits on patient file to record general notes about the patient, visible to all staff
-    //appointmentNotes: sits on patient file to record notes about the patient that are specific to appointments, 
-    //  visible to all staff, creates popup when booking an appointment for the patient? need to discuss with chehul
+    //appointmentNotes: sits on patient file to record notes about the patient that are specific to booking appointments,
+    //  visible to all staff, creates popup when booking an appointment for the patient? not sure if done yet
     generalNotes: { type: String, trim: true },
     appointmentNotes: { type: String, trim: true },
+    medicalSummary: { type: String, trim: true },
+    notes: { type: String, trim: true },
 
 
     // org link (and cached name)

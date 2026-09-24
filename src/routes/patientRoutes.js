@@ -96,6 +96,20 @@ router.post(
     patientController.addPatient
   );
 
+router.post(
+  '/assign-nurse',
+  verifyToken,
+  verifyRole(['caretaker', 'admin']),
+  patientController.assignNurse
+);
+
+router.get(
+  '/assigned-patients',
+  verifyToken,
+  verifyRole(['nurse', 'caretaker']),
+  patientController.getAssignedPatients
+);
+
 /**
  * @openapi
  * /api/v1/patients/{patientId}:
