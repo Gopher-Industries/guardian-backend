@@ -13,4 +13,4 @@ coverage
 .nycrc
 .nycrc.json
 
-src/test
+src/testguardian-backend-samsbranch/
