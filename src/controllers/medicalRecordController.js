@@ -18,16 +18,32 @@ const isSameId = (firstId, secondId) =>
     firstId.toString() === secondId.toString()
   );
 
+const getUserOrganizationId = async (userId) => {
+  const user = await User.findById(userId)
+    .select('organization')
+    .lean();
+
+  return user?.organization || null;
+};
+
 const toTextOrNull = (value) =>
   typeof value === 'string' && value.trim()
     ? value.trim()
     : null;
 
-const canManageBookedAppointment = (appointment, req) => {
+const canManageBookedAppointment = async (appointment, req) => {
   const userId = getUserId(req);
 
+  if (req.userRole === 'admin') {
+    const adminOrganizationId = await getUserOrganizationId(userId);
+
+    return isSameId(
+      adminOrganizationId,
+      appointment.organization
+    );
+  }
+
   return (
-    req.userRole === 'admin' ||
     isSameId(appointment.createdBy, userId) ||
     (
       req.userRole === 'doctor' &&
@@ -775,7 +791,7 @@ exports.updateAppointment = async (req, res) => {
       });
     }
 
-    if (!canManageBookedAppointment(appointment, req)) {
+    if (!(await canManageBookedAppointment(appointment, req))) {
       return res.status(403).json({
         error:
           'You do not have permission to change this appointment.'
@@ -889,7 +905,7 @@ exports.deleteAppointment = async (req, res) => {
       });
     }
 
-    if (!canManageBookedAppointment(appointment, req)) {
+    if (!(await canManageBookedAppointment(appointment, req))) {
       return res.status(403).json({
         error:
           'You do not have permission to delete this appointment.'
@@ -1311,6 +1327,18 @@ exports.getMedicalRecordById = async (req, res) => {
     const isAdmin = req.userRole === 'admin';
     const isBookingCreator = isSameId(record.createdBy, userId);
 
+    let adminInSameOrganization = false;
+
+    if (isAdmin) {
+      const adminOrganizationId = await getUserOrganizationId(userId);
+
+      adminInSameOrganization = isSameId(
+      adminOrganizationId,
+      record.organization
+    );
+
+  }
+
     let doctorInSameOrganization = false;
 
     if (req.userRole === 'doctor') {
@@ -1323,7 +1351,7 @@ exports.getMedicalRecordById = async (req, res) => {
 
     if (
       !doctorInSameOrganization &&
-      !isAdmin &&
+      !adminInSameOrganization &&
       !isBookingCreator
     ) {
       return res.status(403).json({
@@ -1381,6 +1409,18 @@ exports.getMedicalRecords = async (req, res) => {
       filter.organization = {
         $in: doctorOrganizationIds
       };
+
+    } else if (roleName === 'admin') {
+      const adminOrganizationId = await getUserOrganizationId(userId);
+
+      if (!adminOrganizationId) {
+        return res.status(403).json({
+          error: 'Admin is not assigned to an organization.'
+      });
+   }
+
+   filter.organization = adminOrganizationId;
+
     } else if (roleName === 'patient') {
       // Temporary until Patient is directly linked to the login User.
       filter.createdBy = userId;
@@ -1448,9 +1488,18 @@ exports.getMedicalRecords = async (req, res) => {
             'Doctors can only view medical records in their organization.'
         });
       }
+      if (roleName === 'admin') {
+      const adminOrganizationId = await getUserOrganizationId(userId);
 
-      filter.organization = organization;
-    }
+      if (!isSameId(adminOrganizationId, organization)) {
+        return res.status(403).json({
+          error: 'Admins can only view medical records in their organization.'
+        });
+      }
+}
+
+filter.organization = organization;
+}
 
     if (from || to) {
       filter.appointmentDateTime = {};
