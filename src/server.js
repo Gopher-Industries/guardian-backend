@@ -167,7 +167,7 @@ const meds2Routes = require('./routes/meds2Routes');
 const managementPlanRoutes = require('./routes/managementPlanRoutes');
 const billingRoutes = require('./routes/billingRoutes');
 const appointmentReminderRoutes = require('./routes/appointmentReminderRoutes');
-const referralRoutes = require('./routes/referralRoutes');
+
 const rosterRoutes = require('./routes/rosterRoutes');
 const clinicRoutes = require('./routes/clinicRoutes');
 const roomRoutes = require('./routes/roomRoutes');
@@ -206,7 +206,7 @@ app.use('/api/v1/add-medication', meds2Routes);
 app.use('/api/v1/management-plans', managementPlanRoutes);
 app.use('/api/v1/billing', billingRoutes);
 app.use('/api/v1/appointment-reminders', appointmentReminderRoutes);
-app.use('/api/v1/referral', referralRoutes);
+
 app.use('/api/v1/rosters', rosterRoutes);
 app.use('/api/v1/clinics', clinicRoutes);
 app.use('/api/v1/rooms', roomRoutes);

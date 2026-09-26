@@ -4,7 +4,7 @@ const fs = require('fs');
 const { NoSuchKey, NotFound } = require('@aws-sdk/client-s3');
 const BUCKET = process.env.R2_BUCKET;
 const Patient = require('../models/Patient'); 
-
+const token = require('./token');
 
 exports.HandleFileUploadUrl = async (req, res) => {
   try {
@@ -21,6 +21,21 @@ exports.HandleFileUploadUrl = async (req, res) => {
     }
 
     const objectKey = `${patientId}/${documentType}/${fileName}`;
+
+    const { data } = await axios.post(
+    'http://localhost:3000/api/v1/correspondence',
+    {
+      patientId: patientId,
+      staffId: '6b1a2c3d4e5f60718293a4b5',
+      type: documentType,
+      description: 'Referral letter to cardiology',
+      direction: 'incoming',
+      date: '2026-09-26',
+      cloudflareObjectKey: objectKey,
+    },
+    )
+    
+  
     const url = await getSignedUploadUrl(objectKey, contentType || 'application/pdf');
 
     res.status(200).json({ objectKey, url });

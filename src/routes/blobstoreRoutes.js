@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const referralController = require('../controllers/referralController');
+const BlobStoreController = require('../controllers/BlobStoreController');
 
 /** 
  * @openapi
@@ -43,7 +43,7 @@ const referralController = require('../controllers/referralController');
  *                 url:
  *                   type: string
  */
-router.post('/upload-url', referralController.HandleFileUploadUrl);
+router.post('/upload-url', BlobStoreController.HandleFileUploadUrl);
 
 
 /** 
@@ -96,7 +96,7 @@ router.post('/upload-url', referralController.HandleFileUploadUrl);
  *       500:
  *         description: File download failed.
  */
-router.get('/download-url', referralController.HandleFileDownload);
+router.get('/download-url', BlobStoreController.HandleFileDownload);
 
 /**
  * @openapi
@@ -140,7 +140,7 @@ router.get('/download-url', referralController.HandleFileDownload);
  *       500:
  *         description: Failed to list referrals.
  */
-router.get('/list', referralController.List);
+router.get('/list', BlobStoreController.List);
 
 /** 
  * @openapi
@@ -186,6 +186,6 @@ router.get('/list', referralController.List);
  *       500:
  *         description: Failed to generate and upload referral.
  */
-router.post('/no_url_upload', referralController.HandleGenerateReferral);
+router.post('/no_url_upload', BlobStoreController.HandleGenerateReferral);
 
 module.exports = router;
