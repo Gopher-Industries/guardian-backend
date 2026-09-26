@@ -30,10 +30,11 @@ describe('Patient lookup by name', function () {
     });
 
     const createdPatient = await createPatient({
-      fullname: 'Lookup Patient Unique',
-      gender: 'F',
+      firstName: 'Lookup',
+      lastName: 'PatientUnique',
+      birthSex: 'Female',
       dateOfBirth: '1950-03-10',
-      caretaker,
+      createdBy: caretaker, // or whatever User this should attribute creation to
     });
 
     const response = await chai
@@ -49,7 +50,8 @@ describe('Patient lookup by name', function () {
     expect(response.body.patients).to.deep.equal([
       {
         patientId: String(createdPatient._id),
-        fullname: 'Lookup Patient Unique',
+        firstName: 'Lookup',
+        lastName: 'PatientUnique',
         uuid: createdPatient.uuid,
       },
     ]);

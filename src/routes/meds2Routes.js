@@ -2,7 +2,7 @@
 
 const express = require('express');
 const router = express.Router();
-const medsController = require('../controllers/medsController');
+const meds2Controller = require('../controllers/meds2Controller');
 /**
  * @openapi
  * /api/v1/add-medication:
@@ -43,5 +43,5 @@ const medsController = require('../controllers/medsController');
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/', medsController.registerMeds); 
+router.post('/', meds2Controller.registerMeds); 
 module.exports = router;
