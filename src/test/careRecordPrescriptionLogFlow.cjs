@@ -86,12 +86,12 @@ describe('care record, prescription and patient log flow', function () {
         patientId: String(fixture.activePatient._id),
         items: [
           {
-            name: 'Amoxicillin',
+            medicationName: 'Amoxicillin',
             dose: '500 mg',
             frequency: 'twice daily',
             durationDays: 7,
-            quantity: 14,
-            instructions: 'Take after food',
+            howMany: 14,
+            comments: 'Take after food',
           },
         ],
         notes: 'Created during integration test.',
@@ -99,7 +99,7 @@ describe('care record, prescription and patient log flow', function () {
 
     expect(createRes).to.have.status(201);
     expect(createRes.body.status).to.equal('active');
-    expect(createRes.body.items[0].name).to.equal('Amoxicillin');
+    expect(createRes.body.items[0].medicationName).to.equal('Amoxicillin');
     const prescriptionId = createRes.body._id;
 
     const listByPatientRes = await chai
@@ -156,7 +156,7 @@ describe('care record, prescription and patient log flow', function () {
       .set('Authorization', authHeader(fixture.nurse))
       .send({
         title: 'Patient mobility note',
-        description: 'Patient walked with support in the morning.',
+        observations: 'Patient walked with support in the morning.',
         patient: String(fixture.activePatient._id),
       });
 
