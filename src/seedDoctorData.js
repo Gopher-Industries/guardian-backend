@@ -53,7 +53,7 @@ const seedDoctorData = async () => {
     );
 
     // Guard on patients — if already seeded, skip data creation
-    const existingPatients = await Patient.countDocuments({ assignedDoctor: doctor._id });
+    const existingPatients = await Patient.countDocuments({ doctorId: doctor._id });
     if (existingPatients > 0) {
       console.log('⚠️  Doctor seed data already present — skipping patient/prescription/task/log creation.');
       return;
@@ -75,48 +75,48 @@ const seedDoctorData = async () => {
     // Create 3 patients assigned to the seed doctor
     const [p1, p2, p3] = await Patient.create([
       {
-        fullname: 'Eleanor Voss',
+        firstName: 'Eleanor',
+        lastName: 'Voss',
         dateOfBirth: new Date('1945-03-12'),
-        gender: 'F',
-        assignedDoctor: doctor._id,
-        caretaker: caretaker._id,
-        dateOfAdmitting: daysAgo(60),
-        description: 'Post-stroke rehabilitation with mobility support.',
-        emergencyContactName: 'Tom Voss',
-        emergencyContactNumber: '+61411000001',
-        nextOfKinName: 'Tom Voss',
+        birthSex: 'Female',
+        doctorId: doctor._id,
+        caretakerId: caretaker._id,
+        createdBy: doctor._id,
+        generalNotes: 'Post-stroke rehabilitation with mobility support.',
+        emergencyContact: 'Tom Voss',
+        nextOfKin: 'Tom Voss',
         nextOfKinRelationship: 'CHILD',
         medicalSummary: 'Ischaemic stroke 2023. Mild left-sided weakness. On anticoagulants.',
         allergies: ['Aspirin'],
         conditions: ['Stroke', 'Hypertension'],
       },
       {
-        fullname: 'Raymond Park',
+        firstName: 'Raymond',
+        lastName: 'Park',
         dateOfBirth: new Date('1950-07-28'),
-        gender: 'M',
-        assignedDoctor: doctor._id,
-        caretaker: caretaker._id,
-        dateOfAdmitting: daysAgo(45),
-        description: 'Diabetic patient requiring insulin management and dietary oversight.',
-        emergencyContactName: 'Susan Park',
-        emergencyContactNumber: '+61411000002',
-        nextOfKinName: 'Susan Park',
+        birthSex: 'Male',
+        doctorId: doctor._id,
+        caretakerId: caretaker._id,
+        createdBy: doctor._id,
+        generalNotes: 'Diabetic patient requiring insulin management and dietary oversight.',
+        emergencyContact: 'Susan Park',
+        nextOfKin: 'Susan Park',
         nextOfKinRelationship: 'SPOUSE',
         medicalSummary: 'Type 2 Diabetes since 2010. CKD Stage 2. On metformin and insulin.',
         allergies: ['Sulfa drugs'],
         conditions: ['Type 2 Diabetes', 'CKD'],
       },
       {
-        fullname: 'Margaret Chen',
+        firstName: 'Margaret',
+        lastName: 'Chen',
         dateOfBirth: new Date('1938-11-04'),
-        gender: 'F',
-        assignedDoctor: doctor._id,
-        caretaker: caretaker._id,
-        dateOfAdmitting: daysAgo(30),
-        description: 'Dementia patient requiring daily cognitive support and monitoring.',
-        emergencyContactName: 'Linda Chen',
-        emergencyContactNumber: '+61411000003',
-        nextOfKinName: 'Linda Chen',
+        birthSex: 'Female',
+        doctorId: doctor._id,
+        caretakerId: caretaker._id,
+        createdBy: doctor._id,
+        generalNotes: 'Dementia patient requiring daily cognitive support and monitoring.',
+        emergencyContact: 'Linda Chen',
+        nextOfKin: 'Linda Chen',
         nextOfKinRelationship: 'CHILD',
         medicalSummary: "Moderate Alzheimer's disease. On donepezil. History of falls.",
         allergies: [],
@@ -255,7 +255,7 @@ const seedDoctorData = async () => {
     ]);
 
     // Recent patient logs (within last 7 days)
-        await PatientLog.create([
+    await PatientLog.create([
       {
         title: 'BP elevated — action taken',
         observations: "Eleanor's BP was 155/95. Warfarin dose reviewed and caretaker notified.",

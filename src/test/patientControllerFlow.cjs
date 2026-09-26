@@ -26,12 +26,26 @@ describe('patient controller flow', function () {
     const roles = await seedRoles();
     const admin = await createUser({ fullname: 'List Admin', email: 'list-admin@example.com', role: roles.admin });
     const caretaker = await createUser({ fullname: 'List Caretaker', email: 'list-caretaker@example.com', role: roles.caretaker });
-    await createPatient({ fullname: 'Alice Filter', gender: 'F', caretaker });
-    await createPatient({ fullname: 'Bob Filter', gender: 'M', caretaker, isDeleted: true });
-
+    await createPatient({ 
+      firstName: 'Alice',
+      lastName: 'Filter',
+      birthSex: 'Female',
+      caretakerId: caretaker._id, 
+      createdBy: caretaker._id,
+      createdAt: new Date(),
+    });
+    await createPatient({ 
+      firstName: 'Bob',
+      lastName: 'Filter',
+      birthSex: 'Male',
+      caretakerId: caretaker._id, 
+      createdBy: caretaker._id,
+      createdAt: new Date(),
+      isDeleted: true
+    });
     const list = await chai
       .request(app)
-      .get('/api/v1/patients?search=Filter&includeDeleted=true&sort=fullname&page=1&limit=10')
+      .get('/api/v1/patients?search=Filter&includeDeleted=true&sort=firstName&page=1&limit=10')
       .set('Authorization', authHeader(admin));
     expect(list).to.have.status(200);
     expect(list.body.total).to.equal(2);
@@ -62,7 +76,14 @@ describe('patient controller flow', function () {
     const owner = await createUser({ fullname: 'Owner Caretaker', email: 'owner@example.com', role: roles.caretaker });
     const other = await createUser({ fullname: 'Other Caretaker', email: 'other@example.com', role: roles.caretaker });
     const nurse = await createUser({ fullname: 'Unassigned Nurse', email: 'unassigned@example.com', role: roles.nurse });
-    const patient = await createPatient({ fullname: 'Delete Me', caretaker: owner });
+    const patient = await createPatient({ 
+      firstName: 'Delete',
+      lastName: 'Me',
+      birthSex: 'Male',
+      caretakerId: owner._id, 
+      createdBy: owner._id,
+      createdAt: new Date(),
+    });
 
     const forbiddenUpdate = await chai
       .request(app)
@@ -83,9 +104,11 @@ describe('patient controller flow', function () {
       .put(`/api/v1/patients/${patient._id}`)
       .set('Authorization', authHeader(owner))
       .send({
-        fullname: 'Delete Me Updated',
-        gender: 'F',
+        firstName: 'Delete Me',
+        lastName: 'Updated',
+        birthSex: 'Female',
         dateOfBirth: '1991-02-03',
+        caretakerId: owner._id,
         description: 'updated',
         image: 'manual-image.png',
         emergencyContactName: 'Contact',
@@ -96,10 +119,10 @@ describe('patient controller flow', function () {
         allergies: 'Dust, Pollen',
         conditions: ['Asthma'],
         notes: 'full update path',
-        dateOfAdmitting: '2026-05-01',
+        createdAt: '2026-05-01',
       });
     expect(successUpdate).to.have.status(200);
-    expect(successUpdate.body.patient.fullname).to.equal('Delete Me Updated');
+    expect(successUpdate.body.patient.firstName).to.equal('Delete Me');
 
     const forbiddenDelete = await chai
       .request(app)
@@ -125,7 +148,13 @@ describe('patient controller flow', function () {
     const caretaker = await createUser({ fullname: 'Assign Caretaker', email: 'assign-caretaker@example.com', role: roles.caretaker });
     const nurse = await createUser({ fullname: 'Assignable Nurse', email: 'assign-nurse@example.com', role: roles.nurse });
     const doctor = await createUser({ fullname: 'Not Nurse', email: 'not-nurse@example.com', role: roles.doctor });
-    const patient = await createPatient({ fullname: 'Assign Patient', caretaker });
+    const patient = await createPatient({ 
+      firstName: 'Assign',
+      lastName: 'Patient',
+      birthSex: 'Male',
+      caretakerId: caretaker._id,
+      createdBy: caretaker._id,
+    });
 
     const invalid = await chai
       .request(app)
@@ -161,7 +190,14 @@ describe('patient controller flow', function () {
     const caretaker = await createUser({ fullname: 'Activity Caretaker', email: 'activity-caretaker@example.com', role: roles.caretaker });
     const nurse = await createUser({ fullname: 'Activity Nurse', email: 'activity-nurse@example.com', role: roles.nurse });
     const doctor = await createUser({ fullname: 'Activity Doctor', email: 'activity-doctor@example.com', role: roles.doctor });
-    const patient = await createPatient({ fullname: 'Activity Patient', caretaker, assignedNurses: [nurse] });
+    const patient = await createPatient({ 
+      firstName: 'Activity',
+      lastName: 'Patient',
+      birthSex: 'Male',
+      assignedCaretaker: caretaker._id,
+      assignedNurses: [nurse._id],
+      createdBy: caretaker._id,
+    });
 
     const unauthorizedAssigned = await chai
       .request(app)

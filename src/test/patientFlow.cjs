@@ -41,9 +41,11 @@ describe('patient flow', function () {
       .post('/api/v1/patients/add')
       .set('Authorization', authHeader(caretaker))
       .send({
-        fullname: 'Patient A',
+        firstName: 'Patient',
+        lastName: 'A',
+        birthSex: 'Female',
         dateOfBirth: '1990-03-15',
-        gender: 'F',
+        caretakerId: caretaker._id,
         emergencyContactName: 'Emergency Contact',
         emergencyContactNumber: '0400000000',
         nextOfKinName: 'Next Kin',
@@ -52,15 +54,17 @@ describe('patient flow', function () {
         allergies: ['Peanuts'],
         conditions: ['Asthma'],
         notes: 'Created from integration test.',
+        createdBy: caretaker._id,
       });
 
     expect(res).to.have.status(201);
     expect(res.body.message).to.equal('Patient added successfully');
-    expect(res.body.patient.fullname).to.equal('Patient A');
+    expect(res.body.patient.firstName).to.equal('Patient');
+    expect(res.body.patient.lastName).to.equal('A');
     expect(res.body.patient.age).to.be.a('number');
 
     const savedPatient = await Patient.findById(res.body.patient._id).lean();
-    expect(String(savedPatient.caretaker)).to.equal(String(caretaker._id));
+    expect(String(savedPatient.caretakerId)).to.equal(String(caretaker._id));
     expect(savedPatient.medicalSummary).to.equal('Patient has mild asthma.');
     expect(savedPatient.allergies).to.deep.equal(['Peanuts']);
   });
@@ -78,8 +82,18 @@ describe('patient flow', function () {
       role: roles.caretaker,
     });
 
-    await createPatient({ fullname: 'Visible Patient', caretaker: caretakerOne });
-    await createPatient({ fullname: 'Hidden Patient', caretaker: caretakerTwo });
+    await createPatient({ 
+      firstName: 'Visible', 
+      lastName: 'Patient', 
+      caretakerId: caretakerOne._id,
+      createdBy: caretakerOne._id,
+    });
+    await createPatient({ 
+      firstName: 'Hidden', 
+      lastName: 'Patient', 
+      caretakerId: caretakerTwo._id,
+      createdBy: caretakerTwo._id,
+    });
 
     const res = await chai
       .request(app)
@@ -88,7 +102,7 @@ describe('patient flow', function () {
 
     expect(res).to.have.status(200);
     expect(res.body.total).to.equal(1);
-    expect(res.body.patients.map((patient) => patient.fullname)).to.deep.equal(['Visible Patient']);
+    expect(res.body.patients.map((patient) => `${patient.firstName} ${patient.lastName}`)).to.deep.equal(['Visible Patient']);
   });
 
   it('allows an assigned nurse to update an assigned patient', async () => {
@@ -104,11 +118,12 @@ describe('patient flow', function () {
       role: roles.nurse,
     });
     const patient = await createPatient({
-      fullname: 'Nurse Editable Patient',
-      caretaker,
-      assignedNurses: [nurse],
+      firstName: 'Nurse Editable',
+      lastName: 'Patient',
+      caretakerId: caretaker._id,
+      nurseIds: [nurse._id],
+      createdBy: caretaker._id,
     });
-
     const res = await chai
       .request(app)
       .put(`/api/v1/patients/${patient._id}`)
@@ -146,9 +161,12 @@ describe('patient flow', function () {
       .post('/api/v1/patients/add')
       .set('Authorization', authHeader(orgCaretaker))
       .send({
-        fullname: 'Blocked Org Patient',
+        firstName: 'Blocked',
+        lastName: 'Org Patient',
         dateOfBirth: '1988-01-01',
-        gender: 'F',
+        caretakerId: orgCaretaker._id,
+        birthSex: 'Female',
+        createdBy: orgCaretaker._id,
       });
 
     expect(res).to.have.status(403);

@@ -33,21 +33,21 @@ const canAccessPatientLogs = async (patientId, req) => {
   if (roleName === 'admin') return true;
  
   const patient = await Patient.findById(patientId)
-    .select('caretaker assignedNurses assignedDoctor')
+    .select('caretakerId nurseIds doctorId')
     .lean();
  
   if (!patient) return false;
  
   if (roleName === 'caretaker') {
-    return isSameId(patient.caretaker, userId);
+    return isSameId(patient.caretakerId, userId);
   }
  
   if (roleName === 'nurse') {
-    return patient.assignedNurses?.some((nurseId) => isSameId(nurseId, userId));
+    return patient.nurseIds?.some((nurseId) => isSameId(nurseId, userId));
   }
  
   if (roleName === 'doctor') {
-    return isSameId(patient.assignedDoctor, userId);
+    return isSameId(patient.doctorId, userId);
   }
  
   return false;

@@ -1,3 +1,4 @@
+
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'gmproject';
 
@@ -120,14 +121,16 @@ async function buildFixture() {
   );
 
   const patient = await Patient.create({
-    fullname: 'Patient Zero',
-    gender: 'male',
+    firstName: 'Patient',
+    lastName: 'Zero',
+    birthSex: 'Male',
     dateOfBirth: new Date('1980-05-17'),
     organization: organization._id,
-    caretaker: oldCaretaker._id,
-    assignedNurses: [oldNurse._id],
-    assignedDoctor: oldDoctor._id,
-    dateOfAdmitting: new Date('2026-03-26'),
+    doctorId: oldDoctor._id,
+    nurseIds: [oldNurse._id],
+    caretakerId: oldCaretaker._id,
+    createdBy: admin._id,
+    createdAt: new Date('2026-03-26'),
   });
 
   await Promise.all([
@@ -233,7 +236,7 @@ describe('admin patient reassign flow', function () {
       query: { orgId: String(fixture.organization._id) },
       body: {
         caretakerId: String(fixture.newCaretaker._id),
-        nurseId: String(fixture.newNurse._id),
+        nurseIds: [String(fixture.newNurse._id)],
         doctorId: String(fixture.newDoctor._id),
       },
       user: { _id: String(fixture.admin._id) },
@@ -244,18 +247,18 @@ describe('admin patient reassign flow', function () {
 
     expect(res.statusCode).to.equal(200);
     expect(res.body.message).to.equal('Assignments updated');
-    expect(String(res.body.patient.caretaker._id)).to.equal(String(fixture.newCaretaker._id));
-    expect(String(res.body.patient.assignedDoctor._id)).to.equal(String(fixture.newDoctor._id));
-    expect(res.body.patient.assignedNurses).to.have.length(2);
-    expect(res.body.patient.assignedNurses.map((nurse) => String(nurse._id))).to.have.members([
+    expect(String(res.body.patient.caretakerId._id)).to.equal(String(fixture.newCaretaker._id));
+    expect(String(res.body.patient.doctorId._id)).to.equal(String(fixture.newDoctor._id));
+    expect(res.body.patient.nurseIds).to.have.length(2);
+    expect(res.body.patient.nurseIds.map((nurse) => String(nurse._id))).to.have.members([
       String(fixture.oldNurse._id),
       String(fixture.newNurse._id),
     ]);
 
     const updatedPatient = await Patient.findById(fixture.patient._id).lean();
-    expect(String(updatedPatient.caretaker)).to.equal(String(fixture.newCaretaker._id));
-    expect(String(updatedPatient.assignedDoctor)).to.equal(String(fixture.newDoctor._id));
-    expect(updatedPatient.assignedNurses.map(String)).to.have.members([
+    expect(String(updatedPatient.caretakerId)).to.equal(String(fixture.newCaretaker._id));
+    expect(String(updatedPatient.doctorId)).to.equal(String(fixture.newDoctor._id));
+    expect(updatedPatient.nurseIds.map(String)).to.have.members([
       String(fixture.oldNurse._id),
       String(fixture.newNurse._id),
     ]);
@@ -292,7 +295,7 @@ describe('admin patient reassign flow', function () {
       query: { orgId: String(fixture.organization._id) },
       body: {
         caretakerId: String(fixture.oldCaretaker._id),
-        nurseId: String(fixture.newNurse._id),
+        nurseIds: [String(fixture.newNurse._id)],
         doctorId: String(fixture.newDoctor._id),
       },
       user: { _id: String(fixture.admin._id) },
@@ -303,10 +306,10 @@ describe('admin patient reassign flow', function () {
 
     expect(res.statusCode).to.equal(200);
     expect(res.body.message).to.equal('Assignments updated');
-    expect(String(res.body.patient.caretaker._id)).to.equal(String(fixture.oldCaretaker._id));
-    expect(String(res.body.patient.assignedDoctor._id)).to.equal(String(fixture.newDoctor._id));
-    expect(res.body.patient.assignedNurses).to.have.length(2);
-    expect(res.body.patient.assignedNurses.map((nurse) => String(nurse._id))).to.have.members([
+    expect(String(res.body.patient.caretakerId._id)).to.equal(String(fixture.oldCaretaker._id));
+    expect(String(res.body.patient.doctorId._id)).to.equal(String(fixture.newDoctor._id));
+    expect(res.body.patient.nurseIds).to.have.length(2);
+    expect(res.body.patient.nurseIds.map((nurse) => String(nurse._id))).to.have.members([
       String(fixture.oldNurse._id),
       String(fixture.newNurse._id),
     ]);
@@ -330,7 +333,7 @@ describe('admin patient reassign flow', function () {
       params: { id: String(fixture.patient._id) },
       query: { orgId: String(fixture.organization._id) },
       body: {
-        nurseId: String(fixture.newDoctor._id),
+        nurseIds: [String(fixture.newDoctor._id)],
       },
       user: { _id: String(fixture.admin._id) },
     };
@@ -339,7 +342,7 @@ describe('admin patient reassign flow', function () {
     await adminPatientController.reassign(req, res);
 
     expect(res.statusCode).to.equal(400);
-    expect(res.body).to.deep.equal({ message: 'nurseId must be a nurse' });
+    expect(res.body).to.deep.equal({ message: 'nurseIds must be a nurse' });
   });
 
   it('returns 400 when reassign is called with an empty body', async () => {
@@ -356,7 +359,7 @@ describe('admin patient reassign flow', function () {
 
     expect(res.statusCode).to.equal(400);
     expect(res.body).to.deep.equal({
-      message: 'At least one of nurseId, doctorId, or caretakerId is required'
+      message: 'At least one of nurseIds, doctorId, or caretakerId is required'
     });
   });
 
@@ -366,7 +369,7 @@ describe('admin patient reassign flow', function () {
       params: { id: String(fixture.patient._id) },
       query: { orgId: String(fixture.organization._id) },
       body: {
-        nurseId: String(fixture.newNurse._id),
+        nurseIds: [String(fixture.newNurse._id)],
         doctorId: String(fixture.newCaretaker._id),
       },
       user: { _id: String(fixture.admin._id) },
@@ -385,8 +388,9 @@ describe('admin patient reassign flow', function () {
       User.findById(fixture.oldDoctor._id).lean(),
     ]);
 
-    expect(patient.assignedNurses.map(String)).to.deep.equal([String(fixture.oldNurse._id)]);
-    expect(String(patient.assignedDoctor)).to.equal(String(fixture.oldDoctor._id));
+    expect(patient.nurseIds.map(String)).to.deep.equal([String(fixture.oldNurse._id)]);
+    expect(String(patient.doctorId)).to.equal(String(fixture.oldDoctor._id));
+    expect(String(patient.caretakerId)).to.equal(String(fixture.oldCaretaker._id));
     expect((oldNurse.assignedPatients || []).map(String)).to.include(String(fixture.patient._id));
     expect((newNurse.assignedPatients || []).map(String)).to.not.include(String(fixture.patient._id));
     expect((oldDoctor.assignedPatients || []).map(String)).to.include(String(fixture.patient._id));
@@ -442,8 +446,9 @@ describe('admin patient reassign flow', function () {
     const req = {
       query: { orgId: String(fixture.organization._id) },
       body: {
-        fullname: 'Blocked Patient',
-        gender: 'male',
+        firstName: 'Blocked',
+        lastName: 'Patient',
+        birthSex: 'Male',
         dateOfBirth: '1985-01-01',
         caretakerId: String(otherOrg.otherCaretaker._id),
       },
@@ -473,8 +478,9 @@ describe('admin patient reassign flow', function () {
     const req = {
       query: { orgId: String(fixture.organization._id) },
       body: {
-        fullname: 'Failed Patient',
-        gender: 'male',
+        firstName: 'Failed',
+        lastName: 'Patient',
+        birthSex: 'Male',
         dateOfBirth: '1985-01-01',
         caretakerId: String(freelanceCaretaker._id),
         doctorId: String(fixture.newCaretaker._id),
@@ -489,7 +495,7 @@ describe('admin patient reassign flow', function () {
     expect(res.body).to.deep.equal({ message: 'doctorId must be a doctor' });
 
     const reloadedCaretaker = await User.findById(freelanceCaretaker._id).lean();
-    const failedPatient = await Patient.findOne({ fullname: 'Failed Patient' }).lean();
+    const failedPatient = await Patient.findOne({ firstName: 'Failed', lastName: 'Patient' }).lean();
 
     expect(reloadedCaretaker.organization || null).to.equal(null);
     expect(failedPatient).to.equal(null);
@@ -507,7 +513,7 @@ describe('admin patient reassign flow', function () {
       params: { id: String(fixture.patient._id) },
       query: { orgId: String(otherOrg.otherOrganization._id) },
       body: {
-        nurseId: String(fixture.newNurse._id),
+        nurseIds: [String(fixture.newNurse._id)],
       },
       user: { _id: String(fixture.admin._id) },
     };

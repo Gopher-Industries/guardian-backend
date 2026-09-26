@@ -27,7 +27,14 @@ describe('care team and admin controller flow', function () {
     const admin = await createUser({ fullname: 'Inline Admin', email: 'inline-admin@example.com', role: roles.admin });
     const nurse = await createUser({ fullname: 'Inline Nurse', email: 'inline-nurse@example.com', role: roles.nurse });
     const caretaker = await createUser({ fullname: 'Inline Caretaker', email: 'inline-caretaker@example.com', role: roles.caretaker });
-    const patient = await createPatient({ fullname: 'Overview Patient', caretaker, assignedNurses: [nurse] });
+    const patient = await createPatient({ 
+          firstName: 'Overview',
+          lastName: 'Patient',
+          caretakerId: caretaker._id, 
+          nurseIds: [nurse],
+          createdBy: caretaker._id,
+        });
+    
     await Task.create({ description: 'Overview Task', dueDate: new Date('2026-06-01'), priority: 'high', status: 'completed', patient: patient._id, caretaker: caretaker._id, nurse_id: nurse._id });
 
     const approve = await chai
@@ -67,7 +74,12 @@ describe('care team and admin controller flow', function () {
   it('covers caretaker profile, profile update and task filter branches', async () => {
     const roles = await seedRoles();
     const caretaker = await createUser({ fullname: 'Profile Caretaker', email: 'profile-caretaker@example.com', role: roles.caretaker });
-    const patient = await createPatient({ fullname: 'Caretaker Task Patient', caretaker });
+    const patient = await createPatient({ 
+      firstName: 'Caretaker Task',
+      lastName: 'Patient',
+      caretakerId: caretaker._id, 
+      createdBy: caretaker._id,
+    });
     await Task.create({ description: 'Urgent Task', dueDate: new Date('2026-06-01'), priority: 'high', status: 'pending', patient: patient._id, caretaker: caretaker._id });
 
     const missingProfileQuery = await chai
@@ -133,7 +145,13 @@ describe('care team and admin controller flow', function () {
     const roles = await seedRoles();
     const caretaker = await createUser({ fullname: 'Report Caretaker', email: 'report-caretaker@example.com', role: roles.caretaker });
     const nurse = await createUser({ fullname: 'Report Nurse', email: 'report-nurse@example.com', role: roles.nurse });
-    const patient = await createPatient({ fullname: 'Report Patient', caretaker, assignedNurses: [nurse] });
+    const patient = await createPatient({ 
+      firstName: 'Report',
+      lastName: 'Patient',
+      caretakerId: caretaker._id,
+      nurseIds: [nurse._id],
+      createdBy: caretaker._id,
+    });
     await DailyReport.create({ patient: patient._id, caretaker: caretaker._id, summary: 'Daily summary' });
 
     const missingNurseProfile = await chai
