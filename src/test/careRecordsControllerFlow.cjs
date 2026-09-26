@@ -158,7 +158,7 @@ describe('care records controller flow', function () {
       .request(app)
       .post('/api/v1/prescriptions')
       .set('Authorization', authHeader(admin))
-      .send({ patientName: `${patient.firstName} ${patient.lastName}`, items: [{ name: 'Med', dose: '1', frequency: 'daily', durationDays: 3 }] });
+      .send({ patientName: `${patient.firstName} ${patient.lastName}`, items: [{ medicationName: 'Med', dose: '1', frequency: 'daily', durationDays: 3 }] });
     expect(byName).to.have.status(201);
 
     const missingId = new mongoose.Types.ObjectId();
