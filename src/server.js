@@ -175,7 +175,7 @@ const doctorLetterRoutes = require('./routes/doctorLetterRoutes');
 const locationRoutes = require('./routes/location');
 const correspondenceRoutes = require('./routes/correspondence');
 const emailRoutes = require('./routes/emailRoutes');
-const blobStoreRoutes = require('./routes/blobStoreRoutes'); 
+
 const { startShiftReminderScheduler } = require('./services/shiftReminderScheduler');
 
 app.use('/api/v1/auth', userRoutes);
@@ -214,7 +214,9 @@ app.use('/api/v1/doctor-letters', doctorLetterRoutes);
 app.use('/api/v1/locations', locationRoutes);
 app.use('/api/v1/correspondence', correspondenceRoutes);
 app.use('/api/v1/email', emailRoutes);
-app.use('/api/v1/blob_store', blobStoreRoutes);
+
+
+
 
 app.use(
   '/swaggerDocs',
@@ -330,6 +332,7 @@ io.on('connection', socket => {
     connectedUsers[String(userId)] = socket.id;
   });
 
+
   socket.on('disconnect', () => {
     for (const [uid, sid] of Object.entries(connectedUsers)) {
       if (sid === socket.id) {
@@ -353,10 +356,9 @@ const PORT = process.env.PORT || 3000;
 
 if (process.env.NODE_ENV !== 'test') {
   startScheduler();
+
   server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
-
-    // Start the shift reminder scheduler
     startShiftReminderScheduler();
   });
 }

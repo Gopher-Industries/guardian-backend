@@ -1,106 +1,90 @@
-const { getSignedUploadUrl, getSignedDownloadUrl, getList, uploadGeneratedPdf} = require('../r2-client');
-const path = require('path');
-const fs = require('fs');
-const { NoSuchKey, NotFound } = require('@aws-sdk/client-s3');
-const BUCKET = process.env.R2_BUCKET;
-const Patient = require('../models/Patient'); 
+const {
+  generateReferralPdf
+} = require('../services/referralpdfService');
 
-
-exports.HandleFileUploadUrl = async (req, res) => {
+/**
+ * Generate and return a referral PDF.
+ *
+ * patientId is used as a reference identifier only.
+ * This endpoint does NOT check MongoDB for the patient.
+ */
+exports.generateReferralPdf = async (req, res) => {
   try {
-    const { patientId, fileName, contentType, documentType } = req.body;
+    const {
+      patientId,
+      fileName = 'referral.pdf',
+      data
+    } = req.body;
 
-    if (!patientId || !fileName || !documentType) {
-      return res.status(400).json({ error: 'patientId and fileName are required' });
-    }
-
-    const exists = await Patient.exists({ _id: patientId });
-    if (!exists){
-      res.status(404).json({ error: 'Not a valid patient ID' });
-      return;
-    }
-
-    const objectKey = `${patientId}/${documentType}/${fileName}`;
-    const url = await getSignedUploadUrl(objectKey, contentType || 'application/pdf');
-
-    res.status(200).json({ objectKey, url });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to generate upload URL' });
-  }
-};
-
-exports.HandleFileDownload = async (req, res) => {
-  try {
-    const { patientId, fileName, contentType, documentType } = req.query;
-
-    if (!patientId || !fileName || !documentType) {
-      return res.status(400).json({ error: 'patientId and fileName are required' });
-    }
-
-    const objectKey = `${patientId}/${documentType}/${fileName}`;
-    const url = await getSignedDownloadUrl(objectKey, 3600, fileName, contentType || 'application/pdf');
-
-    res.status(200).json({ objectKey, url });
-  } catch (err) {
-    console.error(err);
-
-    if (err?.name === 'NoSuchKey' || err?.name === 'NotFound') {
-      return res.status(404).json({ error: 'Referral file not found' });
-    }
-
-    res.status(500).json({ error: 'File download failed' });
-  }
-};
-
-exports.List = async (req, res) => {
-  try {
-    const { patientId } = req.query;
-
+    // patientId is required
     if (!patientId) {
-      const result = await getList();
-      return res.status(200).json({ Result: result });
+      return res.status(400).json({
+        error: 'patientId is required'
+      });
     }
 
-    const exists = await Patient.exists({ _id: patientId });
-    if (!exists) {
-      return res.status(404).json({ error: 'Not a valid patient ID' });
+    // Accept a string only
+    if (typeof patientId !== 'string') {
+      return res.status(400).json({
+        error: 'patientId must be a string'
+      });
     }
 
-    const normalizedPatientId = patientId.endsWith('/') ? patientId : `${patientId}/`;
-    const result = await getList(normalizedPatientId);
-    res.status(200).json({ Result: result });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to list referrals' });
+    // For this API we only require the normal Mongo-style ID length.
+    // We are NOT checking whether the ID exists in the database.
+    if (patientId.trim().length !== 24) {
+      return res.status(400).json({
+        error: 'patientId must be valid'
+      });
+    }
+
+    if (!data || typeof data !== 'object') {
+      return res.status(400).json({
+        error: 'Referral data is required'
+      });
+    }
+
+    // Generate PDF using referralpdfService
+    const pdfBuffer = await generateReferralPdf(data);
+
+    // Safe filename
+    let safeFileName = String(fileName || 'referral.pdf')
+      .replace(/[^a-zA-Z0-9._-]/g, '_');
+
+    if (!safeFileName.toLowerCase().endsWith('.pdf')) {
+      safeFileName += '.pdf';
+    }
+
+    // Return PDF directly
+    res.setHeader(
+      'Content-Type',
+      'application/pdf'
+    );
+
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${safeFileName}"`
+    );
+
+    res.setHeader(
+      'Content-Length',
+      pdfBuffer.length
+    );
+
+    return res.status(200).send(pdfBuffer);
+
+  } catch (error) {
+    console.error(
+      'Referral PDF generation failed:',
+      error
+    );
+
+    return res
+      .status(error.statusCode || 500)
+      .json({
+        error:
+          error.message ||
+          'Failed to generate referral PDF'
+      });
   }
 };
-
-
-exports.HandleGenerateReferral = async (req, res) => {
-  try {
-    const { patientId, fileName, data } = req.body;
-
-    if (!patientId || !fileName || !data) {
-      return res.status(400).json({ error: 'patientId, fileName and data are required' });
-    }
-
-    const exists = await Patient.exists({ _id: patientId });
-    if (!exists) {
-      return res.status(404).json({ error: 'Not a valid patient ID' });
-    }
-
-    const pdfBytes = await generateReferralPdf(data); // your existing function
-    const objectKey = `${patientId}/referrals/${fileName}`;
-    await uploadGeneratedPdf(pdfBytes, objectKey);
-
-    res.status(200).json({ objectKey });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to generate and upload referral' });
-  }
-};
-
-
-   
- 
