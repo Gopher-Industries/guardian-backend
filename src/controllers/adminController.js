@@ -459,7 +459,7 @@ exports.getSupportTickets = async (req, res) => {
 exports.updateSupportTicket = async (req, res) => {
   try {
     const { ticketId } = req.params;
-    const { status, adminResponse } = req.body;
+    const { status, adminResponse, action } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(ticketId)) {
       return res.status(400).json({ message: 'Invalid ticketId' });
@@ -472,6 +472,24 @@ exports.updateSupportTicket = async (req, res) => {
         return res.status(400).json({
           message: `status must be one of: ${SUPPORT_TICKET_STATUSES.join(', ')}`,
         });
+      }
+      if (action !== undefined) {
+        if (!action.actionTaken) {
+          return res.status(400).json({
+            message: 'actionTaken is required when adding an action',
+          });
+        }
+
+        updateData.$push = {
+          actions: {
+            actionTaken: String(action.actionTaken).trim(),
+            outcome: action.outcome ? String(action.outcome).trim() : '',
+            recommendation: action.recommendation
+              ? String(action.recommendation).trim()
+              : '',
+            notes: action.notes ? String(action.notes).trim() : '',
+          },
+        };
       }
       updateData.status = status;
     }
@@ -512,6 +530,92 @@ exports.updateSupportTicket = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       message: 'Error updating support ticket',
+      details: error.message,
+    });
+  }
+};
+
+/**
+ * @swagger
+ * /api/v1/admin/support-tickets/{ticketId}/status:
+ *   patch:
+ *     summary: Update only the status of a support ticket
+ *     tags: [Admin]
+ *     parameters:
+ *       - in: path
+ *         name: ticketId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the support ticket
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - status
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [open, in_progress, resolved, closed]
+ *                 example: resolved
+ *     responses:
+ *       200:
+ *         description: Support ticket status updated successfully
+ *       400:
+ *         description: Invalid ticket ID or status
+ *       404:
+ *         description: Support ticket not found
+ *       500:
+ *         description: Error updating support ticket status
+ */
+exports.updateSupportTicketStatus = async (req, res) => {
+  try {
+    const { ticketId } = req.params;
+    const { status } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(ticketId)) {
+      return res.status(400).json({
+        message: 'Invalid ticketId',
+      });
+    }
+
+    if (!SUPPORT_TICKET_STATUSES.includes(status)) {
+      return res.status(400).json({
+        message: `status must be one of: ${SUPPORT_TICKET_STATUSES.join(', ')}`,
+      });
+    }
+
+    const updatedTicket = await SupportTicket.findByIdAndUpdate(
+      ticketId,
+      { status },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedTicket) {
+      return res.status(404).json({
+        message: 'Support ticket not found',
+      });
+    }
+
+    Promise.resolve(
+      notifyRules.supportTicketUpdated({
+        ticketId: updatedTicket._id,
+        userId: updatedTicket.user,
+        status: updatedTicket.status,
+        actorId: req.user?._id,
+      })
+    ).catch(() => {});
+
+    return res.status(200).json({
+      message: 'Support ticket status updated',
+      ticket: updatedTicket,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: 'Error updating support ticket status',
       details: error.message,
     });
   }
