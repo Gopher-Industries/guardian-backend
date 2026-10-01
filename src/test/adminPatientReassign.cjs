@@ -4,6 +4,7 @@ process.env.JWT_SECRET = process.env.JWT_SECRET || 'gmproject';
 
 const chai = require('chai');
 const mongoose = require('mongoose');
+const { MongoMemoryServer } = require('mongodb-memory-server');
 
 const adminPatientController = require('../controllers/adminPatientController');
 const Organization = require('../models/Organization');
@@ -13,8 +14,7 @@ const User = require('../models/User');
 
 const { expect } = chai;
 
-const MONGODB_URI =
-  process.env.MONGODB_URI || 'mongodb://admin:password@localhost:27018/guardian_test?authSource=admin';
+let mongoServer;
 
 function makeRes() {
   return {
@@ -210,7 +210,8 @@ describe('admin patient reassign flow', function () {
   this.timeout(15000);
 
   before(async () => {
-    await mongoose.connect(MONGODB_URI, {
+    mongoServer = await MongoMemoryServer.create();
+    await mongoose.connect(mongoServer.getUri('guardian-admin-reassign-test'), {
       useNewUrlParser: true,
       useUnifiedTopology: true,
       serverSelectionTimeoutMS: 5000,
@@ -223,6 +224,9 @@ describe('admin patient reassign flow', function () {
 
   after(async () => {
     await mongoose.disconnect();
+    if (mongoServer) {
+      await mongoServer.stop();
+    }
   });
 
   it('reassigns caretaker and doctor while appending a new nurse in the same org', async () => {

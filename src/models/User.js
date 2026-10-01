@@ -9,6 +9,21 @@ const UserSchema = new mongoose.Schema({
   assignedPatients: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Patient' }], // Assigned patients
   organization: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', index: true },
   phone: {type: String, required: false, unique: false},  
+  title: { type: String, required: false },
+  surname: { type: String, required: false },
+  firstName: { type: String, required: false },
+  dateOfBirth: { type: Date, required: false },
+  primaryContactNumber: { type: String, required: false },
+  
+  medicareProviderNumber: { type: String, required: false },
+  
+  // Payroll fields
+  taxFileNumber: { type: String, required: false },
+  superannuationFundName: { type: String, required: false },
+  superMemberNumber: { type: String, required: false },
+  bankAccountName: { type: String, required: false },
+  accountNumber: { type: String, required: false },
+  bsb: { type: String, required: false },
 
   // approval flow for org-based nurse/caretaker users
   approvalStatus: {

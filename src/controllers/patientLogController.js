@@ -19,58 +19,58 @@ const getRoleName = async (req) => {
   return user?.role?.name || user?.role;
 };
 const isSameId = (a, b) => { return a && b && a.toString() === b.toString();};
-
-const canModifyLog = async (log, req) => { 
+ 
+const canModifyLog = async (log, req) => {
   const userId = getUserId(req);
   const roleName = await getRoleName(req);
   return isSameId(log.createdBy, userId) || roleName === 'admin';
 };
-
+ 
 const canAccessPatientLogs = async (patientId, req) => {
   const userId = getUserId(req);
   const roleName = await getRoleName(req);
-
+ 
   if (roleName === 'admin') return true;
-
+ 
   const patient = await Patient.findById(patientId)
     .select('caretakerId nurseIds doctorId')
     .lean();
-
+ 
   if (!patient) return false;
-
+ 
   if (roleName === 'caretaker') {
     return isSameId(patient.caretakerId, userId);
   }
-
+ 
   if (roleName === 'nurse') {
     return patient.nurseIds?.some((nurseId) => isSameId(nurseId, userId));
   }
-
+ 
   if (roleName === 'doctor') {
     return isSameId(patient.doctorId, userId);
   }
-
+ 
   return false;
 };
-
-
+ 
+ 
 exports.createLog = async (req, res) => {
   try {
-    const { title, description, patient } = req.body;
-
-    if (!title || !description || !patient) {
+    const { title, observations, patient } = req.body;
+ 
+    if (!title || !observations || !patient) {
       return res.status(400).json({
-        error: 'Title, description, and patient ID are required.'
+        error: 'Title, observations, and patient ID are required.'
       });
     }
-
+ 
     const newLog = await PatientLog.create({
       title,
-      description,
+      observations,
       patient,
       createdBy: req.user._id
     });
-
+ 
     res.status(201).json({
       message: 'Log created successfully',
       log: newLog
@@ -79,7 +79,7 @@ exports.createLog = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-
+ 
 /**
  * @swagger
  * /api/v1/patient-logs/{patientId}:
@@ -151,7 +151,7 @@ exports.createLog = async (req, res) => {
  *                         type: string
  *                       title:
  *                         type: string
- *                       description:
+ *                       observations:
  *                         type: string
  *                       patient:
  *                         type: string
@@ -169,30 +169,30 @@ exports.createLog = async (req, res) => {
 exports.getLogsByPatient = async (req, res) => {
   try {
     const { patientId } = req.params;
-
+ 
     if (!mongoose.isValidObjectId(patientId)) {
       return res.status(400).json({
       error: 'Invalid patient ID.'
       });
     }
-
+ 
     const hasAccess = await canAccessPatientLogs(patientId, req);
-
+ 
     if (!hasAccess) {
         return res.status(403).json({
         error: 'Permission denied. You do not have access to this patient logs.'
         });
     }
-
+ 
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
     const allowedSortValues = ['createdAt', '-createdAt'];
     const sort = allowedSortValues.includes(req.query.sort)
       ? req.query.sort
       : '-createdAt';
-
+ 
     const skip = (page - 1) * limit;
-
+ 
     const [logs, total] = await Promise.all([
       PatientLog.find({ patient: patientId })
         .populate('createdBy', 'fullname role')
@@ -201,7 +201,7 @@ exports.getLogsByPatient = async (req, res) => {
         .limit(limit),
       PatientLog.countDocuments({ patient: patientId })
     ]);
-
+ 
     res.status(200).json({
       page,
       limit,
@@ -213,7 +213,7 @@ exports.getLogsByPatient = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-
+ 
 /**
  * @swagger
  * /api/v1/patient-logs/{id}:
@@ -241,14 +241,14 @@ exports.getLogsByPatient = async (req, res) => {
  *               title:
  *                 type: string
  *                 example: Updated patient mood update
- *               description:
+ *               observations:
  *                 type: string
  *                 example: Patient was calm and responsive after breakfast.
  *     responses:
  *       200:
  *         description: Log updated successfully
  *       400:
- *         description: At least title or description is required
+ *         description: At least title or observations is required
  *       401:
  *         description: Unauthorized or missing token
  *       403:
@@ -261,41 +261,41 @@ exports.getLogsByPatient = async (req, res) => {
 exports.updateLog = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description } = req.body;
+    const { title, observations } = req.body;
     if (!mongoose.isValidObjectId(id)) {
       return res.status(400).json({
       error: 'Invalid log ID.'
       });
     }
-
-    if (!title && !description) {
+ 
+    if (!title && !observations) {
       return res.status(400).json({
-        error: 'At least title or description is required.'
+        error: 'At least title or observations is required.'
       });
     }
-
+ 
     const log = await PatientLog.findById(id);
-
+ 
     if (!log) {
       return res.status(404).json({
         error: 'Log not found'
       });
     }
-
+ 
     if (!(await canModifyLog(log, req))) {
       return res.status(403).json({
       error: 'Permission denied. Only the creator or admin can update this log.'
       });
     }
-
+ 
     if (title) log.title = title;
-    if (description) log.description = description;
-
+    if (observations) log.observations = observations;
+ 
     log.updatedBy = getUserId(req);
     log.updatedAt = new Date();
-
+ 
     const updatedLog = await log.save();
-
+ 
     res.status(200).json({
       message: 'Log updated successfully',
       log: updatedLog
@@ -304,7 +304,7 @@ exports.updateLog = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-
+ 
 /**
  * @swagger
  * /api/v1/patient-logs/{id}:
@@ -342,23 +342,23 @@ exports.deleteLog = async (req, res) => {
       error: 'Invalid log ID.'
       });
     }
-
+ 
     const log = await PatientLog.findById(id);
-
+ 
     if (!log) {
       return res.status(404).json({
         error: 'Log not found'
       });
     }
-
+ 
     if (!(await canModifyLog(log, req))) {
       return res.status(403).json({
         error: 'Permission denied. Only the creator or admin can delete this log.'
       });
     }
-
+ 
     await PatientLog.findByIdAndDelete(id);
-
+ 
     res.status(200).json({
       message: 'Log deleted successfully'
     });
@@ -366,3 +366,4 @@ exports.deleteLog = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+ 
