@@ -261,15 +261,6 @@ router.put('/:patientId', verifyToken, patientController.updatePatient);
  *               type: array
  *               items:
  *                 $ref: '#/components/schemas/PatientSummary'
- *             example:
- *               - _id: "664f1c2e8b1a2c3d4e5f6a7b"
- *                 firstName: "Mary"
- *                 lastName: "Jane"
- *                 birthSex: "Female"
- *                 genderIdentity: "Female"
- *                 pronouns: "She/Her"
- *                 preferredLanguage: "English"
- *                 isActive: true
  *       401:
  *         description: Unauthorized
  *         content:

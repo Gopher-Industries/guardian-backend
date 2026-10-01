@@ -161,6 +161,125 @@ exports.addPatient = async (req, res) => {
 
 /**
  * @swagger
+ * /api/v1/patients/assign-nurse:
+ *   post:
+ *     summary: Assign a nurse to a patient
+ *     description: Adds a nurse to the patient's care team. Repeating the same assignment is safe.
+ *     tags: [Patient]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [nurseId, patientId]
+ *             properties:
+ *               nurseId:
+ *                 type: string
+ *                 description: MongoDB ObjectId of the nurse
+ *               patientId:
+ *                 type: string
+ *                 description: MongoDB ObjectId of the patient
+ *     responses:
+ *       200:
+ *         description: Nurse assigned successfully
+ *       400:
+ *         description: The referenced user is not a nurse or the assignment failed
+ *       404:
+ *         description: Patient not found
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Only caretakers and admins can assign nurses
+ */
+exports.assignNurse = async (req, res) => {
+  try {
+    const { nurseId, patientId } = req.body || {};
+    const patient = await Patient.findById(patientId);
+
+    if (!patient) {
+      return res.status(404).json({ message: 'Patient not found' });
+    }
+
+    const nurseRole = await Role.findOne({ name: 'nurse' });
+    const nurse = nurseRole
+      ? await User.findOne({ _id: nurseId, role: nurseRole._id })
+      : null;
+
+    if (!nurse) {
+      return res.status(400).json({ message: 'User must be a nurse' });
+    }
+
+    const alreadyAssigned = (patient.nurseIds || [])
+      .some(assignedId => String(assignedId) === String(nurse._id));
+
+    if (!alreadyAssigned) {
+      patient.nurseIds.push(nurse._id);
+      await patient.save();
+      await User.updateOne(
+        { _id: nurse._id },
+        { $addToSet: { assignedPatients: patient._id } }
+      );
+    }
+
+    return res.status(200).json({ message: 'Nurse assigned successfully', patient });
+  } catch (error) {
+    return res.status(400).json({ message: 'Error assigning nurse', details: error.message });
+  }
+};
+
+/**
+ * @swagger
+ * /api/v1/patients/assigned-patients:
+ *   get:
+ *     summary: List patients assigned to the authenticated care worker
+ *     description: Returns active patients assigned to the authenticated nurse or caretaker.
+ *     tags: [Patient]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Assigned patients
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required: [patients]
+ *               properties:
+ *                 patients:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/PatientSummary'
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Only nurses and caretakers can access assigned patients
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Internal server error while fetching assigned patients
+ */
+exports.getAssignedPatients = async (req, res) => {
+  try {
+    const actor = await User.findById(req.user._id).populate('role', 'name');
+    if (!actor) return res.status(404).json({ message: 'User not found' });
+
+    const roleName = actor.role?.name?.toLowerCase();
+    const filter = roleName === 'nurse'
+      ? { nurseIds: actor._id, isDeleted: { $ne: true } }
+      : { caretakerId: actor._id, isDeleted: { $ne: true } };
+    const patients = await Patient.find(filter).sort({ firstName: 1 }).lean();
+
+    return res.status(200).json({ patients });
+  } catch (error) {
+    return res.status(500).json({ message: 'Error fetching assigned patients', details: error.message });
+  }
+};
+
+/**
+ * @swagger
  * /api/v1/patients:
  *   get:
  *     summary: Get patients in the independent freelance flow
@@ -189,7 +308,6 @@ exports.addPatient = async (req, res) => {
  *         schema:
  *           type: string
  *           example: Male
- *       - in: query
  *       - in: query
  *         name: includeDeleted
  *         schema:
@@ -455,59 +573,6 @@ exports.updatePatient = async (req, res) => {
       message: 'Error updating patient',
       details: error.message
     });
-  }
-};
-
-exports.assignNurse = async (req, res) => {
-  try {
-    const { nurseId, patientId } = req.body || {};
-    const patient = await Patient.findById(patientId);
-
-    if (!patient) {
-      return res.status(404).json({ message: 'Patient not found' });
-    }
-
-    const nurseRole = await Role.findOne({ name: 'nurse' });
-    const nurse = nurseRole
-      ? await User.findOne({ _id: nurseId, role: nurseRole._id })
-      : null;
-
-    if (!nurse) {
-      return res.status(400).json({ message: 'User must be a nurse' });
-    }
-
-    const alreadyAssigned = (patient.nurseIds || [])
-      .some(assignedId => String(assignedId) === String(nurse._id));
-
-    if (!alreadyAssigned) {
-      patient.nurseIds.push(nurse._id);
-      await patient.save();
-      await User.updateOne(
-        { _id: nurse._id },
-        { $addToSet: { assignedPatients: patient._id } }
-      );
-    }
-
-    return res.status(200).json({ message: 'Nurse assigned successfully', patient });
-  } catch (error) {
-    return res.status(400).json({ message: 'Error assigning nurse', details: error.message });
-  }
-};
-
-exports.getAssignedPatients = async (req, res) => {
-  try {
-    const actor = await User.findById(req.user._id).populate('role', 'name');
-    if (!actor) return res.status(404).json({ message: 'User not found' });
-
-    const roleName = actor.role?.name?.toLowerCase();
-    const filter = roleName === 'nurse'
-      ? { nurseIds: actor._id, isDeleted: { $ne: true } }
-      : { caretakerId: actor._id, isDeleted: { $ne: true } };
-    const patients = await Patient.find(filter).sort({ firstName: 1 }).lean();
-
-    return res.status(200).json({ patients });
-  } catch (error) {
-    return res.status(500).json({ message: 'Error fetching assigned patients', details: error.message });
   }
 };
 
