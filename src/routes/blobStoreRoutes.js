@@ -9,27 +9,39 @@ const referralController = require('../controllers/referralController');
  *     tags:
  *       - BLOB STORE
  *     summary: Get a presigned upload URL for a document.
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - patientId
- *               - fileName
- *               - documentType
- *             properties:
- *               patientId:
- *                 type: string
- *                 example: "6a3f8ea9c14556091e6e0e50"
- *               fileName:
- *                 type: string
- *                 example: "referral.pdf"
- *               documentType:
- *                 type: string
- *                 enum: [referrals, letters, specialist-reports]
- *                 example: "referrals"
+ *     parameters:
+ *       - in: query
+ *         name: patientId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: "6a3f8ea9c14556091e6e0e50"
+ *       - in: query
+ *         name: fileName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: "referral.pdf"
+ *       - in: query
+ *         name: documentType
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [referrals, letters, specialist-reports]
+ *         example: "referrals"
+ *       - in: query
+ *         name: description
+ *         required: false
+ *         schema:
+ *           type: string
+ *         example: "Referral letter to cardiology"
+ *       - in: query
+ *         name: direction
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: [incoming, outgoing]
+ *         example: "incoming"
  *     responses:
  *       200:
  *         description: Presigned upload URL generated.
@@ -41,6 +53,8 @@ const referralController = require('../controllers/referralController');
  *                 objectKey:
  *                   type: string
  *                 url:
+ *                   type: string
+ *                 correspondenceId:
  *                   type: string
  */
 router.post('/upload-url', referralController.HandleFileUploadUrl);
