@@ -77,6 +77,43 @@ router.post('/register', validationMiddleware(registerSchema), userController.re
 
 /**
  * @openapi
+ * /api/v1/auth/approve/{userId}:
+ *   patch:
+ *     tags:
+ *       - Authentication
+ *     summary: Approve a pending user
+ *     description: >
+ *       Changes a user's approval status from pending to approved.
+ *       The logged-in user's ID is stored in approvedBy and the current
+ *       server time is stored in approvedAt.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the user to approve
+ *     responses:
+ *       200:
+ *         description: User approved successfully
+ *       400:
+ *         description: User is already approved or is not pending
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Internal server error
+ */
+router.patch(
+  '/approve/:userId',
+  verifyToken,
+  userController.approveUser
+);
+/**
+ * @openapi
  * /api/v1/auth/login:
  *   post:
  *     tags:
