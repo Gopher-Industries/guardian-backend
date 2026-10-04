@@ -1,29 +1,53 @@
-const { getSignedUploadUrl, getSignedDownloadUrl, getList, uploadGeneratedPdf} = require('../r2-client');
-const path = require('path');
-const fs = require('fs');
-const { NoSuchKey, NotFound } = require('@aws-sdk/client-s3');
-const BUCKET = process.env.R2_BUCKET;
-const Patient = require('../models/Patient'); 
+const { getSignedUploadUrl, getSignedDownloadUrl, getList, uploadGeneratedPdf } = require('../r2-client');
+const Patient = require('../models/Patient');
+const Correspondence = require('../models/Correspondence');
 
+const DOCUMENT_TYPE_TO_CORRESPONDENCE_TYPE = {
+  referrals: 'referral',
+  letters: 'letter',
+  'specialist-reports': 'specialist report',
+};
 
 exports.HandleFileUploadUrl = async (req, res) => {
   try {
-    const { patientId, fileName, contentType, documentType } = req.body;
+    const { patientId, fileName, documentType, direction, description } = req.body;
+
+    console.log('Received fileName:', fileName);
 
     if (!patientId || !fileName || !documentType) {
       return res.status(400).json({ error: 'patientId and fileName are required' });
     }
 
-    const exists = await Patient.exists({ _id: patientId });
-    if (!exists){
-      res.status(404).json({ error: 'Not a valid patient ID' });
-      return;
+    if (!fileName.toLowerCase().endsWith('.pdf')) {
+      return res.status(400).json({ error: 'Only PDF files are allowed' });
+    }
+
+    const patientExists = await Patient.exists({ _id: patientId });
+    if (!patientExists) {
+      return res.status(404).json({ error: 'Patient not found' });
+    }
+
+    const correspondenceType = DOCUMENT_TYPE_TO_CORRESPONDENCE_TYPE[documentType];
+    if (!correspondenceType) {
+      return res.status(400).json({ error: `Unsupported documentType: ${documentType}` });
     }
 
     const objectKey = `${patientId}/${documentType}/${fileName}`;
-    const url = await getSignedUploadUrl(objectKey, contentType || 'application/pdf');
 
-    res.status(200).json({ objectKey, url });
+    const correspondence = await Correspondence.create({
+      patient: patientId,
+      staff: req.user?._id || null,
+      type: correspondenceType,
+      description: description || `Uploaded document: ${fileName}`,
+      direction: direction || 'incoming',
+      date: new Date(),
+      cloudflareObjectKey: objectKey,
+      status: 'pending',
+    });
+
+    const url = await getSignedUploadUrl(objectKey);
+
+    res.status(200).json({ objectKey, url, correspondenceId: correspondence._id });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to generate upload URL' });
@@ -32,14 +56,14 @@ exports.HandleFileUploadUrl = async (req, res) => {
 
 exports.HandleFileDownload = async (req, res) => {
   try {
-    const { patientId, fileName, contentType, documentType } = req.query;
+    const { patientId, fileName, documentType } = req.query;
 
     if (!patientId || !fileName || !documentType) {
       return res.status(400).json({ error: 'patientId and fileName are required' });
     }
 
     const objectKey = `${patientId}/${documentType}/${fileName}`;
-    const url = await getSignedDownloadUrl(objectKey, 3600, fileName, contentType || 'application/pdf');
+    const url = await getSignedDownloadUrl(objectKey);
 
     res.status(200).json({ objectKey, url });
   } catch (err) {
