@@ -1,0 +1,154 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 720" width="980" height="720" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
+  <title>Guardian — patient access control</title>
+  <desc>Author: Graeme Thomas. Module: guardian-access-control v1.1.0.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#5b7086"/>
+    </marker>
+    <marker id="arrowGreen" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2f8f56"/>
+    </marker>
+    <marker id="arrowRed" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#c0473f"/>
+    </marker>
+    <style>
+      .box   { fill:#ffffff; stroke:#c3ced9; stroke-width:1.5; rx:8; }
+      .layer { fill:#f4f8fb; stroke:#9db3c6; stroke-width:1.5; rx:10; }
+      .allow { fill:#eaf7ef; stroke:#2f8f56; stroke-width:1.5; rx:8; }
+      .deny  { fill:#fdeeed; stroke:#c0473f; stroke-width:1.5; rx:8; }
+      .store { fill:#1c2836; stroke:#0f1720; stroke-width:1.5; rx:8; }
+      .t     { font-size:13px; fill:#1c2836; }
+      .tb    { font-size:13px; fill:#1c2836; font-weight:600; }
+      .ts    { font-size:11px; fill:#5b7086; }
+      .tm    { font-size:11px; fill:#1c2836; font-family:ui-monospace, Menlo, Consolas, monospace; }
+      .tw    { font-size:11px; fill:#ffffff; }
+      .twb   { font-size:12px; fill:#ffffff; font-weight:600; }
+      .lbl   { font-size:11px; fill:#5b7086; }
+      .ln    { stroke:#5b7086; stroke-width:1.4; fill:none; }
+      .lnG   { stroke:#2f8f56; stroke-width:1.4; fill:none; }
+      .lnR   { stroke:#c0473f; stroke-width:1.4; fill:none; }
+      .lnD   { stroke:#9db3c6; stroke-width:1.2; fill:none; stroke-dasharray:4 3; }
+      .title { font-size:16px; fill:#0f1720; font-weight:600; }
+    </style>
+  </defs>
+
+  <rect width="980" height="720" fill="#ffffff"/>
+  <text x="28" y="34" class="title">Guardian — patient-scoped authorisation</text>
+  <text x="28" y="54" class="ts">Capability (what kind of action) AND scope (for which patient). Both must agree. Every outcome is audited.</text>
+
+  <!-- Request -->
+  <rect x="28" y="78" width="230" height="52" class="box"/>
+  <text x="42" y="100" class="tb">HTTP request</text>
+  <text x="42" y="118" class="tm">GET /patients/:patientId/vitals</text>
+  <path d="M 143 130 L 143 158" class="ln" marker-end="url(#arrow)"/>
+
+  <!-- Layer 0 -->
+  <rect x="28" y="158" width="230" height="56" class="layer"/>
+  <text x="42" y="180" class="tb">Layer 0 — Authentication</text>
+  <text x="42" y="198" class="tm">verifyToken → req.user</text>
+  <path d="M 258 186 L 366 186" class="lnR" marker-end="url(#arrowRed)"/>
+  <rect x="366" y="164" width="200" height="44" class="deny"/>
+  <text x="380" y="182" class="tb">401</text>
+  <text x="380" y="199" class="ts">no or invalid token</text>
+  <path d="M 143 214 L 143 244" class="ln" marker-end="url(#arrow)"/>
+
+  <!-- Layer 1 -->
+  <rect x="28" y="244" width="230" height="76" class="layer"/>
+  <text x="42" y="266" class="tb">Layer 1 — Capability</text>
+  <text x="42" y="284" class="ts">RolePermissionSet</text>
+  <text x="42" y="302" class="ts">does the role carry this permission?</text>
+  <path d="M 258 282 L 366 282" class="lnR" marker-end="url(#arrowRed)"/>
+  <rect x="366" y="260" width="260" height="44" class="deny"/>
+  <text x="380" y="278" class="tb">403</text>
+  <text x="380" y="295" class="tm">DENY_ROLE_LACKS_CAPABILITY</text>
+  <path d="M 143 320 L 143 350" class="ln" marker-end="url(#arrow)"/>
+
+  <!-- Unscoped -->
+  <rect x="28" y="350" width="230" height="52" class="box"/>
+  <text x="42" y="372" class="tb">Role unscoped?</text>
+  <text x="42" y="390" class="ts">administrators only</text>
+  <path d="M 258 376 L 366 376" class="lnG" marker-end="url(#arrowGreen)"/>
+  <rect x="366" y="354" width="260" height="44" class="allow"/>
+  <text x="380" y="372" class="tb">200</text>
+  <text x="380" y="389" class="tm">ALLOW_ROLE_UNSCOPED</text>
+  <path d="M 143 402 L 143 432" class="ln" marker-end="url(#arrow)"/>
+
+  <!-- Layer 2 -->
+  <rect x="28" y="432" width="230" height="94" class="layer"/>
+  <text x="42" y="454" class="tb">Layer 2 — Scope</text>
+  <text x="42" y="472" class="ts">PatientAccessGrant</text>
+  <text x="42" y="490" class="ts">subject + patient + permission</text>
+  <text x="42" y="508" class="ts">+ status, validFrom, validUntil</text>
+
+  <!-- Layer 2 outcomes -->
+  <path d="M 258 452 L 366 452" class="lnG" marker-end="url(#arrowGreen)"/>
+  <rect x="366" y="430" width="260" height="44" class="allow"/>
+  <text x="380" y="448" class="tb">200</text>
+  <text x="380" y="465" class="tm">ALLOW_EXPLICIT_GRANT</text>
+
+  <path d="M 258 470 L 300 470 L 300 500 L 366 500" class="lnG" marker-end="url(#arrowGreen)"/>
+  <rect x="366" y="478" width="260" height="44" class="allow"/>
+  <text x="380" y="496" class="tb">200</text>
+  <text x="380" y="513" class="tm">ALLOW_BREAK_GLASS</text>
+
+  <path d="M 258 496 L 290 496 L 290 548 L 366 548" class="lnR" marker-end="url(#arrowRed)"/>
+  <rect x="366" y="526" width="260" height="62" class="deny"/>
+  <text x="380" y="544" class="tb">403</text>
+  <text x="380" y="561" class="tm">DENY_GRANT_REVOKED / _EXPIRED</text>
+  <text x="380" y="578" class="tm">DENY_GRANT_LACKS_PERMISSION</text>
+
+  <path d="M 143 526 L 143 556" class="ln" marker-end="url(#arrow)"/>
+
+  <!-- Relationship -->
+  <rect x="28" y="556" width="230" height="62" class="box"/>
+  <text x="42" y="578" class="tb">Relationship mode?</text>
+  <text x="42" y="595" class="ts">caretaker / nurse / doctor of</text>
+  <text x="42" y="611" class="ts">this patient — configurable</text>
+
+  <path d="M 258 578 L 300 578 L 300 612 L 366 612" class="lnG" marker-end="url(#arrowGreen)"/>
+  <rect x="366" y="592" width="260" height="40" class="allow"/>
+  <text x="380" y="617" class="tm">ALLOW_RELATIONSHIP</text>
+
+  <path d="M 143 618 L 143 650 L 366 650" class="lnR" marker-end="url(#arrowRed)"/>
+  <rect x="366" y="638" width="260" height="40" class="deny"/>
+  <text x="380" y="663" class="tm">DENY_NO_GRANT</text>
+
+  <!-- Audit -->
+  <rect x="666" y="164" width="286" height="120" class="store"/>
+  <text x="684" y="190" class="twb">AccessAuditLog</text>
+  <text x="684" y="212" class="tw">append-only — allows AND denies</text>
+  <text x="684" y="232" class="tw">who, what, when, under whose authority</text>
+  <text x="684" y="252" class="tw">grant.issued · grant.revoked</text>
+  <text x="684" y="272" class="tw">breakglass.invoked · matrix.updated</text>
+  <path d="M 626 240 L 664 230" class="lnD" marker-end="url(#arrow)"/>
+  <path d="M 626 380 L 650 380 L 650 290 L 664 284" class="lnD" marker-end="url(#arrow)"/>
+  <path d="M 626 555 L 650 555 L 650 290 L 664 286" class="lnD"/>
+  <path d="M 626 658 L 650 658 L 650 292" class="lnD"/>
+
+  <!-- Administration -->
+  <rect x="666" y="316" width="286" height="200" class="layer"/>
+  <text x="684" y="342" class="tb">Administration</text>
+  <text x="684" y="360" class="ts">doctor (own patients) or administrator</text>
+
+  <rect x="684" y="372" width="250" height="30" class="box"/>
+  <text x="694" y="392" class="tm">POST   /access/grants</text>
+  <rect x="684" y="408" width="250" height="30" class="box"/>
+  <text x="694" y="428" class="tm">DELETE /access/grants/:id</text>
+  <rect x="684" y="444" width="250" height="30" class="box"/>
+  <text x="694" y="464" class="tm">POST   /access/break-glass</text>
+  <rect x="684" y="480" width="250" height="30" class="box"/>
+  <text x="694" y="500" class="tm">PUT    /access/matrix/:role</text>
+
+  <path d="M 682 425 L 640 425 L 640 470 L 260 470" class="lnD"/>
+  <text x="676" y="536" class="ts">A grant is intersected with the recipient's role</text>
+  <text x="676" y="552" class="ts">ceiling, so it can never escalate a role.</text>
+
+  <!-- Console -->
+  <rect x="666" y="576" width="286" height="102" class="layer"/>
+  <text x="684" y="602" class="tb">Administration console</text>
+  <text x="684" y="620" class="tm">GET /api/v1/access/console</text>
+  <text x="684" y="640" class="ts">grants · authorise · role matrix</text>
+  <text x="684" y="658" class="ts">simulator · audit log</text>
+  <text x="684" y="674" class="ts">no privileges of its own — all server side</text>
+  <text x="28" y="706" class="ts">Graeme Thomas · guardian-access-control v1.1.0</text>
+</svg>

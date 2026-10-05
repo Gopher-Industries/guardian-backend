@@ -1,0 +1,686 @@
+'use strict';
+
+/**
+ * Guardian — access-control routes.
+ *
+ * Mount in src/server.js:
+ *   const accessControlRoutes = require('./routes/accessControlRoutes');
+ *   app.use('/api/v1/access', accessControlRoutes);
+ *
+ * The JSDoc below is picked up automatically by the existing swagger-jsdoc
+ * config (it already scans ./src/routes/*.js), so these endpoints appear in
+ * /swaggerDocs with no further wiring.
+ *
+ * @swagger
+ * tags:
+ *   - name: Access Control
+ *     description: >
+ *       Patient-scoped authorisation. A user's role decides what kind of action
+ *       they may ever perform; an explicit grant issued by a doctor or
+ *       administrator decides which patients they may perform it on.
+ *
+ * @author   Graeme Thomas
+ * @module   guardian-access-control
+ * @version  1.1.0
+ */
+
+const express = require('express');
+const path = require('path');
+
+const verifyToken = require('../middleware/verifyToken');
+const { requirePatientAccess, requirePermission } = require('../middleware/requirePatientAccess');
+const controller = require('../controllers/accessControlController');
+
+const router = express.Router();
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     Permission:
+ *       type: object
+ *       properties:
+ *         code:        { type: string, example: 'patient.vitals:read' }
+ *         category:    { type: string, example: clinical }
+ *         description: { type: string }
+ *     PatientAccessGrant:
+ *       type: object
+ *       properties:
+ *         id:            { type: string, example: 66f1a2b3c4d5e6f708192a3b }
+ *         subject:       { type: string, description: User the grant is issued to }
+ *         patient:       { type: string }
+ *         permissions:   { type: array, items: { type: string }, example: ['patient:read'] }
+ *         grantType:     { type: string, enum: [explicit, break-glass] }
+ *         status:        { type: string, enum: [active, suspended, revoked] }
+ *         validFrom:     { type: string, format: date-time }
+ *         validUntil:    { type: string, format: date-time, nullable: true }
+ *         grantedBy:     { type: string }
+ *         grantedByRole: { type: string, example: doctor }
+ *         reason:        { type: string, example: 'Covering ward round 12-19 Sep' }
+ *         purpose:       { type: string, enum: [direct-care, care-coordination, audit, research, emergency, other] }
+ *     AccessDecision:
+ *       type: object
+ *       properties:
+ *         allowed: { type: boolean }
+ *         reason:
+ *           type: string
+ *           description: Machine-readable reason code
+ *           example: DENY_NO_GRANT
+ *         message: { type: string }
+ *         grantId: { type: string, nullable: true }
+ *     AccessDenied:
+ *       type: object
+ *       properties:
+ *         message:    { type: string, example: 'You are not authorised to access this patient record' }
+ *         reason:     { type: string, example: DENY_NO_GRANT }
+ *         permission: { type: string, example: 'patient:read' }
+ */
+
+/* ------------------------------------------------------------------ *
+ * Catalogue and role capability matrix
+ * ------------------------------------------------------------------ */
+
+/**
+ * @swagger
+ * /api/v1/access/permissions:
+ *   get:
+ *     tags: [Access Control]
+ *     summary: List the permission catalogue and the decision reason codes
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200:
+ *         description: Catalogue
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 permissions: { type: array, items: { $ref: '#/components/schemas/Permission' } }
+ *                 reasonCodes: { type: object, additionalProperties: { type: string } }
+ *       401: { description: Missing or invalid token }
+ */
+router.get('/permissions', verifyToken, controller.getPermissionCatalogue);
+
+/**
+ * @swagger
+ * /api/v1/access/matrix:
+ *   get:
+ *     tags: [Access Control]
+ *     summary: Read the role capability matrix
+ *     description: Roles down the side, permission codes across the top. This layer decides *what kind* of action a role may perform, never *which patient*.
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: The current matrix }
+ *       403: { description: Caller lacks access.grant:manage }
+ */
+router.get('/matrix', verifyToken, requirePermission('access.grant:manage'), controller.getRoleMatrix);
+
+/**
+ * @swagger
+ * /api/v1/access/matrix/{roleName}:
+ *   put:
+ *     tags: [Access Control]
+ *     summary: Replace the capability list for one role
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: roleName
+ *         required: true
+ *         schema: { type: string, example: nurse }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               permissions: { type: array, items: { type: string }, example: ['patient:read','patient.vitals:read'] }
+ *               unscoped:    { type: boolean, description: True only for system administrators }
+ *               canGrant:    { type: boolean, description: May this role issue patient access grants }
+ *               description: { type: string }
+ *     responses:
+ *       200: { description: Updated role entry }
+ *       403: { description: Caller lacks access.matrix:manage }
+ */
+router.put('/matrix/:roleName', verifyToken, requirePermission('access.matrix:manage'), controller.updateRoleMatrix);
+
+/* ------------------------------------------------------------------ *
+ * Role lifecycle (RBAC)
+ * ------------------------------------------------------------------ */
+
+/**
+ * @swagger
+ * /api/v1/access/roles:
+ *   post:
+ *     tags: [Access Control]
+ *     summary: Create a role
+ *     description: >
+ *       Creates the capability set AND the Role document together, so the new
+ *       role is one a user can actually be given. Pass cloneFrom to start from
+ *       an existing role's permission list.
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [roleName]
+ *             properties:
+ *               roleName:    { type: string, example: ward-coordinator, description: '2-40 chars, lower case, letters digits . - _' }
+ *               displayName: { type: string, example: 'Ward Coordinator' }
+ *               permissions: { type: array, items: { type: string } }
+ *               inherits:    { type: array, items: { type: string }, example: ['nurse'], description: Resolved transitively; cycles are refused }
+ *               cloneFrom:   { type: string, example: nurse, description: Seed permissions and inherits from this role }
+ *               canGrant:    { type: boolean }
+ *               unscoped:    { type: boolean, description: Only an unscoped administrator may set this }
+ *               description: { type: string }
+ *     responses:
+ *       201: { description: Role created }
+ *       400: { description: Invalid role name or unknown permission }
+ *       403: { description: Caller lacks access.matrix:manage, or tried to create an unscoped role }
+ *       409: { description: Role already exists }
+ *       422: { description: The requested inheritance would create a cycle }
+ */
+router.post('/roles', verifyToken, requirePermission('access.matrix:manage'), controller.createRole);
+
+/**
+ * @swagger
+ * /api/v1/access/roles/{roleName}:
+ *   put:
+ *     tags: [Access Control]
+ *     summary: Update a role (alias of PUT /matrix/{roleName})
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - { in: path, name: roleName, required: true, schema: { type: string } }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               permissions: { type: array, items: { type: string } }
+ *               inherits:    { type: array, items: { type: string } }
+ *               displayName: { type: string }
+ *               unscoped:    { type: boolean }
+ *               canGrant:    { type: boolean }
+ *               description: { type: string }
+ *     responses:
+ *       200: { description: Updated }
+ *       422: { description: Inheritance cycle, or a protected system role }
+ *   delete:
+ *     tags: [Access Control]
+ *     summary: Delete a role
+ *     description: >
+ *       Refused while users still hold the role or other roles inherit from it.
+ *       System roles cannot be deleted at all.
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - { in: path, name: roleName, required: true, schema: { type: string } }
+ *       - { in: query, name: force, schema: { type: boolean }, description: Delete even though users still hold it }
+ *     responses:
+ *       200: { description: Deleted }
+ *       409: { description: Role is still held, or other roles inherit from it }
+ *       422: { description: System role }
+ */
+router
+  .route('/roles/:roleName')
+  .put(verifyToken, requirePermission('access.matrix:manage'), controller.updateRoleMatrix)
+  .delete(verifyToken, requirePermission('access.matrix:manage'), controller.deleteRole);
+
+/**
+ * @swagger
+ * /api/v1/access/roles/{roleName}/usage:
+ *   get:
+ *     tags: [Access Control]
+ *     summary: What depends on this role
+ *     description: Holder counts and descendant roles. Ask before narrowing or deleting.
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - { in: path, name: roleName, required: true, schema: { type: string } }
+ *     responses:
+ *       200:
+ *         description: Usage
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 primaryHolders:  { type: integer }
+ *                 assignedHolders: { type: integer }
+ *                 descendants:     { type: array, items: { type: string } }
+ *                 isSystem:        { type: boolean }
+ */
+router.get('/roles/:roleName/usage', verifyToken, requirePermission('access.grant:manage'), controller.roleUsage);
+
+/* ------------------------------------------------------------------ *
+ * Role membership (multi-role)
+ * ------------------------------------------------------------------ */
+
+/**
+ * @swagger
+ * /api/v1/access/role-assignments:
+ *   get:
+ *     tags: [Access Control]
+ *     summary: List additional role assignments
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - { in: query, name: user,     schema: { type: string } }
+ *       - { in: query, name: roleName, schema: { type: string } }
+ *       - { in: query, name: status,   schema: { type: string, enum: [active, revoked] } }
+ *     responses:
+ *       200: { description: Assignments }
+ *   post:
+ *     tags: [Access Control]
+ *     summary: Give a user an additional role
+ *     description: >
+ *       A user's effective capabilities are the UNION of every role they hold,
+ *       each expanded through its inheritance chain. Adding a role can only
+ *       widen access, never narrow it. The user's primary role on the User
+ *       record is untouched.
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [userId, roleName]
+ *             properties:
+ *               userId:     { type: string }
+ *               roleName:   { type: string, example: ward-coordinator }
+ *               reason:     { type: string, example: 'Acting up while Priya is on leave' }
+ *               validUntil: { type: string, format: date-time, nullable: true, description: Set it for locum and acting-up cover }
+ *     responses:
+ *       201:
+ *         description: Assigned
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 effectiveRoles:        { type: array, items: { type: string } }
+ *                 effectiveCapabilities: { type: array, items: { type: string } }
+ *       403: { description: Caller lacks access.matrix:manage, or the role is unscoped and the caller is not }
+ *       404: { description: User or role not found }
+ *       409: { description: The user already holds this role }
+ */
+router
+  .route('/role-assignments')
+  .get(verifyToken, requirePermission('access.grant:manage'), controller.listRoleAssignments)
+  .post(verifyToken, requirePermission('access.matrix:manage'), controller.assignRole);
+
+/**
+ * @swagger
+ * /api/v1/access/role-assignments/{assignmentId}:
+ *   delete:
+ *     tags: [Access Control]
+ *     summary: Remove an additional role from a user
+ *     description: Soft revocation, so the history survives. A user's primary role cannot be removed here.
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - { in: path, name: assignmentId, required: true, schema: { type: string } }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               reason: { type: string }
+ *     responses:
+ *       200: { description: Removed }
+ *       404: { description: Assignment not found }
+ *       422: { description: This is the user's primary role }
+ */
+router.delete(
+  '/role-assignments/:assignmentId',
+  verifyToken,
+  requirePermission('access.matrix:manage'),
+  controller.unassignRole
+);
+
+/**
+ * @swagger
+ * /api/v1/access/users/{userId}/roles:
+ *   get:
+ *     tags: [Access Control]
+ *     summary: Explain a user's effective roles and capabilities
+ *     description: >
+ *       Why this user holds what they hold — every role, the inheritance chain
+ *       each expanded through, what each contributed, and the union that
+ *       resulted. Also reports inheritance cycles and missing parent roles.
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - { in: path, name: userId, required: true, schema: { type: string } }
+ *     responses:
+ *       200:
+ *         description: Effective roles
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 primaryRole:    { type: string }
+ *                 effectiveRoles: { type: array, items: { type: string } }
+ *                 capabilities:   { type: array, items: { type: string } }
+ *                 perRole:        { type: array, items: { type: object } }
+ *                 warnings:       { type: array, items: { type: string } }
+ *       404: { description: User not found }
+ */
+router.get('/users/:userId/roles', verifyToken, requirePermission('access.grant:manage'), controller.explainRoles);
+
+/* ------------------------------------------------------------------ *
+ * Grant administration
+ * ------------------------------------------------------------------ */
+
+/**
+ * @swagger
+ * /api/v1/access/grants:
+ *   get:
+ *     tags: [Access Control]
+ *     summary: List patient access grants
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - { in: query, name: subject,   schema: { type: string }, description: Filter by the user the grant was issued to }
+ *       - { in: query, name: patient,   schema: { type: string } }
+ *       - { in: query, name: status,    schema: { type: string, enum: [active, suspended, revoked] } }
+ *       - { in: query, name: grantType, schema: { type: string, enum: [explicit, break-glass] } }
+ *       - { in: query, name: page,      schema: { type: integer, default: 1 } }
+ *       - { in: query, name: limit,     schema: { type: integer, default: 50, maximum: 200 } }
+ *     responses:
+ *       200:
+ *         description: Grants
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 total:  { type: integer }
+ *                 grants: { type: array, items: { $ref: '#/components/schemas/PatientAccessGrant' } }
+ *       403: { description: Caller lacks access.grant:manage }
+ *   post:
+ *     tags: [Access Control]
+ *     summary: Authorise a user to access one patient
+ *     description: >
+ *       Issued by a doctor or an administrator. A doctor may only authorise
+ *       access to patients under their own care; an administrator may authorise
+ *       any patient. The conveyed permissions are intersected with the
+ *       recipient's role capabilities, so a grant can never lift someone above
+ *       the ceiling their role sets.
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [subjectId, patientId, permissions, reason]
+ *             properties:
+ *               subjectId:   { type: string, description: User being authorised }
+ *               patientId:   { type: string }
+ *               permissions: { type: array, items: { type: string }, example: ['patient:read','patient.vitals:read'] }
+ *               reason:      { type: string, example: 'Night cover for ward 4, 12-19 Sep' }
+ *               purpose:     { type: string, enum: [direct-care, care-coordination, audit, research, emergency, other], default: direct-care }
+ *               validFrom:   { type: string, format: date-time }
+ *               validUntil:  { type: string, format: date-time, nullable: true, description: Leave null for open-ended }
+ *     responses:
+ *       201:
+ *         description: Grant issued
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 grant: { $ref: '#/components/schemas/PatientAccessGrant' }
+ *                 droppedByRoleCeiling: { type: array, items: { type: string } }
+ *       400: { description: Missing subjectId, patientId, permissions or reason }
+ *       403: { description: Caller is not a doctor or administrator, or the patient is not under their care }
+ *       404: { description: Recipient or patient not found }
+ *       422: { description: The recipient's role carries none of the requested permissions }
+ */
+router
+  .route('/grants')
+  .get(verifyToken, requirePermission('access.grant:manage'), controller.listGrants)
+  .post(verifyToken, requirePermission('access.grant:manage'), controller.issueGrant);
+
+/**
+ * @swagger
+ * /api/v1/access/grants/{grantId}:
+ *   delete:
+ *     tags: [Access Control]
+ *     summary: Revoke a grant
+ *     description: Grants are never deleted. Revocation is recorded with who did it and why, so the history stays auditable.
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - { in: path, name: grantId, required: true, schema: { type: string } }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               reason: { type: string, example: 'Rotation ended' }
+ *     responses:
+ *       200: { description: Revoked }
+ *       403: { description: Caller may not administer this patient's access }
+ *       404: { description: Grant not found }
+ */
+router.delete('/grants/:grantId', verifyToken, requirePermission('access.grant:manage'), controller.revokeGrant);
+
+/**
+ * @swagger
+ * /api/v1/access/break-glass:
+ *   post:
+ *     tags: [Access Control]
+ *     summary: Invoke time-boxed emergency access
+ *     description: >
+ *       The clinical safety valve. Self-service and immediate, but always
+ *       time-boxed and loudly audited, so nobody has a reason to share a login
+ *       when the paperwork has not caught up.
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [patientId, reason]
+ *             properties:
+ *               patientId:   { type: string }
+ *               permissions: { type: array, items: { type: string }, default: ['patient:read'] }
+ *               reason:      { type: string, minLength: 10, example: 'Unresponsive resident, on-call doctor unreachable' }
+ *               minutes:     { type: integer, default: 60, description: Capped by ACCESS_BREAKGLASS_MINUTES }
+ *     responses:
+ *       201: { description: Emergency access granted and recorded }
+ *       400: { description: Missing patientId or justification too short }
+ *       403: { description: Role may not invoke break-glass }
+ */
+router.post('/break-glass', verifyToken, controller.invokeBreakGlass);
+
+/* ------------------------------------------------------------------ *
+ * Read side
+ * ------------------------------------------------------------------ */
+
+/**
+ * @swagger
+ * /api/v1/access/me/patients:
+ *   get:
+ *     tags: [Access Control]
+ *     summary: The patients the caller is currently authorised to see
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - { in: query, name: permission, schema: { type: string, default: 'patient:read' } }
+ *     responses:
+ *       200: { description: Authorised patients }
+ */
+router.get('/me/patients', verifyToken, controller.myAuthorisedPatients);
+
+/**
+ * @swagger
+ * /api/v1/access/patients/{patientId}/subjects:
+ *   get:
+ *     tags: [Access Control]
+ *     summary: Who is authorised to see this patient
+ *     description: The question a patient, a privacy officer or a regulator actually asks.
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - { in: path, name: patientId, required: true, schema: { type: string } }
+ *     responses:
+ *       200: { description: Grants on this patient }
+ *       403: { description: Caller lacks access.grant:manage }
+ */
+router.get(
+  '/patients/:patientId/subjects',
+  verifyToken,
+  requirePermission('access.grant:manage'),
+  controller.patientSubjects
+);
+
+/**
+ * @swagger
+ * /api/v1/access/check:
+ *   post:
+ *     tags: [Access Control]
+ *     summary: Explain a decision without performing it
+ *     description: >
+ *       The simulator behind the console. Returns the verdict, the reason code
+ *       and every grant that was considered, including why each one did or did
+ *       not apply. Read-only and not audited as an access event.
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [userId, permission]
+ *             properties:
+ *               userId:     { type: string }
+ *               patientId:  { type: string }
+ *               permission: { type: string, example: 'patient:read' }
+ *     responses:
+ *       200:
+ *         description: Decision with full reasoning
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/AccessDecision' }
+ *       403: { description: Caller lacks access.grant:manage }
+ */
+router.post('/check', verifyToken, requirePermission('access.grant:manage'), controller.explainDecision);
+
+/**
+ * @swagger
+ * /api/v1/access/audit:
+ *   get:
+ *     tags: [Access Control]
+ *     summary: Read the access decision audit log
+ *     description: Append-only. Records allows as well as denies, plus every grant issued and revoked.
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - { in: query, name: subject, schema: { type: string } }
+ *       - { in: query, name: patient, schema: { type: string } }
+ *       - { in: query, name: event,   schema: { type: string, enum: [access.decision, grant.issued, grant.revoked, grant.updated, breakglass.invoked, matrix.updated] } }
+ *       - { in: query, name: allowed, schema: { type: boolean } }
+ *       - { in: query, name: page,    schema: { type: integer, default: 1 } }
+ *       - { in: query, name: limit,   schema: { type: integer, default: 100, maximum: 500 } }
+ *     responses:
+ *       200: { description: Audit entries, newest first }
+ *       403: { description: Caller lacks access.audit:read }
+ */
+router.get('/audit', verifyToken, requirePermission('access.audit:read'), controller.listAudit);
+
+/* Console lookups */
+
+/**
+ * @swagger
+ * /api/v1/access/users:
+ *   get:
+ *     tags: [Access Control]
+ *     summary: User lookup for the administration console
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - { in: query, name: search, schema: { type: string } }
+ *       - { in: query, name: role,   schema: { type: string } }
+ *     responses:
+ *       200: { description: Users }
+ */
+router.get('/users', verifyToken, requirePermission('access.grant:manage'), controller.listUsers);
+
+/**
+ * @swagger
+ * /api/v1/access/patients:
+ *   get:
+ *     tags: [Access Control]
+ *     summary: Patient lookup for the administration console
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - { in: query, name: search, schema: { type: string } }
+ *     responses:
+ *       200: { description: Patients }
+ */
+router.get('/patients', verifyToken, requirePermission('access.grant:manage'), controller.listPatients);
+
+/* ------------------------------------------------------------------ *
+ * Demo protected resource — proves enforcement end to end
+ * ------------------------------------------------------------------ */
+
+if (process.env.NODE_ENV === 'test' || process.env.ACCESS_DEMO_ROUTES === 'true') {
+  /**
+   * @swagger
+   * /api/v1/access/demo/patients/{patientId}/record:
+   *   get:
+   *     tags: [Access Control]
+   *     summary: Example patient-scoped resource
+   *     description: >
+   *       A minimal resource guarded by requirePatientAccess('patient:read').
+   *       Returns 200 with the authorising reason code when the caller holds a
+   *       grant, 403 otherwise. Enabled when ACCESS_DEMO_ROUTES=true.
+   *     security: [{ bearerAuth: [] }]
+   *     parameters:
+   *       - { in: path, name: patientId, required: true, schema: { type: string } }
+   *     responses:
+   *       200: { description: Record released }
+   *       403:
+   *         description: Not authorised for this patient
+   *         content:
+   *           application/json:
+   *             schema: { $ref: '#/components/schemas/AccessDenied' }
+   */
+  router.get(
+    '/demo/patients/:patientId/record',
+    verifyToken,
+    requirePatientAccess('patient:read'),
+    controller.demoPatientRecord
+  );
+
+  /**
+   * @swagger
+   * /api/v1/access/demo/patients/{patientId}/prescriptions:
+   *   get:
+   *     tags: [Access Control]
+   *     summary: Example resource needing a narrower permission
+   *     security: [{ bearerAuth: [] }]
+   *     parameters:
+   *       - { in: path, name: patientId, required: true, schema: { type: string } }
+   *     responses:
+   *       200: { description: Prescriptions released }
+   *       403: { description: Grant does not convey patient.prescription:read }
+   */
+  router.get(
+    '/demo/patients/:patientId/prescriptions',
+    verifyToken,
+    requirePatientAccess('patient.prescription:read'),
+    controller.demoPatientRecord
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * Administration console (static HTML, no build step)
+ * ------------------------------------------------------------------ */
+
+router.get('/console', (_req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'console', 'access-console.html'));
+});
+
+module.exports = router;
