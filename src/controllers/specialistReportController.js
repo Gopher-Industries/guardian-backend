@@ -4,7 +4,13 @@ const Doctor = require('../models/Doctor');
 const Patient = require('../models/Patient');
 const CarePlan = require('../models/CarePlan');
 const ManagementPlan = require('../models/ManagementPlan');
-const puppeteer = require('puppeteer');
+// Puppeteer v25 is ESM-only, so it is loaded lazily with import() inside
+// generateReportPdf. A top-level require() crashed the whole app on Vercel.
+let puppeteerPromise;
+const loadPuppeteer = () => {
+  puppeteerPromise ??= import('puppeteer').then((m) => m.default);
+  return puppeteerPromise;
+};
 const { buildSpecialistReportHtml } = require('../templates/specialistReportTemplate');
 
 exports.createReport = async (req, res) => {
@@ -113,6 +119,7 @@ exports.generateReportPdf = async (req, res) => {
 
     const html = buildSpecialistReportHtml(report, { appName: 'Guardian Monitor' });
 
+    const puppeteer = await loadPuppeteer();
     browser = await puppeteer.launch({ args: ['--no-sandbox'] });
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: 'networkidle0' });
