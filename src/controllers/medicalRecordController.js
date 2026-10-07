@@ -145,7 +145,7 @@ const checkDoctorAndOrganization = async (
 
 const getBasicRecordQuery = (id) =>
   MedicalRecord.findById(id)
-    .populate('patient', 'fullname uuid')
+    .populate('patient', 'fullname uuid emergencyContactName emergencyContactNumber')
     .populate('doctor', 'fullname email')
     .populate('organization', 'name')
     .populate('createdBy', 'fullname')
@@ -169,7 +169,7 @@ const privateMedicalFields = [
 const getFullRecordQuery = (id) =>
   MedicalRecord.findById(id)
     .select(privateMedicalFields)
-    .populate('patient', 'fullname uuid')
+    .populate('patient', 'fullname uuid emergencyContactName emergencyContactNumber')
     .populate('doctor', 'fullname email')
     .populate('organization', 'name')
     .populate('createdBy', 'fullname')
@@ -1477,7 +1477,7 @@ exports.getMedicalRecords = async (req, res) => {
     }
 
     let recordsQuery = MedicalRecord.find(filter)
-      .populate('patient', 'fullname uuid')
+      .populate('patient', 'fullname uuid emergencyContactName emergencyContactNumber')
       .populate('doctor', 'fullname email')
       .populate('organization', 'name')
       .populate('createdBy', 'fullname')
