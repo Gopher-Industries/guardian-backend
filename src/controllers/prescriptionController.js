@@ -85,8 +85,13 @@ exports.createPrescription = async (req, res) => {
 
       patient = await Patient.findById(patientId);
     } else if (patientName) {
+      const nameParts = patientName.trim().split(/\s+/);
+      const firstName = nameParts.shift();
+      const lastName = nameParts.join(' ');
+
       patient = await Patient.findOne({
-        fullname: patientName,
+        firstName,
+        ...(lastName ? { lastName } : {}),
         isDeleted: { $ne: true }
       });
     }
@@ -187,8 +192,6 @@ exports.updatePrescription = async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
-    
-    updates.updatedBy = req.user._id;
 
     const prescription = await Prescription.findByIdAndUpdate(id, updates, {
       new: true,

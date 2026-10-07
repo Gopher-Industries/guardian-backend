@@ -8,7 +8,11 @@
   "servers": [
     {
       "url": "http://localhost:3000",
-      "description": "Local development"
+      "description": "Current server"
+    },
+    {
+      "url": "https://guardian-backend-xi.vercel.app",
+      "description": "Production (Vercel)"
     }
   ],
   "components": {
@@ -66,123 +70,6 @@
           "updated_at": {
             "type": "string",
             "format": "date-time"
-          }
-        }
-      },
-      "Task": {
-        "type": "object",
-        "properties": {
-          "_id": {
-            "type": "string"
-          },
-          "title": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string"
-          },
-          "dueDate": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "priority": {
-            "type": "string",
-            "enum": [
-              "low",
-              "medium",
-              "high"
-            ]
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "pending",
-              "in progress",
-              "completed"
-            ]
-          },
-          "patient": {
-            "type": "string"
-          },
-          "assignee": {
-            "type": "string"
-          },
-          "caretaker": {
-            "type": "string"
-          },
-          "nurse_id": {
-            "type": "string"
-          },
-          "report": {
-            "type": "string"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
-      "SupportTicket": {
-        "type": "object",
-        "properties": {
-          "_id": {
-            "type": "string"
-          },
-          "user": {
-            "type": "string"
-          },
-          "subject": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "open",
-              "in_progress",
-              "resolved",
-              "closed"
-            ]
-          },
-          "adminResponse": {
-            "type": "string"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
-      "PaginatedSupportTickets": {
-        "type": "object",
-        "properties": {
-          "page": {
-            "type": "integer"
-          },
-          "limit": {
-            "type": "integer"
-          },
-          "total": {
-            "type": "integer"
-          },
-          "totalPages": {
-            "type": "integer"
-          },
-          "tickets": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/SupportTicket"
-            }
           }
         }
       },
@@ -269,6 +156,58 @@
             ]
           }
         ]
+      },
+      "Task": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "in_progress",
+              "completed"
+            ]
+          },
+          "patient": {
+            "type": "string"
+          },
+          "assignee": {
+            "type": "string"
+          },
+          "caretaker": {
+            "type": "string"
+          },
+          "nurse_id": {
+            "type": "string"
+          },
+          "report": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          }
+        }
       },
       "RegisterRequest": {
         "type": "object",
@@ -1102,8 +1041,8 @@
         "tags": [
           "AdminPatients"
         ],
-        "summary": "Create a patient within the admin's organization",
-        "description": "Creates a new patient record under the organization managed by the authenticated admin.",
+        "summary": "Create a new patient under caretaker's org",
+        "description": "Creates a new patient and links them to a caretaker (required), and optionally a nurse and/or doctor — all within the admin's organization. **Roles:** admin only.\n",
         "security": [
           {
             "bearerAuth": []
@@ -1114,116 +1053,13 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AdminPatientCreateRequest",
-                "type": "object",
-                "required": [
-                  "fullname",
-                  "gender",
-                  "dateOfBirth",
-                  "caretakerId"
-                ],
-                "properties": {
-                  "fullname": {
-                    "type": "string",
-                    "example": "John Smith"
-                  },
-                  "gender": {
-                    "type": "string",
-                    "example": "Male"
-                  },
-                  "dateOfBirth": {
-                    "type": "string",
-                    "format": "date",
-                    "example": "1950-05-14"
-                  },
-                  "caretakerId": {
-                    "type": "string",
-                    "example": 6.61111111111111e+23
-                  },
-                  "nurseId": {
-                    "type": "string",
-                    "example": 6.622222222222222e+23
-                  },
-                  "doctorId": {
-                    "type": "string",
-                    "example": 6.633333333333333e+23
-                  },
-                  "image": {
-                    "nullable": true,
-                    "description": "Optional doctor to assign (Mongo ObjectId)"
-                  },
-                  "profilePhoto": {
-                    "type": "string",
-                    "example": "https://example.com/profile.jpg"
-                  },
-                  "dateOfAdmitting": {
-                    "type": "string",
-                    "format": "date",
-                    "example": "2026-04-11"
-                  },
-                  "description": {
-                    "type": "string",
-                    "example": "Patient admitted for regular monitoring",
-                    "nullable": true,
-                    "default": ""
-                  },
-                  "emergencyContactName": {
-                    "type": "string",
-                    "nullable": true
-                  },
-                  "emergencyContactNumber": {
-                    "type": "string",
-                    "nullable": true
-                  },
-                  "nextOfKinName": {
-                    "type": "string",
-                    "nullable": true,
-                    "description": "Full name of the patient's next of kin"
-                  },
-                  "nextOfKinRelationship": {
-                    "type": "string",
-                    "nullable": true,
-                    "enum": [
-                      "SPOUSE",
-                      "PARENT",
-                      "CHILD",
-                      "SIBLING",
-                      "GRANDPARENT",
-                      "GUARDIAN",
-                      "CARER",
-                      "FRIEND",
-                      "OTHER"
-                    ],
-                    "description": "Relationship of the next of kin to the patient"
-                  },
-                  "medicalSummary": {
-                    "type": "string",
-                    "nullable": true
-                  },
-                  "allergies": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    },
-                    "nullable": true
-                  },
-                  "conditions": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    },
-                    "nullable": true
-                  },
-                  "notes": {
-                    "type": "string",
-                    "nullable": true
-                  }
-                }
+                "$ref": "#/components/schemas/AdminPatientCreateRequest"
               },
               "example": {
-                "name": "Robert Brown",
+                "fullname": "Robert Brown",
                 "age": 68,
                 "gender": "male",
+                "dateOfBirth": "March, 3 1945",
                 "caretakerId": "664f1c2e8b1a2c3d4e5f6a7b",
                 "nurseId": "664f1c2e8b1a2c3d4e5f6a7c",
                 "doctorId": "664f1c2e8b1a2c3d4e5f6a7d",
@@ -1252,7 +1088,7 @@
             }
           },
           "400": {
-            "description": "Validation failed or assigned staff does not belong to the organization",
+            "description": "Validation error — missing required fields or invalid IDs",
             "content": {
               "application/json": {
                 "schema": {
@@ -1285,7 +1121,7 @@
             }
           },
           "404": {
-            "description": "No organization found for the authenticated admin",
+            "description": "Caretaker, nurse, or doctor not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -1295,7 +1131,7 @@
             }
           },
           "500": {
-            "description": "Internal server error while creating the patient",
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1304,25 +1140,14 @@
               }
             }
           }
-        },
-        "parameters": [
-          {
-            "in": "query",
-            "name": "orgId",
-            "required": false,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Optional organization ID when the admin manages more than one organization"
-          }
-        ]
+        }
       },
       "get": {
         "tags": [
           "AdminPatients"
         ],
-        "summary": "List patients for the admin's organization",
-        "description": "Returns a paginated list of patients within the selected organization. Use `active=false` to view soft-deleted patients.",
+        "summary": "List patients for admin org",
+        "description": "Returns a paginated list of patients belonging to the admin's organization. Supports search by name and filtering by active status. **Roles:** admin only.\n",
         "security": [
           {
             "bearerAuth": []
@@ -1330,67 +1155,29 @@
         ],
         "parameters": [
           {
-            "$ref": "#/components/parameters/SearchQuery",
-            "in": "query",
-            "name": "orgId",
-            "required": false,
-            "description": "Organization context for admins managing multiple organizations",
-            "schema": {
-              "type": "string"
-            }
+            "$ref": "#/components/parameters/SearchQuery"
           },
           {
-            "$ref": "#/components/parameters/PageQuery",
-            "in": "query",
-            "name": "q",
-            "required": false,
-            "description": "Search keyword matched against patient full name",
-            "schema": {
-              "type": "string"
-            }
+            "$ref": "#/components/parameters/PageQuery"
           },
           {
-            "$ref": "#/components/parameters/LimitQuery",
-            "in": "query",
-            "name": "page",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "default": 1
-            }
-          },
-          {
-            "in": "query",
-            "name": "limit",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "default": 10,
-              "minimum": 1,
-              "maximum": 100
-            },
-            "description": "Filter by active status (true = active only, false = deactivated)",
-            "example": true
+            "$ref": "#/components/parameters/LimitQuery"
           },
           {
             "in": "query",
             "name": "active",
             "required": false,
-            "description": "Set to false to retrieve soft-deleted patients",
             "schema": {
-              "type": "string",
-              "enum": [
-                true,
-                false
-              ],
-              "default": "true"
-            }
+              "type": "boolean",
+              "default": true
+            },
+            "description": "Filter by active status (true = active only, false = deactivated)",
+            "example": true
           }
         ],
         "responses": {
           "200": {
-            "description": "Patient list returned successfully",
+            "description": "Paginated list of patients",
             "content": {
               "application/json": {
                 "schema": {
@@ -1399,153 +1186,7 @@
                     "patients": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/PatientSummary",
-                        "type": "object",
-                        "required": [
-                          "_id",
-                          "fullname",
-                          "gender",
-                          "dateOfBirth"
-                        ],
-                        "properties": {
-                          "_id": {
-                            "type": "string"
-                          },
-                          "fullname": {
-                            "type": "string"
-                          },
-                          "gender": {
-                            "type": "string",
-                            "enum": [
-                              "M",
-                              "F",
-                              "other"
-                            ]
-                          },
-                          "dateOfBirth": {
-                            "type": "string",
-                            "format": "date"
-                          },
-                          "age": {
-                            "type": "integer"
-                          },
-                          "profilePhoto": {
-                            "type": "string",
-                            "nullable": true,
-                            "description": "URL or filename of the patient's profile photo"
-                          },
-                          "dateOfAdmitting": {
-                            "type": "string",
-                            "format": "date",
-                            "nullable": true
-                          },
-                          "description": {
-                            "type": "string",
-                            "description": "General notes about the patient"
-                          },
-                          "emergencyContactName": {
-                            "type": "string",
-                            "nullable": true,
-                            "description": "Full name of the emergency contact"
-                          },
-                          "emergencyContactNumber": {
-                            "type": "string",
-                            "nullable": true,
-                            "description": "Phone number of the emergency contact"
-                          },
-                          "nextOfKinName": {
-                            "type": "string",
-                            "nullable": true,
-                            "description": "Full name of the patient's next of kin"
-                          },
-                          "nextOfKinRelationship": {
-                            "type": "string",
-                            "nullable": true,
-                            "enum": [
-                              "SPOUSE",
-                              "PARENT",
-                              "CHILD",
-                              "SIBLING",
-                              "GRANDPARENT",
-                              "GUARDIAN",
-                              "CARER",
-                              "FRIEND",
-                              "OTHER"
-                            ],
-                            "description": "Relationship of the next of kin to the patient"
-                          },
-                          "medicalSummary": {
-                            "type": "string",
-                            "nullable": true,
-                            "description": "Brief summary of the patient's overall medical history and status"
-                          },
-                          "allergies": {
-                            "type": "array",
-                            "items": {
-                              "type": "string"
-                            },
-                            "description": "List of known allergies (e.g. penicillin, peanuts)"
-                          },
-                          "conditions": {
-                            "type": "array",
-                            "items": {
-                              "type": "string"
-                            },
-                            "description": "List of diagnosed medical conditions (e.g. Type 2 Diabetes, Hypertension)"
-                          },
-                          "notes": {
-                            "type": "string",
-                            "nullable": true,
-                            "description": "Free-text clinical or care notes for the patient"
-                          },
-                          "caretaker": {
-                            "type": "object",
-                            "nullable": true,
-                            "properties": {
-                              "_id": {
-                                "type": "string"
-                              },
-                              "fullname": {
-                                "type": "string"
-                              },
-                              "email": {
-                                "type": "string"
-                              }
-                            }
-                          },
-                          "assignedNurses": {
-                            "type": "array",
-                            "items": {
-                              "type": "object",
-                              "properties": {
-                                "_id": {
-                                  "type": "string"
-                                },
-                                "fullname": {
-                                  "type": "string"
-                                },
-                                "email": {
-                                  "type": "string"
-                                }
-                              }
-                            }
-                          },
-                          "assignedDoctor": {
-                            "type": "object",
-                            "nullable": true,
-                            "properties": {
-                              "_id": {
-                                "type": "string"
-                              },
-                              "fullname": {
-                                "type": "string"
-                              },
-                              "email": {
-                                "type": "string"
-                              }
-                            }
-                          }
-                        }
+                        "$ref": "#/components/schemas/PatientSummary"
                       }
                     },
                     "total": {
@@ -1559,39 +1200,8 @@
                     "limit": {
                       "type": "integer",
                       "example": 10
-                    },
-                    "pagination": {
-                      "type": "object",
-                      "required": [
-                        "total",
-                        "page",
-                        "pages",
-                        "limit"
-                      ],
-                      "properties": {
-                        "total": {
-                          "type": "integer",
-                          "example": 42
-                        },
-                        "page": {
-                          "type": "integer",
-                          "example": 1
-                        },
-                        "pages": {
-                          "type": "integer",
-                          "example": 5
-                        },
-                        "limit": {
-                          "type": "integer",
-                          "example": 10
-                        }
-                      }
                     }
-                  },
-                  "required": [
-                    "patients",
-                    "pagination"
-                  ]
+                  }
                 }
               }
             }
@@ -1616,11 +1226,8 @@
               }
             }
           },
-          "404": {
-            "description": "Organization not found for the authenticated admin"
-          },
           "500": {
-            "description": "Internal server error while listing patients",
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1736,8 +1343,8 @@
         "tags": [
           "AdminPatients"
         ],
-        "summary": "Get a complete overview of a patient",
-        "description": "Returns a detailed patient overview including profile data, health records, care plan, tasks, logs, and task completion rate.",
+        "summary": "Get patient full overview (records, care plan, tasks, logs)",
+        "description": "Returns a comprehensive overview of a specific patient including health records, care plan, assigned tasks, and activity logs. **Roles:** admin only.\n",
         "security": [
           {
             "bearerAuth": []
@@ -1745,23 +1352,7 @@
         ],
         "parameters": [
           {
-            "$ref": "#/components/parameters/IdParam",
-            "in": "query",
-            "name": "orgId",
-            "required": false,
-            "description": "Organization context for admins managing multiple organizations",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "description": "Patient ID",
-            "schema": {
-              "type": "string"
-            }
+            "$ref": "#/components/parameters/IdParam"
           }
         ],
         "responses": {
@@ -1770,255 +1361,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PatientOverview",
-                  "type": "object",
-                  "required": [
-                    "patient",
-                    "healthRecords",
-                    "carePlan",
-                    "tasks",
-                    "logs",
-                    "taskCompletionRate"
-                  ],
-                  "properties": {
-                    "patient": {
-                      "type": "object",
-                      "required": [
-                        "_id",
-                        "fullname",
-                        "gender",
-                        "dateOfBirth"
-                      ],
-                      "properties": {
-                        "_id": {
-                          "type": "string"
-                        },
-                        "fullname": {
-                          "type": "string"
-                        },
-                        "gender": {
-                          "type": "string",
-                          "enum": [
-                            "M",
-                            "F",
-                            "other"
-                          ]
-                        },
-                        "dateOfBirth": {
-                          "type": "string",
-                          "format": "date"
-                        },
-                        "age": {
-                          "type": "integer"
-                        },
-                        "profilePhoto": {
-                          "type": "string",
-                          "nullable": true,
-                          "description": "URL or filename of the patient's profile photo"
-                        },
-                        "dateOfAdmitting": {
-                          "type": "string",
-                          "format": "date",
-                          "nullable": true
-                        },
-                        "description": {
-                          "type": "string",
-                          "description": "General notes about the patient"
-                        },
-                        "emergencyContactName": {
-                          "type": "string",
-                          "nullable": true,
-                          "description": "Full name of the emergency contact"
-                        },
-                        "emergencyContactNumber": {
-                          "type": "string",
-                          "nullable": true,
-                          "description": "Phone number of the emergency contact"
-                        },
-                        "nextOfKinName": {
-                          "type": "string",
-                          "nullable": true,
-                          "description": "Full name of the patient's next of kin"
-                        },
-                        "nextOfKinRelationship": {
-                          "type": "string",
-                          "nullable": true,
-                          "enum": [
-                            "SPOUSE",
-                            "PARENT",
-                            "CHILD",
-                            "SIBLING",
-                            "GRANDPARENT",
-                            "GUARDIAN",
-                            "CARER",
-                            "FRIEND",
-                            "OTHER"
-                          ],
-                          "description": "Relationship of the next of kin to the patient"
-                        },
-                        "medicalSummary": {
-                          "type": "string",
-                          "nullable": true,
-                          "description": "Brief summary of the patient's overall medical history and status"
-                        },
-                        "allergies": {
-                          "type": "array",
-                          "items": {
-                            "type": "string"
-                          },
-                          "description": "List of known allergies (e.g. penicillin, peanuts)"
-                        },
-                        "conditions": {
-                          "type": "array",
-                          "items": {
-                            "type": "string"
-                          },
-                          "description": "List of diagnosed medical conditions (e.g. Type 2 Diabetes, Hypertension)"
-                        },
-                        "notes": {
-                          "type": "string",
-                          "nullable": true,
-                          "description": "Free-text clinical or care notes for the patient"
-                        },
-                        "caretaker": {
-                          "type": "object",
-                          "nullable": true,
-                          "properties": {
-                            "_id": {
-                              "type": "string"
-                            },
-                            "fullname": {
-                              "type": "string"
-                            },
-                            "email": {
-                              "type": "string"
-                            }
-                          }
-                        },
-                        "assignedNurses": {
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "properties": {
-                              "_id": {
-                                "type": "string"
-                              },
-                              "fullname": {
-                                "type": "string"
-                              },
-                              "email": {
-                                "type": "string"
-                              }
-                            }
-                          }
-                        },
-                        "assignedDoctor": {
-                          "type": "object",
-                          "nullable": true,
-                          "properties": {
-                            "_id": {
-                              "type": "string"
-                            },
-                            "fullname": {
-                              "type": "string"
-                            },
-                            "email": {
-                              "type": "string"
-                            }
-                          }
-                        }
-                      }
-                    },
-                    "healthRecords": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "_id": {
-                            "type": "string"
-                          },
-                          "patient": {
-                            "type": "string"
-                          },
-                          "title": {
-                            "type": "string"
-                          },
-                          "details": {
-                            "type": "string"
-                          },
-                          "created_at": {
-                            "type": "string",
-                            "format": "date-time"
-                          }
-                        }
-                      }
-                    },
-                    "carePlan": {
-                      "type": "object",
-                      "nullable": true,
-                      "properties": {
-                        "_id": {
-                          "type": "string"
-                        },
-                        "patient": {
-                          "type": "string"
-                        },
-                        "title": {
-                          "type": "string"
-                        },
-                        "tasks": {
-                          "type": "array",
-                          "items": {
-                            "type": "object"
-                          }
-                        }
-                      }
-                    },
-                    "tasks": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "_id": {
-                            "type": "string"
-                          },
-                          "title": {
-                            "type": "string"
-                          },
-                          "status": {
-                            "type": "string",
-                            "example": "completed"
-                          }
-                        }
-                      }
-                    },
-                    "logs": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "_id": {
-                            "type": "string"
-                          },
-                          "patient": {
-                            "type": "string"
-                          },
-                          "activityTimestamp": {
-                            "type": "string",
-                            "format": "date-time"
-                          },
-                          "note": {
-                            "type": "string"
-                          }
-                        }
-                      }
-                    },
-                    "taskCompletionRate": {
-                      "type": "number",
-                      "format": "float",
-                      "example": 66.7
-                    }
-                  }
+                  "$ref": "#/components/schemas/PatientOverview"
                 },
                 "example": {
                   "patient": {
@@ -2048,7 +1391,7 @@
             }
           },
           "403": {
-            "description": "Patient does not belong to the selected organization",
+            "description": "Forbidden — admin only",
             "content": {
               "application/json": {
                 "schema": {
@@ -2058,7 +1401,7 @@
             }
           },
           "404": {
-            "description": "Organization or patient not found",
+            "description": "Patient not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -2068,7 +1411,7 @@
             }
           },
           "500": {
-            "description": "Internal server error while fetching patient overview",
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -2085,8 +1428,8 @@
         "tags": [
           "AdminPatients"
         ],
-        "summary": "Deactivate a patient",
-        "description": "Soft-deletes a patient by marking the patient record as inactive while preserving database history.",
+        "summary": "Deactivate a patient (soft delete)",
+        "description": "Soft-deletes (deactivates) a patient record. The patient data is retained in the database but marked as inactive. This action does not permanently delete data. **Roles:** admin only.\n",
         "security": [
           {
             "bearerAuth": []
@@ -2094,23 +1437,7 @@
         ],
         "parameters": [
           {
-            "$ref": "#/components/parameters/IdParam",
-            "in": "query",
-            "name": "orgId",
-            "required": false,
-            "description": "Organization context for admins managing multiple organizations",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "description": "Patient ID",
-            "schema": {
-              "type": "string"
-            }
+            "$ref": "#/components/parameters/IdParam"
           }
         ],
         "responses": {
@@ -2119,17 +1446,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SuccessMessage",
-                  "type": "object",
-                  "required": [
-                    "message"
-                  ],
-                  "properties": {
-                    "message": {
-                      "type": "string",
-                      "example": "Patient deactivated"
-                    }
-                  }
+                  "$ref": "#/components/schemas/SuccessMessage"
                 },
                 "example": {
                   "message": "Patient deactivated successfully."
@@ -2148,7 +1465,7 @@
             }
           },
           "403": {
-            "description": "Patient does not belong to the selected organization",
+            "description": "Forbidden — admin only",
             "content": {
               "application/json": {
                 "schema": {
@@ -2158,7 +1475,7 @@
             }
           },
           "404": {
-            "description": "Organization or patient not found",
+            "description": "Patient not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -2168,7 +1485,7 @@
             }
           },
           "500": {
-            "description": "Internal server error while deactivating the patient",
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -2422,10 +1739,10 @@
       },
       "post": {
         "tags": [
-          "AdminStaff"
+          "Admin - Staff"
         ],
-        "summary": "Add a nurse or doctor to the organization staff",
-        "description": "Adds an existing user with role `nurse` or `doctor` to the staff list of the admin's organization.",
+        "summary": "Add a nurse/doctor into the org staff",
+        "description": "Adds an existing user (nurse or doctor) into the admin's organization staff. The user must already be registered in the system. **Roles:** admin only.\n",
         "security": [
           {
             "bearerAuth": []
@@ -2436,18 +1753,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/StaffAddRequest",
-                "type": "object",
-                "required": [
-                  "userId"
-                ],
-                "properties": {
-                  "userId": {
-                    "type": "string",
-                    "description": "User ID of an existing nurse or doctor",
-                    "example": "66ef5c2a9f3a1d0012ab34dd"
-                  }
-                }
+                "$ref": "#/components/schemas/StaffAddRequest"
               },
               "example": {
                 "userId": "664f1c2e8b1a2c3d4e5f6a7b",
@@ -2457,50 +1763,6 @@
           }
         },
         "responses": {
-          "200": {
-            "description": "Staff member added successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "message",
-                    "organization"
-                  ],
-                  "properties": {
-                    "message": {
-                      "type": "string",
-                      "example": "Staff member added"
-                    },
-                    "organization": {
-                      "type": "object",
-                      "properties": {
-                        "_id": {
-                          "type": "string",
-                          "example": "66ef5c2a9f3a1d0012ab34bb"
-                        },
-                        "name": {
-                          "type": "string",
-                          "example": "Guardian Health Org"
-                        },
-                        "active": {
-                          "type": "boolean",
-                          "example": true
-                        },
-                        "staff": {
-                          "type": "array",
-                          "description": "List of user IDs currently linked as staff",
-                          "items": {
-                            "type": "string"
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
           "201": {
             "description": "Staff member added successfully",
             "content": {
@@ -2519,21 +1781,11 @@
             }
           },
           "400": {
-            "description": "Invalid payload or the user does not have role nurse or doctor",
+            "description": "Validation error — missing userId or invalid role",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ValidationError",
-                  "type": "object",
-                  "required": [
-                    "message"
-                  ],
-                  "properties": {
-                    "message": {
-                      "type": "string",
-                      "example": "User must have role nurse or doctor"
-                    }
-                  }
+                  "$ref": "#/components/schemas/ValidationError"
                 },
                 "example": {
                   "error": "userId is required."
@@ -2562,21 +1814,11 @@
             }
           },
           "404": {
-            "description": "Organization not found for admin",
+            "description": "User not found",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/NotFoundError",
-                  "type": "object",
-                  "required": [
-                    "message"
-                  ],
-                  "properties": {
-                    "message": {
-                      "type": "string",
-                      "example": "Organization not found for admin"
-                    }
-                  }
+                  "$ref": "#/components/schemas/NotFoundError"
                 }
               }
             }
@@ -2595,7 +1837,7 @@
             }
           },
           "500": {
-            "description": "Internal server error while adding staff",
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -2604,18 +1846,7 @@
               }
             }
           }
-        },
-        "parameters": [
-          {
-            "in": "query",
-            "name": "orgId",
-            "required": false,
-            "description": "Optional organization ID when the admin manages multiple organizations",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ]
+        }
       }
     },
     "/api/v1/admin/staff/{id}/deactivate": {
@@ -2881,117 +2112,6 @@
         }
       }
     },
-    "/api/v1/care-plans/patient/{patientId}": {
-      "get": {
-        "summary": "Get care plans by patient",
-        "tags": [
-          "Care Plans"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "patientId",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Care plans for a patient"
-          }
-        }
-      }
-    },
-    "/api/v1/care-plans/{carePlanId}": {
-      "get": {
-        "summary": "Get one care plan",
-        "tags": [
-          "Care Plans"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "carePlanId",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Care plan details"
-          }
-        }
-      },
-      "put": {
-        "summary": "Update a care plan",
-        "tags": [
-          "Care Plans"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "carePlanId",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Care plan updated"
-          },
-          "409": {
-            "description": "Another active care plan already exists for the patient"
-          }
-        }
-      },
-      "delete": {
-        "summary": "Delete a care plan",
-        "tags": [
-          "Care Plans"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "carePlanId",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Care plan deleted"
-          }
-        }
-      }
-    },
     "/api/v1/doctors": {
       "get": {
         "tags": [
@@ -3111,7 +2231,7 @@
           "Doctor"
         ],
         "summary": "Get patients assigned to a doctor",
-        "description": "Returns a paginated list of patients whose `assignedDoctor` equals the given doctorId. Allowed for the same doctor, admin, or caretaker.",
+        "description": "Returns all patients currently assigned to the specified doctor. **Roles:** admin, caretaker, doctor.\n",
         "security": [
           {
             "bearerAuth": []
@@ -3119,36 +2239,12 @@
         ],
         "parameters": [
           {
-            "$ref": "#/components/parameters/DoctorIdParam",
-            "in": "path",
-            "name": "doctorId",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "page",
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "default": 1
-            }
-          },
-          {
-            "in": "query",
-            "name": "limit",
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "default": 20
-            }
+            "$ref": "#/components/parameters/DoctorIdParam"
           }
         ],
         "responses": {
           "200": {
-            "description": "List of patients for the doctor",
+            "description": "List of patients assigned to the doctor",
             "content": {
               "application/json": {
                 "schema": {
@@ -3171,7 +2267,7 @@
             }
           },
           "400": {
-            "description": "Invalid doctorId",
+            "description": "Invalid doctorId format",
             "content": {
               "application/json": {
                 "schema": {
@@ -3194,7 +2290,7 @@
             }
           },
           "403": {
-            "description": "Forbidden",
+            "description": "Forbidden — only admin, caretaker, or doctor can access",
             "content": {
               "application/json": {
                 "schema": {
@@ -3214,7 +2310,7 @@
             }
           },
           "500": {
-            "description": "Server error",
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -3528,6 +2624,466 @@
         "requestBody": {
           "required": true,
           "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "template",
+                  "to"
+                ],
+                "properties": {
+                  "template": {
+                    "type": "string",
+                    "enum": [
+                      "welcome",
+                      "verify-email",
+                      "account-approved",
+                      "staff-invite",
+                      "password-reset",
+                      "otp",
+                      "password-expiry-reminder",
+                      "patient-alert",
+                      "task-assigned",
+                      "care-plan-updated",
+                      "daily-report",
+                      "appointment-reminder",
+                      "appointment-confirmed",
+                      "appointment-cancelled",
+                      "results-ready",
+                      "secure-message",
+                      "account-locked",
+                      "suspicious-login",
+                      "two-factor-enabled",
+                      "shift-reminder",
+                      "receipt",
+                      "custom-message",
+                      "render-check"
+                    ],
+                    "default": "welcome",
+                    "description": "Select a template to show the fields used by that email."
+                  },
+                  "to": {
+                    "type": "string",
+                    "description": "Recipient email Required for this template.",
+                    "format": "email",
+                    "example": "test@example.com",
+                    "default": "test@example.com"
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "Recipient name",
+                    "example": "Alex",
+                    "default": "Alex"
+                  },
+                  "role": {
+                    "type": "string",
+                    "description": "Role",
+                    "enum": [
+                      "Nurse",
+                      "Caretaker",
+                      "Doctor",
+                      "Admin"
+                    ],
+                    "example": "Nurse",
+                    "default": "Nurse"
+                  },
+                  "organizationName": {
+                    "type": "string",
+                    "description": "Organisation",
+                    "example": "Northside Care Group",
+                    "default": "Northside Care Group"
+                  },
+                  "loginUrl": {
+                    "type": "string",
+                    "description": "Login URL",
+                    "format": "uri"
+                  },
+                  "verificationUrl": {
+                    "type": "string",
+                    "description": "Verification URL Required for this template.",
+                    "format": "uri",
+                    "example": "https://guardian.example.com/verify?token=sample-token",
+                    "default": "https://guardian.example.com/verify?token=sample-token"
+                  },
+                  "expiresInMinutes": {
+                    "type": "number",
+                    "description": "Expires in (minutes)",
+                    "example": 60,
+                    "default": 60
+                  },
+                  "approvalStatus": {
+                    "type": "string",
+                    "description": "Decision Required for this template.",
+                    "enum": [
+                      "approved",
+                      "rejected",
+                      "pending"
+                    ],
+                    "example": "approved",
+                    "default": "approved"
+                  },
+                  "reviewerName": {
+                    "type": "string",
+                    "description": "Reviewed by",
+                    "example": "Dana Whitfield",
+                    "default": "Dana Whitfield"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "Reason / note"
+                  },
+                  "inviterName": {
+                    "type": "string",
+                    "description": "Invited by Required for this template.",
+                    "example": "Dana Whitfield",
+                    "default": "Dana Whitfield"
+                  },
+                  "inviteUrl": {
+                    "type": "string",
+                    "description": "Invitation URL Required for this template.",
+                    "format": "uri",
+                    "example": "https://guardian.example.com/invite?token=sample-token",
+                    "default": "https://guardian.example.com/invite?token=sample-token"
+                  },
+                  "expiresInDays": {
+                    "type": "number",
+                    "description": "Expires in (days)",
+                    "example": 7,
+                    "default": 7
+                  },
+                  "resetUrl": {
+                    "type": "string",
+                    "description": "Reset URL Leave blank to build from token.",
+                    "format": "uri"
+                  },
+                  "token": {
+                    "type": "string",
+                    "description": "Reset token",
+                    "example": "sample-reset-token",
+                    "default": "sample-reset-token"
+                  },
+                  "otp": {
+                    "type": "string",
+                    "description": "PIN code Required for this template.",
+                    "example": "482913",
+                    "default": "482913"
+                  },
+                  "daysRemaining": {
+                    "type": "number",
+                    "description": "Days remaining Required for this template.",
+                    "example": 5,
+                    "default": 5
+                  },
+                  "expiryDate": {
+                    "type": "string",
+                    "description": "Expiry date",
+                    "example": "21 August 2026",
+                    "default": "21 August 2026"
+                  },
+                  "changePasswordUrl": {
+                    "type": "string",
+                    "description": "Change password URL",
+                    "format": "uri"
+                  },
+                  "patientName": {
+                    "type": "string",
+                    "description": "Resident name Required for this template.",
+                    "example": "Margaret Doyle",
+                    "default": "Margaret Doyle"
+                  },
+                  "patientId": {
+                    "type": "string",
+                    "description": "Patient ID",
+                    "example": "PT-000123",
+                    "default": "PT-000123"
+                  },
+                  "alertType": {
+                    "type": "string",
+                    "description": "Alert type Required for this template.",
+                    "enum": [
+                      "Fall detected",
+                      "Prolonged inactivity",
+                      "Unusual movement",
+                      "Left room overnight",
+                      "Sensor offline"
+                    ],
+                    "example": "Fall detected",
+                    "default": "Fall detected"
+                  },
+                  "severity": {
+                    "type": "string",
+                    "description": "Severity",
+                    "enum": [
+                      "low",
+                      "medium",
+                      "high",
+                      "critical"
+                    ],
+                    "example": "high",
+                    "default": "high"
+                  },
+                  "detectedAt": {
+                    "type": "string",
+                    "description": "Detected at",
+                    "example": "07 August 2026, 02:14 AWST",
+                    "default": "07 August 2026, 02:14 AWST"
+                  },
+                  "location": {
+                    "type": "string",
+                    "description": "Location",
+                    "example": "Room 12, East Wing",
+                    "default": "Room 12, East Wing"
+                  },
+                  "alertUrl": {
+                    "type": "string",
+                    "description": "Alert URL",
+                    "format": "uri"
+                  },
+                  "taskTitle": {
+                    "type": "string",
+                    "description": "Task title Required for this template.",
+                    "example": "Morning mobility check",
+                    "default": "Morning mobility check"
+                  },
+                  "dueDate": {
+                    "type": "string",
+                    "description": "Due",
+                    "example": "08 August 2026, 09:00",
+                    "default": "08 August 2026, 09:00"
+                  },
+                  "priority": {
+                    "type": "string",
+                    "description": "Priority",
+                    "enum": [
+                      "low",
+                      "medium",
+                      "high"
+                    ],
+                    "example": "high",
+                    "default": "high"
+                  },
+                  "assignedBy": {
+                    "type": "string",
+                    "description": "Assigned by",
+                    "example": "Dana Whitfield",
+                    "default": "Dana Whitfield"
+                  },
+                  "notes": {
+                    "type": "string",
+                    "description": "Notes",
+                    "example": "Check walking frame height before the session.",
+                    "default": "Check walking frame height before the session."
+                  },
+                  "taskUrl": {
+                    "type": "string",
+                    "description": "Task URL",
+                    "format": "uri"
+                  },
+                  "updatedBy": {
+                    "type": "string",
+                    "description": "Updated by",
+                    "example": "Dr Taylor",
+                    "default": "Dr Taylor"
+                  },
+                  "updatedAt": {
+                    "type": "string",
+                    "description": "Updated at",
+                    "example": "07 August 2026, 14:05 AWST",
+                    "default": "07 August 2026, 14:05 AWST"
+                  },
+                  "changeSummary": {
+                    "type": "string",
+                    "description": "Change summary (non-clinical)",
+                    "example": "Review schedule adjusted.",
+                    "default": "Review schedule adjusted."
+                  },
+                  "carePlanUrl": {
+                    "type": "string",
+                    "description": "Care plan URL",
+                    "format": "uri"
+                  },
+                  "reportDate": {
+                    "type": "string",
+                    "description": "Report date Required for this template.",
+                    "example": "07 August 2026",
+                    "default": "07 August 2026"
+                  },
+                  "alertCount": {
+                    "type": "number",
+                    "description": "Alerts raised",
+                    "example": 2,
+                    "default": 2
+                  },
+                  "taskCount": {
+                    "type": "number",
+                    "description": "Tasks completed",
+                    "example": 9,
+                    "default": 9
+                  },
+                  "reportUrl": {
+                    "type": "string",
+                    "description": "Report URL",
+                    "format": "uri"
+                  },
+                  "appointmentType": {
+                    "type": "string",
+                    "description": "Appointment type",
+                    "example": "GP review",
+                    "default": "GP review"
+                  },
+                  "clinician": {
+                    "type": "string",
+                    "description": "With",
+                    "example": "Dr Sarah Nguyen",
+                    "default": "Dr Sarah Nguyen"
+                  },
+                  "when": {
+                    "type": "string",
+                    "description": "Date and time Required for this template.",
+                    "example": "2026-08-20T09:30:00+08:00",
+                    "default": "2026-08-20T09:30:00+08:00"
+                  },
+                  "appointmentUrl": {
+                    "type": "string",
+                    "description": "Details URL",
+                    "format": "uri"
+                  },
+                  "rebookUrl": {
+                    "type": "string",
+                    "description": "Rebook URL",
+                    "format": "uri"
+                  },
+                  "resultType": {
+                    "type": "string",
+                    "description": "Result type",
+                    "example": "test results",
+                    "default": "test results"
+                  },
+                  "portalUrl": {
+                    "type": "string",
+                    "description": "Portal URL Required for this template.",
+                    "format": "uri",
+                    "example": "https://guardian.example.com/results",
+                    "default": "https://guardian.example.com/results"
+                  },
+                  "fromName": {
+                    "type": "string",
+                    "description": "From",
+                    "example": "Northside Care Team",
+                    "default": "Northside Care Team"
+                  },
+                  "messageUrl": {
+                    "type": "string",
+                    "description": "Message URL Required for this template.",
+                    "format": "uri",
+                    "example": "https://guardian.example.com/messages",
+                    "default": "https://guardian.example.com/messages"
+                  },
+                  "unlockUrl": {
+                    "type": "string",
+                    "description": "Unlock URL",
+                    "format": "uri"
+                  },
+                  "device": {
+                    "type": "string",
+                    "description": "Device",
+                    "example": "Chrome on Windows",
+                    "default": "Chrome on Windows"
+                  },
+                  "secureUrl": {
+                    "type": "string",
+                    "description": "Secure account URL",
+                    "format": "uri"
+                  },
+                  "shiftStart": {
+                    "type": "string",
+                    "description": "Shift start Required for this template.",
+                    "example": "2026-08-09T07:00:00+08:00",
+                    "default": "2026-08-09T07:00:00+08:00"
+                  },
+                  "shiftEnd": {
+                    "type": "string",
+                    "description": "Shift end",
+                    "example": "2026-08-09T15:00:00+08:00",
+                    "default": "2026-08-09T15:00:00+08:00"
+                  },
+                  "rosterUrl": {
+                    "type": "string",
+                    "description": "Roster URL",
+                    "format": "uri"
+                  },
+                  "invoiceNumber": {
+                    "type": "string",
+                    "description": "Invoice number Required for this template.",
+                    "example": "INV-2026-0042",
+                    "default": "INV-2026-0042"
+                  },
+                  "amount": {
+                    "type": "string",
+                    "description": "Amount Required for this template.",
+                    "example": "A$120.00",
+                    "default": "A$120.00"
+                  },
+                  "paidOn": {
+                    "type": "string",
+                    "description": "Paid on",
+                    "example": "2026-08-08",
+                    "default": "2026-08-08"
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "Description",
+                    "example": "Monthly monitoring subscription",
+                    "default": "Monthly monitoring subscription"
+                  },
+                  "invoiceUrl": {
+                    "type": "string",
+                    "description": "Invoice URL",
+                    "format": "uri"
+                  },
+                  "subject": {
+                    "type": "string",
+                    "description": "Subject Required for this template.",
+                    "example": "Guardian email test",
+                    "default": "Guardian email test"
+                  },
+                  "heading": {
+                    "type": "string",
+                    "description": "Heading",
+                    "example": "Guardian email test",
+                    "default": "Guardian email test"
+                  },
+                  "message": {
+                    "type": "string",
+                    "description": "Message body Required for this template.",
+                    "example": "This is a test message sent from the Guardian email test console.",
+                    "default": "This is a test message sent from the Guardian email test console."
+                  },
+                  "buttonText": {
+                    "type": "string",
+                    "description": "Button text"
+                  },
+                  "buttonUrl": {
+                    "type": "string",
+                    "description": "Button URL",
+                    "format": "uri"
+                  },
+                  "provider": {
+                    "type": "string",
+                    "enum": [
+                      "brevo"
+                    ],
+                    "default": "brevo",
+                    "description": "Guardian currently sends transactional email through Brevo."
+                  },
+                  "dryRun": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Leave false to send through Brevo. Set true to render and record without delivery."
+                  }
+                }
+              }
+            },
             "application/json": {
               "schema": {
                 "type": "object",
@@ -3592,7 +3148,8 @@
                 }
               }
             }
-          }
+          },
+          "description": "Choose the required template form, complete its displayed fields, and send it through Brevo."
         },
         "responses": {
           "202": {
@@ -3607,6 +3164,188 @@
           "502": {
             "description": "Provider rejected the message"
           }
+        },
+        "x-guardian-template-fields": {
+          "welcome": [
+            "to",
+            "name",
+            "role",
+            "organizationName",
+            "loginUrl"
+          ],
+          "verify-email": [
+            "to",
+            "name",
+            "verificationUrl",
+            "expiresInMinutes"
+          ],
+          "account-approved": [
+            "to",
+            "name",
+            "approvalStatus",
+            "organizationName",
+            "reviewerName",
+            "reason"
+          ],
+          "staff-invite": [
+            "to",
+            "name",
+            "inviterName",
+            "organizationName",
+            "role",
+            "inviteUrl",
+            "expiresInDays"
+          ],
+          "password-reset": [
+            "to",
+            "name",
+            "resetUrl",
+            "token",
+            "expiresInMinutes"
+          ],
+          "otp": [
+            "to",
+            "name",
+            "otp",
+            "expiresInMinutes"
+          ],
+          "password-expiry-reminder": [
+            "to",
+            "name",
+            "daysRemaining",
+            "expiryDate",
+            "changePasswordUrl"
+          ],
+          "patient-alert": [
+            "to",
+            "name",
+            "patientName",
+            "patientId",
+            "alertType",
+            "severity",
+            "detectedAt",
+            "location",
+            "alertUrl"
+          ],
+          "task-assigned": [
+            "to",
+            "name",
+            "taskTitle",
+            "patientName",
+            "dueDate",
+            "patientId",
+            "priority",
+            "assignedBy",
+            "notes",
+            "taskUrl"
+          ],
+          "care-plan-updated": [
+            "to",
+            "name",
+            "patientName",
+            "patientId",
+            "updatedBy",
+            "updatedAt",
+            "changeSummary",
+            "carePlanUrl"
+          ],
+          "daily-report": [
+            "to",
+            "name",
+            "reportDate",
+            "patientName",
+            "patientId",
+            "alertCount",
+            "taskCount",
+            "reportUrl"
+          ],
+          "appointment-reminder": [
+            "to",
+            "name",
+            "appointmentType",
+            "clinician",
+            "when",
+            "location",
+            "appointmentUrl"
+          ],
+          "appointment-confirmed": [
+            "to",
+            "name",
+            "appointmentType",
+            "clinician",
+            "when",
+            "location",
+            "appointmentUrl"
+          ],
+          "appointment-cancelled": [
+            "to",
+            "name",
+            "appointmentType",
+            "when",
+            "reason",
+            "rebookUrl"
+          ],
+          "results-ready": [
+            "to",
+            "name",
+            "resultType",
+            "portalUrl"
+          ],
+          "secure-message": [
+            "to",
+            "name",
+            "fromName",
+            "messageUrl"
+          ],
+          "account-locked": [
+            "to",
+            "name",
+            "reason",
+            "unlockUrl"
+          ],
+          "suspicious-login": [
+            "to",
+            "name",
+            "when",
+            "location",
+            "device",
+            "secureUrl"
+          ],
+          "two-factor-enabled": [
+            "to",
+            "name",
+            "when"
+          ],
+          "shift-reminder": [
+            "to",
+            "name",
+            "shiftStart",
+            "shiftEnd",
+            "location",
+            "rosterUrl"
+          ],
+          "receipt": [
+            "to",
+            "name",
+            "invoiceNumber",
+            "amount",
+            "paidOn",
+            "description",
+            "invoiceUrl"
+          ],
+          "custom-message": [
+            "to",
+            "name",
+            "subject",
+            "heading",
+            "message",
+            "buttonText",
+            "buttonUrl"
+          ],
+          "render-check": [
+            "to",
+            "name"
+          ]
         }
       }
     },
@@ -4110,6 +3849,58 @@
         }
       }
     },
+    "/api/v1/add-medication": {
+      "post": {
+        "tags": [
+          "Prescription"
+        ],
+        "summary": "Adds a new medication to the medications table",
+        "description": "Adds a new medication to the medications table.\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              },
+              "example": {
+                "Name_of_Medication": "oxy-diphosphate",
+                "Doses_sizes": "2.5 mg",
+                "Company": "panadol ltd",
+                "What_it_does": "antibioits, it kills bacterior",
+                "Potential_Side_Effects": "may cause drowsyness",
+                "Directions": "take twice daily or as directed by doctor"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Test successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessMessage"
+                },
+                "example": {
+                  "message": "Test worked"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/notifications": {
       "post": {
         "summary": "Create a notification for a user",
@@ -4295,7 +4086,7 @@
         "parameters": [
           {
             "in": "query",
-            "name": "nurseId",
+            "name": "id",
             "required": false,
             "schema": {
               "type": "string"
@@ -4317,7 +4108,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Nurse profile fetched successfully",
+            "description": "Nurse profile returned successfully",
             "content": {
               "application/json": {
                 "schema": {
@@ -4472,7 +4263,7 @@
         ],
         "responses": {
           "200": {
-            "description": "List of assigned patients",
+            "description": "List of patients assigned to this nurse",
             "content": {
               "application/json": {
                 "schema": {
@@ -4541,7 +4332,7 @@
           "Organization"
         ],
         "summary": "Create a new organization",
-        "description": "Creates a new organization. The authenticated admin becomes the creator and is automatically added to the organization's staff list.",
+        "description": "Creates a new organization and links it to the authenticated admin. Each admin can manage one or more organizations. **Roles:** admin only.\n",
         "security": [
           {
             "bearerAuth": []
@@ -4552,29 +4343,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/OrgCreateRequest",
-                "type": "object",
-                "required": [
-                  "name"
-                ],
-                "properties": {
-                  "name": {
-                    "type": "string",
-                    "minLength": 1,
-                    "example": "Guardian Health Org"
-                  },
-                  "description": {
-                    "type": "string",
-                    "nullable": true,
-                    "default": "",
-                    "example": "Primary organization for testing"
-                  },
-                  "active": {
-                    "type": "boolean",
-                    "default": true,
-                    "example": true
-                  }
-                }
+                "$ref": "#/components/schemas/OrgCreateRequest"
               },
               "example": {
                 "name": "Sunrise Care Facility",
@@ -4591,71 +4360,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OrgSummary",
-                  "type": "object",
-                  "required": [
-                    "message",
-                    "org"
-                  ],
-                  "properties": {
-                    "message": {
-                      "type": "string",
-                      "example": "Organization created"
-                    },
-                    "org": {
-                      "type": "object",
-                      "required": [
-                        "_id",
-                        "name",
-                        "active",
-                        "createdBy",
-                        "staff"
-                      ],
-                      "properties": {
-                        "_id": {
-                          "type": "string",
-                          "description": "MongoDB ObjectId of the organization",
-                          "example": "66ef5c2a9f3a1d0012ab34cd"
-                        },
-                        "name": {
-                          "type": "string",
-                          "example": "Guardian Health Org"
-                        },
-                        "description": {
-                          "type": "string",
-                          "nullable": true,
-                          "example": "Primary organization for testing"
-                        },
-                        "active": {
-                          "type": "boolean",
-                          "example": true
-                        },
-                        "createdBy": {
-                          "type": "string",
-                          "description": "User ID of the admin who created the organization",
-                          "example": "66ef5b7d9f3a1d0012ab34aa"
-                        },
-                        "staff": {
-                          "type": "array",
-                          "description": "List of user IDs currently linked as organization staff",
-                          "items": {
-                            "type": "string"
-                          },
-                          "example": [
-                            "66ef5b7d9f3a1d0012ab34aa"
-                          ]
-                        },
-                        "created_at": {
-                          "type": "string",
-                          "format": "date-time"
-                        },
-                        "updated_at": {
-                          "type": "string",
-                          "format": "date-time"
-                        }
-                      }
-                    }
-                  }
+                  "$ref": "#/components/schemas/OrgSummary"
                 },
                 "example": {
                   "_id": "664f1c2e8b1a2c3d4e5f6a7b",
@@ -4668,25 +4373,11 @@
             }
           },
           "400": {
-            "description": "Validation failed or the organization could not be created",
+            "description": "Validation error — name is required",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ValidationError",
-                  "type": "object",
-                  "required": [
-                    "message"
-                  ],
-                  "properties": {
-                    "message": {
-                      "type": "string",
-                      "example": "Error creating organization"
-                    },
-                    "details": {
-                      "type": "string",
-                      "example": "name is required"
-                    }
-                  }
+                  "$ref": "#/components/schemas/ValidationError"
                 },
                 "example": {
                   "error": "Organization name is required."
@@ -4695,7 +4386,7 @@
             }
           },
           "401": {
-            "description": "Unauthorized request",
+            "description": "Unauthorized — missing or invalid token",
             "content": {
               "application/json": {
                 "schema": {
@@ -4745,8 +4436,8 @@
         "tags": [
           "Organization"
         ],
-        "summary": "List organizations linked to the authenticated user",
-        "description": "Returns all organizations where the authenticated user is either the creator or a member of the staff list.",
+        "summary": "List my organizations",
+        "description": "Returns all organizations created by or linked to the currently authenticated admin. **Roles:** admin only.\n",
         "security": [
           {
             "bearerAuth": []
@@ -4754,72 +4445,13 @@
         ],
         "responses": {
           "200": {
-            "description": "Organizations fetched successfully",
+            "description": "List of organizations belonging to this admin",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
+                  "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/OrgSummary"
-                  },
-                  "required": [
-                    "orgs"
-                  ],
-                  "properties": {
-                    "orgs": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "required": [
-                          "_id",
-                          "name",
-                          "active",
-                          "createdBy",
-                          "staff"
-                        ],
-                        "properties": {
-                          "_id": {
-                            "type": "string",
-                            "example": "66ef5c2a9f3a1d0012ab34cd"
-                          },
-                          "name": {
-                            "type": "string",
-                            "example": "Guardian Health Org"
-                          },
-                          "description": {
-                            "type": "string",
-                            "nullable": true,
-                            "example": "Primary organization for testing"
-                          },
-                          "active": {
-                            "type": "boolean",
-                            "example": true
-                          },
-                          "createdBy": {
-                            "type": "string",
-                            "example": "66ef5b7d9f3a1d0012ab34aa"
-                          },
-                          "staff": {
-                            "type": "array",
-                            "items": {
-                              "type": "string"
-                            },
-                            "example": [
-                              "66ef5b7d9f3a1d0012ab34aa",
-                              "66ef5c7e9f3a1d0012ab34ee"
-                            ]
-                          },
-                          "created_at": {
-                            "type": "string",
-                            "format": "date-time"
-                          },
-                          "updated_at": {
-                            "type": "string",
-                            "format": "date-time"
-                          }
-                        }
-                      }
-                    }
                   }
                 },
                 "example": [
@@ -4842,7 +4474,7 @@
             }
           },
           "401": {
-            "description": "Unauthorized request",
+            "description": "Unauthorized — missing or invalid token",
             "content": {
               "application/json": {
                 "schema": {
@@ -4862,25 +4494,11 @@
             }
           },
           "500": {
-            "description": "Internal server error while fetching organizations",
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse",
-                  "type": "object",
-                  "required": [
-                    "message"
-                  ],
-                  "properties": {
-                    "message": {
-                      "type": "string",
-                      "example": "Error fetching orgs"
-                    },
-                    "details": {
-                      "type": "string",
-                      "example": "Database connection failed"
-                    }
-                  }
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -4893,8 +4511,8 @@
         "tags": [
           "Patient"
         ],
-        "summary": "Add a new patient with an optional profile photo",
-        "description": "Creates a new patient in the independent freelance flow for the authenticated caretaker.",
+        "summary": "Add a new patient",
+        "description": "Creates a new patient for the authenticated doctor.",
         "security": [
           {
             "bearerAuth": []
@@ -4908,68 +4526,68 @@
                 "$ref": "#/components/schemas/PatientCreateRequest",
                 "type": "object",
                 "required": [
-                  "fullname",
+                  "firstName",
+                  "lastName",
                   "dateOfBirth",
-                  "gender"
+                  "birthSex"
                 ],
                 "properties": {
-                  "fullname": {
+                  "firstName": {
                     "type": "string",
-                    "example": "John Smith"
+                    "example": "John"
+                  },
+                  "lastName": {
+                    "type": "string",
+                    "example": "Smith"
                   },
                   "dateOfBirth": {
                     "type": "string",
                     "format": "date",
                     "example": "1980-01-01"
                   },
-                  "gender": {
+                  "birthSex": {
                     "type": "string",
                     "enum": [
-                      "M",
-                      "F",
-                      "other"
+                      "Male",
+                      "Female",
+                      "Other"
                     ]
                   },
-                  "profilePhoto": {
+                  "genderIdentity": {
                     "type": "string",
-                    "format": "binary",
-                    "description": "Patient profile photo (file upload). NOTE: Uploading a photo is currently disabled - submitting with a photo will throw an error. Leave this field empty."
-                  },
-                  "emergencyContactName": {
-                    "type": "string",
-                    "nullable": true,
-                    "description": "Full name of the emergency contact"
-                  },
-                  "emergencyContactNumber": {
-                    "type": "string",
-                    "nullable": true,
-                    "description": "Phone number of the emergency contact"
-                  },
-                  "nextOfKinName": {
-                    "type": "string",
-                    "nullable": true,
-                    "description": "Full name of the patient's next of kin"
-                  },
-                  "nextOfKinRelationship": {
-                    "type": "string",
-                    "nullable": true,
                     "enum": [
-                      "SPOUSE",
-                      "PARENT",
-                      "CHILD",
-                      "SIBLING",
-                      "GRANDPARENT",
-                      "GUARDIAN",
-                      "CARER",
-                      "FRIEND",
-                      "OTHER"
-                    ],
-                    "description": "Relationship of the next of kin to the patient. Only accepted values: SPOUSE, PARENT, CHILD, SIBLING, GRANDPARENT, GUARDIAN, CARER, FRIEND, OTHER"
+                      "Male",
+                      "Female",
+                      "Non-binary",
+                      "Other",
+                      "Prefer not to say"
+                    ]
                   },
-                  "medicalSummary": {
+                  "pronouns": {
                     "type": "string",
-                    "nullable": true,
-                    "description": "Brief summary of the patient's overall medical history and status"
+                    "enum": [
+                      "He/Him",
+                      "She/Her",
+                      "They/Them",
+                      "Other",
+                      "Prefer not to say"
+                    ]
+                  },
+                  "emergencyContact": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "nextOfKin": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "generalNotes": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "appointmentNotes": {
+                    "type": "string",
+                    "nullable": true
                   },
                   "allergies": {
                     "type": "array",
@@ -4986,21 +4604,26 @@
                     },
                     "nullable": true,
                     "description": "List of diagnosed medical conditions (e.g. Type 2 Diabetes, Hypertension)"
-                  },
-                  "notes": {
-                    "type": "string",
-                    "nullable": true,
-                    "description": "Free-text clinical or care notes for the patient"
                   }
                 }
               },
               "example": {
-                "name": "Mary Jane",
-                "age": 72,
-                "gender": "female",
-                "condition": "Dementia - Stage 2",
-                "phone": "+61412345678",
-                "address": "12 Elder Street, Melbourne VIC 3000"
+                "firstName": "Mary",
+                "lastName": "Jane",
+                "dateOfBirth": "1954-05-12",
+                "birthSex": "Female",
+                "genderIdentity": "Female",
+                "pronouns": "She/Her",
+                "ethnicity": "Australian, non-Aboriginal",
+                "countryOfBirth": "Australia",
+                "preferredLanguage": "English",
+                "interpreterRequired": false,
+                "mobilePhone": "+61412345678",
+                "addressLine1": "12 Elder Street",
+                "cityOrSuburb": "Melbourne",
+                "postCode": "3000",
+                "generalNotes": "Requires morning visits.",
+                "appointmentNotes": "Prefers appointments before midday."
               }
             }
           }
@@ -5015,12 +4638,17 @@
                 },
                 "example": {
                   "_id": "664f1c2e8b1a2c3d4e5f6a7b",
-                  "name": "Mary Jane",
-                  "age": 72,
-                  "gender": "female",
-                  "condition": "Dementia - Stage 2",
-                  "isActive": true,
-                  "photo": "uploads/1714000000000-profile.jpg"
+                  "firstName": "Mary",
+                  "lastName": "Jane",
+                  "dateOfBirth": "1954-05-12",
+                  "birthSex": "Female",
+                  "genderIdentity": "Female",
+                  "pronouns": "She/Her",
+                  "preferredLanguage": "English",
+                  "mobilePhone": "+61412345678",
+                  "generalNotes": "Requires morning visits.",
+                  "appointmentNotes": "Prefers appointments before midday.",
+                  "isActive": true
                 }
               }
             }
@@ -5033,7 +4661,7 @@
                   "$ref": "#/components/schemas/ValidationError"
                 },
                 "example": {
-                  "error": "name, age, and gender are required."
+                  "error": "firstName, lastName, dateOfBirth, and birthSex are required."
                 }
               }
             }
@@ -5077,7 +4705,7 @@
           "Patient"
         ],
         "summary": "Soft delete a patient in the independent freelance flow",
-        "description": "Marks a patient as deleted for an authorized caretaker or assigned nurse within the independent workflow.",
+        "description": "Marks a patient as deleted for an authenticated user.",
         "security": [
           {
             "bearerAuth": []
@@ -5120,7 +4748,7 @@
             }
           },
           "403": {
-            "description": "Approved organization members cannot use independent delete routes, or the user is not authorized for this patient"
+            "description": "The user is not authorized for this patient"
           },
           "404": {
             "description": "Patient not found",
@@ -5149,7 +4777,7 @@
           "Patient"
         ],
         "summary": "Update a patient in the independent freelance flow",
-        "description": "Updates an existing patient record for an authorized caretaker or assigned nurse within the independent workflow.",
+        "description": "Updates an existing patient record for an authenticated user.",
         "security": [
           {
             "bearerAuth": []
@@ -5175,58 +4803,74 @@
                 "$ref": "#/components/schemas/PatientUpdateRequest",
                 "type": "object",
                 "properties": {
-                  "fullname": {
+                  "firstName": {
                     "type": "string"
+                  },
+                  "lastName": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "middleName": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "preferredName": {
+                    "type": "string",
+                    "nullable": true
                   },
                   "dateOfBirth": {
                     "type": "string",
                     "format": "date",
                     "example": "1980-01-01"
                   },
-                  "gender": {
+                  "birthSex": {
                     "type": "string",
                     "enum": [
-                      "M",
-                      "F",
-                      "other"
-                    ],
-                    "description": "Only accepted values: M, F, other"
+                      "Male",
+                      "Female",
+                      "Other"
+                    ]
                   },
-                  "profilePhoto": {
+                  "genderIdentity": {
                     "type": "string",
-                    "format": "binary",
-                    "description": "Patient profile photo (file upload). NOTE: Uploading a photo is currently disabled - submitting with a photo will throw an error. Leave this field empty."
+                    "enum": [
+                      "Male",
+                      "Female",
+                      "Non-binary",
+                      "Other",
+                      "Prefer not to say"
+                    ]
                   },
-                  "emergencyContactName": {
+                  "pronouns": {
+                    "type": "string",
+                    "enum": [
+                      "He/Him",
+                      "She/Her",
+                      "They/Them",
+                      "Other",
+                      "Prefer not to say"
+                    ]
+                  },
+                  "emergencyContact": {
                     "type": "string",
                     "nullable": true
                   },
-                  "emergencyContactNumber": {
+                  "nextOfKin": {
                     "type": "string",
                     "nullable": true
-                  },
-                  "nextOfKinName": {
-                    "type": "string",
-                    "nullable": true,
-                    "description": "Full name of the patient's next of kin"
                   },
                   "nextOfKinRelationship": {
                     "type": "string",
-                    "nullable": true,
-                    "enum": [
-                      "SPOUSE",
-                      "PARENT",
-                      "CHILD",
-                      "SIBLING",
-                      "GRANDPARENT",
-                      "GUARDIAN",
-                      "CARER",
-                      "FRIEND",
-                      "OTHER"
-                    ],
-                    "description": "Only accepted values: SPOUSE, PARENT, CHILD, SIBLING, GRANDPARENT, GUARDIAN, CARER, FRIEND, OTHER"
+                    "nullable": true
                   },
-                  "medicalSummary": {
+                  "generalNotes": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "appointmentNotes": {
                     "type": "string",
                     "nullable": true
                   },
@@ -5243,24 +4887,27 @@
                       "type": "string"
                     },
                     "nullable": true
-                  },
-                  "notes": {
-                    "type": "string",
-                    "nullable": true
                   }
                 }
               },
               "example": {
-                "name": "Mary Jane",
-                "age": 73,
-                "condition": "Dementia - Stage 3"
+                "firstName": "Mary",
+                "lastName": "Jane",
+                "birthSex": "Female",
+                "genderIdentity": "Female",
+                "pronouns": "She/Her",
+                "generalNotes": "Requires afternoon monitoring.",
+                "appointmentNotes": "Review mobility at each appointment."
               }
             },
             "application/json": {
               "schema": {
                 "type": "object",
                 "properties": {
-                  "fullname": {
+                  "firstName": {
+                    "type": "string"
+                  },
+                  "lastName": {
                     "type": "string"
                   },
                   "dateOfBirth": {
@@ -5268,45 +4915,51 @@
                     "format": "date",
                     "example": "1980-01-01"
                   },
-                  "gender": {
+                  "birthSex": {
                     "type": "string",
                     "enum": [
-                      "M",
-                      "F",
-                      "other"
-                    ],
-                    "description": "Only accepted values: M, F, other"
+                      "Male",
+                      "Female",
+                      "Other"
+                    ]
                   },
-                  "emergencyContactName": {
+                  "genderIdentity": {
+                    "type": "string",
+                    "enum": [
+                      "Male",
+                      "Female",
+                      "Non-binary",
+                      "Other",
+                      "Prefer not to say"
+                    ]
+                  },
+                  "pronouns": {
+                    "type": "string",
+                    "enum": [
+                      "He/Him",
+                      "She/Her",
+                      "They/Them",
+                      "Other",
+                      "Prefer not to say"
+                    ]
+                  },
+                  "emergencyContact": {
                     "type": "string",
                     "nullable": true
                   },
-                  "emergencyContactNumber": {
+                  "nextOfKin": {
                     "type": "string",
                     "nullable": true
-                  },
-                  "nextOfKinName": {
-                    "type": "string",
-                    "nullable": true,
-                    "description": "Full name of the patient's next of kin"
                   },
                   "nextOfKinRelationship": {
                     "type": "string",
-                    "nullable": true,
-                    "enum": [
-                      "SPOUSE",
-                      "PARENT",
-                      "CHILD",
-                      "SIBLING",
-                      "GRANDPARENT",
-                      "GUARDIAN",
-                      "CARER",
-                      "FRIEND",
-                      "OTHER"
-                    ],
-                    "description": "Only accepted values: SPOUSE, PARENT, CHILD, SIBLING, GRANDPARENT, GUARDIAN, CARER, FRIEND, OTHER"
+                    "nullable": true
                   },
-                  "medicalSummary": {
+                  "generalNotes": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "appointmentNotes": {
                     "type": "string",
                     "nullable": true
                   },
@@ -5322,10 +4975,6 @@
                     "items": {
                       "type": "string"
                     },
-                    "nullable": true
-                  },
-                  "notes": {
-                    "type": "string",
                     "nullable": true
                   }
                 }
@@ -5343,10 +4992,13 @@
                 },
                 "example": {
                   "_id": "664f1c2e8b1a2c3d4e5f6a7b",
-                  "name": "Mary Jane",
-                  "age": 73,
-                  "gender": "female",
-                  "condition": "Dementia - Stage 3",
+                  "firstName": "Mary",
+                  "lastName": "Jane",
+                  "birthSex": "Female",
+                  "genderIdentity": "Female",
+                  "pronouns": "She/Her",
+                  "generalNotes": "Requires afternoon monitoring.",
+                  "appointmentNotes": "Review mobility at each appointment.",
                   "isActive": true
                 }
               }
@@ -5373,7 +5025,7 @@
             }
           },
           "403": {
-            "description": "Approved organization members cannot use independent update routes, or the user is not authorized for this patient"
+            "description": "The user is not authorized for this patient"
           },
           "404": {
             "description": "Patient not found",
@@ -5432,15 +5084,38 @@
                     "_id": {
                       "type": "string"
                     },
-                    "fullname": {
+                    "firstName": {
                       "type": "string"
                     },
-                    "gender": {
+                    "lastName": {
+                      "type": "string"
+                    },
+                    "birthSex": {
                       "type": "string",
                       "enum": [
-                        "M",
-                        "F",
-                        "other"
+                        "Male",
+                        "Female",
+                        "Other"
+                      ]
+                    },
+                    "genderIdentity": {
+                      "type": "string",
+                      "enum": [
+                        "Male",
+                        "Female",
+                        "Non-binary",
+                        "Other",
+                        "Prefer not to say"
+                      ]
+                    },
+                    "pronouns": {
+                      "type": "string",
+                      "enum": [
+                        "He/Him",
+                        "She/Her",
+                        "They/Them",
+                        "Other",
+                        "Prefer not to say"
                       ]
                     },
                     "dateOfBirth": {
@@ -5450,48 +5125,23 @@
                     "age": {
                       "type": "integer"
                     },
-                    "profilePhoto": {
+                    "emergencyContact": {
                       "type": "string",
                       "nullable": true
                     },
-                    "dateOfAdmitting": {
-                      "type": "string",
-                      "format": "date",
-                      "nullable": true
-                    },
-                    "description": {
-                      "type": "string"
-                    },
-                    "emergencyContactName": {
+                    "nextOfKin": {
                       "type": "string",
                       "nullable": true
-                    },
-                    "emergencyContactNumber": {
-                      "type": "string",
-                      "nullable": true
-                    },
-                    "nextOfKinName": {
-                      "type": "string",
-                      "nullable": true,
-                      "description": "Full name of the patient's next of kin"
                     },
                     "nextOfKinRelationship": {
                       "type": "string",
-                      "nullable": true,
-                      "enum": [
-                        "SPOUSE",
-                        "PARENT",
-                        "CHILD",
-                        "SIBLING",
-                        "GRANDPARENT",
-                        "GUARDIAN",
-                        "CARER",
-                        "FRIEND",
-                        "OTHER"
-                      ],
-                      "description": "Relationship of the next of kin to the patient"
+                      "nullable": true
                     },
-                    "medicalSummary": {
+                    "generalNotes": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "appointmentNotes": {
                       "type": "string",
                       "nullable": true
                     },
@@ -5507,52 +5157,26 @@
                         "type": "string"
                       }
                     },
-                    "notes": {
+                    "createdBy": {
+                      "type": "string"
+                    },
+                    "assignedDoctor": {
                       "type": "string",
                       "nullable": true
-                    },
-                    "caretaker": {
-                      "type": "object",
-                      "nullable": true,
-                      "properties": {
-                        "_id": {
-                          "type": "string"
-                        },
-                        "fullname": {
-                          "type": "string"
-                        },
-                        "email": {
-                          "type": "string"
-                        }
-                      }
-                    },
-                    "assignedNurses": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "_id": {
-                            "type": "string"
-                          },
-                          "fullname": {
-                            "type": "string"
-                          },
-                          "email": {
-                            "type": "string"
-                          }
-                        }
-                      }
                     }
                   }
                 },
                 "example": {
                   "_id": "664f1c2e8b1a2c3d4e5f6a7b",
-                  "name": "Mary Jane",
-                  "age": 72,
-                  "gender": "female",
-                  "condition": "Dementia - Stage 2",
-                  "isActive": true,
-                  "photo": "uploads/1714000000000-profile.jpg"
+                  "firstName": "Mary",
+                  "lastName": "Jane",
+                  "birthSex": "Female",
+                  "genderIdentity": "Female",
+                  "pronouns": "She/Her",
+                  "preferredLanguage": "English",
+                  "generalNotes": "Requires morning visits.",
+                  "appointmentNotes": "Prefers appointments before midday.",
+                  "isActive": true
                 }
               }
             }
@@ -5635,7 +5259,7 @@
           },
           {
             "in": "query",
-            "name": "gender",
+            "name": "birthSex",
             "required": false,
             "schema": {
               "type": "string",
@@ -5644,14 +5268,6 @@
             },
             "description": "Include soft-deleted patients in results",
             "example": false
-          },
-          {
-            "in": "query",
-            "name": "caretakerId",
-            "schema": {
-              "type": "string",
-              "example": 6.61111111111111e+23
-            }
           },
           {
             "in": "query",
@@ -5680,17 +5296,7 @@
                   "items": {
                     "$ref": "#/components/schemas/PatientSummary"
                   }
-                },
-                "example": [
-                  {
-                    "_id": "664f1c2e8b1a2c3d4e5f6a7b",
-                    "name": "Mary Jane",
-                    "age": 72,
-                    "gender": "female",
-                    "condition": "Dementia - Stage 2",
-                    "isActive": true
-                  }
-                ]
+                }
               }
             }
           },
@@ -5707,117 +5313,9 @@
           "403": {
             "description": "Approved organization members cannot use independent patient routes"
           },
-          "404": {
-            "description": "User not found"
-          },
+          "404": null,
           "500": {
             "description": "Internal server error while fetching patients",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/patients/assign-nurse": {
-      "post": {
-        "tags": [
-          "Patient"
-        ],
-        "summary": "Assign a nurse to a patient",
-        "description": "Assigns a nurse to a patient and updates both the patient and nurse records.",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AssignNurseRequest",
-                "type": "object",
-                "required": [
-                  "nurseId",
-                  "patientId"
-                ],
-                "properties": {
-                  "nurseId": {
-                    "type": "string"
-                  },
-                  "patientId": {
-                    "type": "string"
-                  }
-                }
-              },
-              "example": {
-                "patientId": "664f1c2e8b1a2c3d4e5f6a7b",
-                "nurseId": "664f1c2e8b1a2c3d4e5f6a7c"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Nurse assigned successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SuccessMessage"
-                },
-                "example": {
-                  "message": "Nurse assigned to patient successfully."
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Selected user is not a nurse",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UnauthorizedError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Approved organization members cannot use independent patient routes",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ForbiddenError"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Invalid nurse or patient ID",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotFoundError"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error while assigning the nurse",
             "content": {
               "application/json": {
                 "schema": {
@@ -5835,7 +5333,7 @@
           "Doctor"
         ],
         "summary": "Assign or unassign a doctor to a patient",
-        "description": "Admins or caretakers can assign a doctor to a patient. Send `{ \"doctorId\": null }` to unassign.",
+        "description": "Assigns or unassigns a doctor to/from a specific patient. Set `unassign: true` in the request body to remove the doctor assignment. **Roles:** admin, caretaker.\n",
         "security": [
           {
             "bearerAuth": []
@@ -5843,14 +5341,7 @@
         ],
         "parameters": [
           {
-            "$ref": "#/components/parameters/PatientIdParam",
-            "in": "path",
-            "name": "patientId",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Patient ObjectId"
+            "$ref": "#/components/parameters/PatientIdParam"
           }
         ],
         "requestBody": {
@@ -5858,40 +5349,18 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AssignDoctorRequest",
-                "type": "object",
-                "properties": {
-                  "doctorId": {
-                    "type": "string",
-                    "nullable": true,
-                    "description": "Doctor ObjectId, or null to unassign"
-                  }
-                }
+                "$ref": "#/components/schemas/AssignDoctorRequest"
               },
               "example": {
                 "doctorId": "664f1c2e8b1a2c3d4e5f6a7d",
                 "unassign": false
-              },
-              "examples": {
-                "assign": {
-                  "summary": "Assign a doctor",
-                  "value": {
-                    "doctorId": "66fabc1234567890abcdef12"
-                  }
-                },
-                "unassign": {
-                  "summary": "Unassign the current doctor",
-                  "value": {
-                    "doctorId": null
-                  }
-                }
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Assignment updated",
+            "description": "Doctor assigned/unassigned successfully",
             "content": {
               "application/json": {
                 "schema": {
@@ -5904,7 +5373,7 @@
             }
           },
           "400": {
-            "description": "Invalid request",
+            "description": "Missing doctorId or invalid request",
             "content": {
               "application/json": {
                 "schema": {
@@ -5944,69 +5413,7 @@
             }
           },
           "500": {
-            "description": "Server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/patients/assigned-patients": {
-      "get": {
-        "tags": [
-          "Patient"
-        ],
-        "summary": "Fetch assigned patients for a nurse or caretaker",
-        "description": "Returns patients assigned to the authenticated nurse or caretaker.",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Assigned patients fetched successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Patient"
-                  }
-                },
-                "example": [
-                  {
-                    "_id": "664f1c2e8b1a2c3d4e5f6a7b",
-                    "name": "Mary Jane",
-                    "age": 72,
-                    "gender": "female",
-                    "condition": "Dementia - Stage 2",
-                    "isActive": true
-                  }
-                ]
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UnauthorizedError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Unauthorized role or invalid role information"
-          },
-          "500": {
-            "description": "Internal server error while fetching assigned patients",
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -7628,342 +7035,6 @@
         }
       }
     },
-    "/api/v1/admin/patients/{id}/reassign": {
-      "put": {
-        "summary": "Update patient staff assignments",
-        "description": "Assigns or reassigns a caretaker, nurse, or doctor to an existing patient. At least one of `nurseId`, `doctorId`, or `caretakerId` should be provided.",
-        "tags": [
-          "AdminPatients"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "query",
-            "name": "orgId",
-            "required": false,
-            "description": "Organization context for admins managing multiple organizations",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "description": "Patient ID",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "anyOf": [
-                  {
-                    "required": [
-                      "nurseId"
-                    ]
-                  },
-                  {
-                    "required": [
-                      "doctorId"
-                    ]
-                  },
-                  {
-                    "required": [
-                      "caretakerId"
-                    ]
-                  }
-                ],
-                "properties": {
-                  "nurseId": {
-                    "type": "string",
-                    "nullable": true,
-                    "description": "ID of the nurse to assign"
-                  },
-                  "caretakerId": {
-                    "type": "string",
-                    "nullable": true,
-                    "description": "ID of the caretaker to assign or replace"
-                  },
-                  "doctorId": {
-                    "type": "string",
-                    "nullable": true,
-                    "description": "ID of the doctor to assign or replace"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Patient assignments updated successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "message",
-                    "patient"
-                  ],
-                  "properties": {
-                    "message": {
-                      "type": "string",
-                      "example": "Assignments updated"
-                    },
-                    "patient": {
-                      "type": "object",
-                      "properties": {
-                        "_id": {
-                          "type": "string"
-                        },
-                        "fullname": {
-                          "type": "string"
-                        },
-                        "age": {
-                          "type": "integer"
-                        },
-                        "caretaker": {
-                          "type": "object",
-                          "nullable": true,
-                          "properties": {
-                            "_id": {
-                              "type": "string"
-                            },
-                            "fullname": {
-                              "type": "string"
-                            },
-                            "email": {
-                              "type": "string"
-                            }
-                          }
-                        },
-                        "assignedNurses": {
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "properties": {
-                              "_id": {
-                                "type": "string"
-                              },
-                              "fullname": {
-                                "type": "string"
-                              },
-                              "email": {
-                                "type": "string"
-                              }
-                            }
-                          }
-                        },
-                        "assignedDoctor": {
-                          "type": "object",
-                          "nullable": true,
-                          "properties": {
-                            "_id": {
-                              "type": "string"
-                            },
-                            "fullname": {
-                              "type": "string"
-                            },
-                            "email": {
-                              "type": "string"
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid staff ID or role mismatch"
-          },
-          "403": {
-            "description": "Patient does not belong to the selected organization"
-          },
-          "404": {
-            "description": "Organization or patient not found"
-          },
-          "500": {
-            "description": "Internal server error while updating assignments"
-          }
-        }
-      }
-    },
-    "/api/v1/admin/staff/pending": {
-      "get": {
-        "summary": "Get pending nurse and caretaker registrations for the admin's organization",
-        "description": "Returns all nurse and caretaker accounts in the selected organization that are awaiting admin approval.",
-        "tags": [
-          "AdminStaff"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "query",
-            "name": "orgId",
-            "required": false,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Optional organization ID when the admin manages multiple organizations"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Pending staff registrations returned successfully"
-          },
-          "404": {
-            "description": "Organization not found for the authenticated admin"
-          },
-          "500": {
-            "description": "Internal server error while retrieving pending registrations"
-          }
-        }
-      }
-    },
-    "/api/v1/admin/staff/{id}/approve": {
-      "put": {
-        "summary": "Approve a pending nurse or caretaker account",
-        "description": "Approves a pending nurse or caretaker account belonging to the admin's organization and adds the approved user to the organization's active staff list.",
-        "tags": [
-          "AdminStaff"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "description": "User ID of the staff account",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "orgId",
-            "required": false,
-            "description": "Optional organization ID when the admin manages multiple organizations",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Staff account approved successfully"
-          },
-          "400": {
-            "description": "Invalid user ID or unsupported approval request"
-          },
-          "403": {
-            "description": "User does not belong to the selected organization"
-          },
-          "404": {
-            "description": "User or organization not found"
-          },
-          "500": {
-            "description": "Internal server error while approving the staff account"
-          }
-        }
-      }
-    },
-    "/api/v1/admin/staff/{id}/status": {
-      "put": {
-        "summary": "Reject or deactivate a nurse or caretaker account",
-        "description": "Updates the status of a nurse or caretaker account in the admin's organization by rejecting a pending request or deactivating an existing member.",
-        "tags": [
-          "AdminStaff"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "description": "User ID of the staff account",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "orgId",
-            "required": false,
-            "description": "Optional organization ID when the admin manages multiple organizations",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "action"
-                ],
-                "properties": {
-                  "action": {
-                    "type": "string",
-                    "enum": [
-                      "reject",
-                      "deactivate"
-                    ]
-                  },
-                  "reason": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Staff account status updated successfully"
-          },
-          "400": {
-            "description": "Invalid user ID, invalid action, or unsupported role"
-          },
-          "403": {
-            "description": "User does not belong to the selected organization"
-          },
-          "404": {
-            "description": "User or organization not found"
-          },
-          "500": {
-            "description": "Internal server error while updating staff status"
-          }
-        }
-      }
-    },
     "/api/v1/caretaker/profile": {
       "get": {
         "summary": "View caretaker profile by ID or email",
@@ -8004,161 +7075,9 @@
             "description": "Error fetching caretaker profile"
           }
         }
-      },
-      "put": {
-        "summary": "Update caretaker profile",
-        "tags": [
-          "Caretaker"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "caretakerId"
-                ],
-                "properties": {
-                  "caretakerId": {
-                    "type": "string",
-                    "description": "The ID of the caretaker"
-                  },
-                  "fullname": {
-                    "type": "string"
-                  },
-                  "phone": {
-                    "type": "string"
-                  },
-                  "gender": {
-                    "type": "string"
-                  },
-                  "age": {
-                    "type": "number"
-                  },
-                  "email": {
-                    "type": "string"
-                  },
-                  "address": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Caretaker profile updated successfully"
-          },
-          "400": {
-            "description": "Invalid request"
-          },
-          "404": {
-            "description": "Caretaker not found"
-          },
-          "500": {
-            "description": "Server error"
-          }
-        }
       }
     },
     "/api/v1/caretaker/tasks": {
-      "get": {
-        "summary": "List caretaker tasks with optional filters",
-        "tags": [
-          "Caretaker"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "query",
-            "name": "filter",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "urgent"
-              ]
-            },
-            "description": "Use \"urgent\" to filter high-priority tasks"
-          },
-          {
-            "in": "query",
-            "name": "dueDate",
-            "schema": {
-              "type": "string",
-              "format": "date"
-            },
-            "description": "Return tasks due on or before this date (YYYY-MM-DD)"
-          },
-          {
-            "in": "query",
-            "name": "status",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "pending",
-                "in progress",
-                "completed"
-              ]
-            },
-            "description": "Filter by task status"
-          },
-          {
-            "in": "query",
-            "name": "sort",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "dueDate",
-                "-dueDate",
-                "created_at",
-                "-created_at"
-              ]
-            },
-            "description": "Sort results (default: dueDate ascending)"
-          },
-          {
-            "in": "query",
-            "name": "page",
-            "schema": {
-              "type": "integer",
-              "minimum": 1
-            },
-            "description": "Page number for pagination (default: 1)"
-          },
-          {
-            "in": "query",
-            "name": "limit",
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100
-            },
-            "description": "Page size (default: 20)"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "List of tasks"
-          },
-          "400": {
-            "description": "Invalid query parameters"
-          },
-          "500": {
-            "description": "Error fetching tasks"
-          }
-        }
-      },
       "post": {
         "summary": "Create a task for a patient assigned to the logged-in caretaker",
         "tags": [
@@ -8296,41 +7215,6 @@
         "responses": {
           "200": {
             "description": "Paged list of caretakers"
-          },
-          "500": {
-            "description": "Server error"
-          }
-        }
-      }
-    },
-    "/api/v1/caretaker/reports/patient/{patientId}": {
-      "get": {
-        "summary": "Get all daily reports for a specific patient",
-        "tags": [
-          "Caretaker"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "patientId",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Patient ID"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "List of reports for the patient"
-          },
-          "400": {
-            "description": "Missing patientId"
           },
           "500": {
             "description": "Server error"
@@ -8504,139 +7388,6 @@
       }
     },
     "/api/v1/doctors/profile": {
-      "get": {
-        "summary": "Get the logged-in doctor's profile",
-        "description": "Returns the full profile for the currently authenticated doctor, combining their User account details (name, email, role, organisation, assigned patients) with their Doctor-specific record (specialization, licenseNumber) stored in a separate collection. The doctor is identified from the JWT — no query parameters are required. Requires a valid JWT issued to a user with the **doctor** role.",
-        "tags": [
-          "Doctor"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Doctor profile fetched successfully.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "_id": {
-                      "type": "string",
-                      "example": "6641a2f3c89e4b001f3d9abc"
-                    },
-                    "fullname": {
-                      "type": "string",
-                      "example": "Dr. Seed"
-                    },
-                    "email": {
-                      "type": "string",
-                      "example": "johndoctor@example.com"
-                    },
-                    "role": {
-                      "type": "object",
-                      "properties": {
-                        "_id": {
-                          "type": "string"
-                        },
-                        "name": {
-                          "type": "string",
-                          "example": "doctor"
-                        }
-                      }
-                    },
-                    "organization": {
-                      "type": "object",
-                      "nullable": true,
-                      "properties": {
-                        "_id": {
-                          "type": "string"
-                        },
-                        "name": {
-                          "type": "string"
-                        }
-                      }
-                    },
-                    "assignedPatients": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "_id": {
-                            "type": "string"
-                          },
-                          "fullname": {
-                            "type": "string"
-                          },
-                          "age": {
-                            "type": "number"
-                          },
-                          "gender": {
-                            "type": "string"
-                          }
-                        }
-                      }
-                    },
-                    "profile": {
-                      "type": "object",
-                      "description": "Doctor-specific data stored in the Doctor collection. Empty object if not yet set.",
-                      "properties": {
-                        "specialization": {
-                          "type": "string",
-                          "nullable": true,
-                          "example": "Geriatrics"
-                        },
-                        "licenseNumber": {
-                          "type": "string",
-                          "nullable": true,
-                          "description": "Medical registration number. Accepted as a free-form string for now. TODO: implement proper format and authority validation (e.g. verify against PRC/PMA registry or enforce a country-specific pattern).",
-                          "example": "MED-2024-001"
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "The authenticated user's doctor record was not found.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string",
-                      "example": "Doctor not found"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Unexpected server error.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    },
-                    "details": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
       "put": {
         "summary": "Update the logged-in doctor's profile",
         "description": "Updates profile information for the currently authenticated doctor. The doctor is identified from the JWT — no `doctorId` is required in the body. Fields are written to two collections: `fullname` and `email` are updated on the **User** record; `specialization` and `licenseNumber` are upserted into the **Doctor** collection. The Doctor record is created automatically on the first update. Only fields included in the request body are changed; omitted fields are left as-is. Requires a valid JWT issued to a user with the **doctor** role.",
@@ -8905,168 +7656,6 @@
         }
       }
     },
-    "/api/v1/patient/{patientId}/health-records": {
-      "get": {
-        "summary": "Fetch health records of a patient",
-        "tags": [
-          "Patient"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "patientId",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "The ID of the patient"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Health records"
-          },
-          "401": {
-            "description": "Missing or invalid token"
-          },
-          "403": {
-            "description": "You are not allowed to view this patient's health records"
-          },
-          "404": {
-            "description": "Patient not found or no health records exist"
-          },
-          "500": {
-            "description": "Error fetching health records"
-          }
-        }
-      }
-    },
-    "/api/v1/patient/{patientId}/health-record": {
-      "post": {
-        "summary": "Create a health record for a patient",
-        "tags": [
-          "Patient"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "patientId",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "The ID of the patient"
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "vitals": {
-                    "type": "object",
-                    "required": [
-                      "bloodPressure",
-                      "temperature",
-                      "heartRate",
-                      "respiratoryRate"
-                    ],
-                    "properties": {
-                      "bloodPressure": {
-                        "type": "string",
-                        "description": "Blood pressure in systolic/diastolic format, e.g. 120/80"
-                      },
-                      "temperature": {
-                        "type": "number",
-                        "description": "Body temperature in degrees Celsius"
-                      },
-                      "heartRate": {
-                        "type": "number",
-                        "description": "Heart rate in beats per minute (BPM)"
-                      },
-                      "respiratoryRate": {
-                        "type": "number",
-                        "description": "Respiratory rate in breaths per minute"
-                      }
-                    }
-                  },
-                  "notes": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Health record created successfully"
-          },
-          "400": {
-            "description": "Invalid input for the health record"
-          },
-          "401": {
-            "description": "Missing or invalid token"
-          },
-          "403": {
-            "description": "You are not allowed to create a health record for this patient"
-          },
-          "404": {
-            "description": "Patient not found"
-          },
-          "500": {
-            "description": "Error creating health record"
-          }
-        }
-      }
-    },
-    "/api/v1/patient/{patientId}/report": {
-      "get": {
-        "summary": "Get the report for a patient assigned to nurse",
-        "tags": [
-          "Patient"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "patientId",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "The ID of the patient"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Report fetched successfully"
-          },
-          "400": {
-            "description": "Error fetching patient report"
-          },
-          "404": {
-            "description": "Patient not found or no report available"
-          }
-        }
-      }
-    },
     "/api/v1/nurse/dashboard-summary": {
       "get": {
         "summary": "Get nurse dashboard summary",
@@ -9220,12 +7809,12 @@
         }
       }
     },
-    "/api/v1/orgs/join-request": {
+    "/api/v1/patients/assign-nurse": {
       "post": {
-        "summary": "Request to join an organization",
-        "description": "Allows a freelance nurse or caretaker to submit a join request to an active organization.",
+        "summary": "Assign a nurse to a patient",
+        "description": "Adds a nurse to the patient's care team. Repeating the same assignment is safe.",
         "tags": [
-          "Organization"
+          "Patient"
         ],
         "security": [
           {
@@ -9239,13 +7828,17 @@
               "schema": {
                 "type": "object",
                 "required": [
-                  "orgId"
+                  "nurseId",
+                  "patientId"
                 ],
                 "properties": {
-                  "orgId": {
+                  "nurseId": {
                     "type": "string",
-                    "description": "Organization ID",
-                    "example": "66ef5c2a9f3a1d0012ab34cd"
+                    "description": "MongoDB ObjectId of the nurse"
+                  },
+                  "patientId": {
+                    "type": "string",
+                    "description": "MongoDB ObjectId of the patient"
                   }
                 }
               }
@@ -9254,19 +7847,68 @@
         },
         "responses": {
           "200": {
-            "description": "Join request submitted successfully"
+            "description": "Nurse assigned successfully"
           },
           "400": {
-            "description": "Invalid request, duplicate pending request, or user is already approved in another organization"
+            "description": "The referenced user is not a nurse or the assignment failed"
+          },
+          "401": {
+            "description": "Unauthorized"
           },
           "403": {
-            "description": "Only nurse or caretaker accounts can request to join an organization"
+            "description": "Only caretakers and admins can assign nurses"
           },
           "404": {
-            "description": "Organization or user not found"
+            "description": "Patient not found"
+          }
+        }
+      }
+    },
+    "/api/v1/patients/assigned-patients": {
+      "get": {
+        "summary": "List patients assigned to the authenticated care worker",
+        "description": "Returns active patients assigned to the authenticated nurse or caretaker.",
+        "tags": [
+          "Patient"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Assigned patients",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "patients"
+                  ],
+                  "properties": {
+                    "patients": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PatientSummary"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Only nurses and caretakers can access assigned patients"
+          },
+          "404": {
+            "description": "User not found"
           },
           "500": {
-            "description": "Internal server error while submitting the join request"
+            "description": "Internal server error while fetching assigned patients"
           }
         }
       }
@@ -9357,66 +7999,6 @@
           },
           "404": {
             "description": "Entry not found"
-          }
-        }
-      }
-    },
-    "/api/v1/patient-logs": {
-      "post": {
-        "summary": "Create a patient log entry",
-        "description": "Allows a nurse, caretaker, or doctor to create a log entry for a patient.",
-        "tags": [
-          "Patient Logs"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "title",
-                  "description",
-                  "patient"
-                ],
-                "properties": {
-                  "title": {
-                    "type": "string",
-                    "example": "Patient mood update"
-                  },
-                  "description": {
-                    "type": "string",
-                    "example": "Patient was calm and responsive during the morning check."
-                  },
-                  "patient": {
-                    "type": "string",
-                    "example": "69b77c228345cdf421d22ba3"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Log created successfully"
-          },
-          "400": {
-            "description": "Missing required fields"
-          },
-          "401": {
-            "description": "Unauthorized or missing token"
-          },
-          "403": {
-            "description": "Access denied due to insufficient role"
-          },
-          "500": {
-            "description": "Internal server error"
           }
         }
       }
@@ -9763,49 +8345,6 @@
           }
         }
       },
-      "patch": {
-        "summary": "Update prescription by ID",
-        "tags": [
-          "Prescription"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Prescription ID"
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Prescription updated successfully"
-          },
-          "404": {
-            "description": "Prescription not found"
-          },
-          "500": {
-            "description": "Error updating prescription"
-          }
-        }
-      },
       "delete": {
         "summary": "Delete prescription by ID",
         "tags": [
@@ -9985,10 +8524,6 @@
     {
       "name": "Tasks",
       "description": "Task management endpoints"
-    },
-    {
-      "name": "AdminPatients",
-      "description": "Administrative patient management endpoints scoped to an organization"
     },
     {
       "name": "AdminStaff",

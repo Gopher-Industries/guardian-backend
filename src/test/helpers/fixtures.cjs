@@ -70,7 +70,6 @@ function signToken(user) {
       email: user.email,
       role: user.role ? String(user.role._id || user.role) : undefined,
       organization: organizationId,
-      organisation: organizationId,
     },
     process.env.JWT_SECRET,
     { expiresIn: '1h', algorithm: 'HS256' }
@@ -92,28 +91,32 @@ async function createOrganization({ name = 'Guardian Test Org', admin }) {
 }
 
 async function createPatient({
-  fullname = 'Test Patient',
-  gender = 'F',
+  firstName = 'Test',
+  lastName = 'Patient',
+  birthSex = 'Female',
   dateOfBirth = '1985-01-01',
-  caretaker,
-  assignedNurses = [],
-  assignedDoctor,
+  doctorId,
+  nurseIds,
+  caretakerId,
   organization,
   isDeleted = false,
+  createdBy,
 }) {
   const patient = await Patient.create({
-    fullname,
-    gender,
+    firstName,
+    lastName,
+    birthSex,
     dateOfBirth: new Date(dateOfBirth),
-    caretaker: caretaker._id || caretaker,
-    assignedNurses: assignedNurses.map((nurse) => nurse._id || nurse),
-    assignedDoctor: assignedDoctor ? assignedDoctor._id || assignedDoctor : undefined,
+    doctorId: doctorId ? doctorId._id || doctorId : undefined,
+    nurseIds: nurseIds ? Array.isArray(nurseIds) ? nurseIds : [nurseIds] : [],
+    caretakerId: caretakerId ? caretakerId._id || caretakerId : undefined,
     organization: organization ? organization._id || organization : undefined,
-    dateOfAdmitting: new Date('2026-04-01'),
     isDeleted,
+    createdBy: createdBy ? createdBy._id || createdBy : undefined,
+    createdAt: new Date('2026-04-01'),
   });
 
-  const linkedUsers = [caretaker, ...assignedNurses, assignedDoctor].filter(Boolean);
+  const linkedUsers = [doctorId].filter(Boolean);
   await Promise.all(
     linkedUsers.map((user) =>
       User.updateOne(
@@ -163,17 +166,25 @@ async function createCoreFixture() {
 async function createDashboardFixture() {
   const fixture = await createCoreFixture();
   const activePatient = await createPatient({
-    fullname: 'Active Dashboard Patient',
-    caretaker: fixture.caretaker,
-    assignedNurses: [fixture.nurse],
-    assignedDoctor: fixture.doctor,
+    firstName: 'Active Dashboard',
+    lastName: 'Patient',
+    birthSex: 'Male',
+    dateOfBirth: '1990-01-01',
+    doctorId: fixture.doctor._id,
+    nurseIds: [fixture.nurse._id],
+    caretakerId: fixture.caretaker._id,
+    createdBy: fixture.admin,
   });
 
   const deletedPatient = await createPatient({
-    fullname: 'Deleted Dashboard Patient',
-    caretaker: fixture.caretaker,
-    assignedNurses: [fixture.nurse],
-    assignedDoctor: fixture.doctor,
+    firstName: 'Deleted Dashboard',
+    lastName: 'Patient',
+    birthSex: 'Female',
+    dateOfBirth: '1990-01-01',
+    doctorId: fixture.doctor._id,
+    nurseIds: [fixture.nurse._id],
+    caretakerId: fixture.caretaker._id,
+    createdBy: fixture.admin,
     isDeleted: true,
   });
 

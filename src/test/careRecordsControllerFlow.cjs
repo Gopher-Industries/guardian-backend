@@ -27,7 +27,13 @@ describe('care records controller flow', function () {
     const otherCaretaker = await createUser({ fullname: 'Other Health Caretaker', email: 'other-health-caretaker@example.com', role: roles.caretaker });
     const nurse = await createUser({ fullname: 'Health Nurse', email: 'health-nurse@example.com', role: roles.nurse });
     const otherNurse = await createUser({ fullname: 'Other Health Nurse', email: 'other-health-nurse@example.com', role: roles.nurse });
-    const patient = await createPatient({ fullname: 'Health Patient', caretaker, assignedNurses: [nurse] });
+    const patient = await createPatient({ 
+      firstName: 'Health',
+      lastName: 'Patient',
+      caretakerId: caretaker._id,
+      nurseIds: [nurse._id],
+      createdBy: caretaker._id,
+    });
 
     const invalidId = await chai
       .request(app)
@@ -67,8 +73,20 @@ describe('care records controller flow', function () {
     const caretaker = await createUser({ fullname: 'Report Health Caretaker', email: 'report-health-caretaker@example.com', role: roles.caretaker });
     const nurse = await createUser({ fullname: 'Report Health Nurse', email: 'report-health-nurse@example.com', role: roles.nurse });
     const otherNurse = await createUser({ fullname: 'Report Other Nurse', email: 'report-other-nurse@example.com', role: roles.nurse });
-    const patient = await createPatient({ fullname: 'Report Health Patient', caretaker, assignedNurses: [nurse] });
-    const emptyPatient = await createPatient({ fullname: 'Empty Health Patient', caretaker, assignedNurses: [nurse] });
+    const patient = await createPatient({ 
+      firstName: 'Report Health',
+      lastName: 'Patient',
+      caretakerId: caretaker._id, 
+      nurseIds: [nurse._id],
+      createdBy: caretaker._id,
+    });
+    const emptyPatient = await createPatient({ 
+      firstName: 'Empty Health',
+      lastName: 'Patient',
+      caretakerId: caretaker._id, 
+      nurseIds: [nurse._id],
+      createdBy: caretaker._id,
+    });
 
     const noReport = await chai
       .request(app)
@@ -107,7 +125,13 @@ describe('care records controller flow', function () {
     const admin = await createUser({ fullname: 'Prescription Admin', email: 'prescription-admin@example.com', role: roles.admin });
     const doctor = await createUser({ fullname: 'Prescription Doctor', email: 'prescription-doctor@example.com', role: roles.doctor });
     const caretaker = await createUser({ fullname: 'Prescription Caretaker', email: 'prescription-caretaker@example.com', role: roles.caretaker });
-    const patient = await createPatient({ fullname: 'Prescription Patient', caretaker, assignedDoctor: doctor });
+    const patient = await createPatient({ 
+      firstName: 'Prescription',
+      lastName: 'Patient',
+      caretakerId: caretaker._id,
+      doctorId: doctor._id,
+      createdBy: caretaker._id,
+    });
 
     const noItems = await chai
       .request(app)
@@ -134,7 +158,7 @@ describe('care records controller flow', function () {
       .request(app)
       .post('/api/v1/prescriptions')
       .set('Authorization', authHeader(admin))
-      .send({ patientName: patient.fullname, items: [{ medicationName: 'Med', dose: '1', frequency: 'daily', durationDays: 3 }] });
+      .send({ patientName: `${patient.firstName} ${patient.lastName}`, items: [{ medicationName: 'Med', dose: '1', frequency: 'daily', durationDays: 3 }] });
     expect(byName).to.have.status(201);
 
     const missingId = new mongoose.Types.ObjectId();
@@ -165,7 +189,14 @@ describe('care records controller flow', function () {
     const nurse = await createUser({ fullname: 'Log Nurse', email: 'log-nurse@example.com', role: roles.nurse });
     const otherNurse = await createUser({ fullname: 'Other Log Nurse', email: 'other-log-nurse@example.com', role: roles.nurse });
     const caretaker = await createUser({ fullname: 'Log Caretaker', email: 'log-caretaker@example.com', role: roles.caretaker });
-    const patient = await createPatient({ fullname: 'Log Patient', caretaker, assignedNurses: [nurse] });
+    const patient = await createPatient({ 
+      firstName: 'Log',
+      lastName: 'Patient',
+      caretakerId: caretaker._id, 
+      nurseIds: [nurse._id],
+      createdBy: caretaker._id,
+      createdAt: new Date(),
+    });
 
     const invalidCreate = await chai
       .request(app)

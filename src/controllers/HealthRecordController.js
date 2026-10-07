@@ -27,18 +27,18 @@ const ensurePatientAccess = async (patient, userId) => {
     return null;
   }
 
-  if (actorRole === 'caretaker' && String(patient.caretaker) !== String(actor._id)) {
+  if (actorRole === 'caretaker' && String(patient.caretakerId) !== String(actor._id)) {
     return { error: 'You are not assigned to this patient as caretaker', status: 403 };
   }
 
   if (
     actorRole === 'nurse' &&
-    !(patient.assignedNurses || []).some(assignedNurseId => String(assignedNurseId) === String(actor._id))
+    !(patient.nurseIds || []).some(nurseId => String(nurseId) === String(actor._id))
   ) {
     return { error: 'You are not assigned to this patient as nurse', status: 403 };
   }
 
-  if (actorRole === 'doctor' && String(patient.assignedDoctor) !== String(actor._id)) {
+  if (actorRole === 'doctor' && String(patient.doctorId) !== String(actor._id)) {
     return { error: 'You are not assigned to this patient as doctor', status: 403 };
   }
 
@@ -80,8 +80,8 @@ const parseVitals = (vitals = {}) => {
 };
 
 const resolveCareTeam = async (patient, userId) => {
-  const caretakerId = patient.caretaker;
-  let nurseId = patient.assignedNurses?.[0] || null;
+  const caretakerId = patient.caretakerId;
+  let nurseId = patient.nurseIds?.[0] || null;
 
   if (!userId) {
     return { error: 'Unauthorised: userId is required', status: 401 };
@@ -96,8 +96,8 @@ const resolveCareTeam = async (patient, userId) => {
     const actorRole = actor.role?.name;
 
     if (actorRole === 'nurse') {
-      const isAssigned = (patient.assignedNurses || []).some(
-        assignedNurseId => String(assignedNurseId) === String(actor._id)
+      const isAssigned = (patient.nurseIds || []).some(
+        nurseId => String(nurseId) === String(actor._id)
       );
 
       if (!isAssigned) {
@@ -107,7 +107,7 @@ const resolveCareTeam = async (patient, userId) => {
       nurseId = actor._id;
     }
 
-    if (actorRole === 'caretaker' && String(patient.caretaker) !== String(actor._id)) {
+    if (actorRole === 'caretaker' && String(patient.caretakerId) !== String(actor._id)) {
       return { error: 'You are not assigned to this patient as caretaker', status: 403 };
     }
   }
@@ -130,7 +130,7 @@ exports.getHealthRecords = async (req, res) => {
     const { patientId } = req.params;
     if (!validatePatientId(patientId, res)) return;
 
-    const patient = await Patient.findById(patientId).select('_id caretaker assignedNurses assignedDoctor');
+    const patient = await Patient.findById(patientId).select('_id caretakerId nurseIds doctorId');
     if (!patient) {
       return res.status(404).json({ error: 'Patient not found' });
     }
@@ -142,7 +142,7 @@ exports.getHealthRecords = async (req, res) => {
 
     const healthRecords = await HealthRecord.find({ patient: patientId })
       .sort({ created_at: -1 })
-      .populate('patient', 'fullname')
+      .populate('patient', 'firstName lastName dateOfBirth birthSex')
       .populate('nurse', 'fullname email')
       .populate('caretaker', 'fullname email')
       .lean();
@@ -161,7 +161,7 @@ exports.createHealthRecords = async (req, res) => {
     const { patientId } = req.params;
     if (!validatePatientId(patientId, res)) return;
 
-    const patient = await Patient.findById(patientId).select('caretaker assignedNurses');
+    const patient = await Patient.findById(patientId).select('caretakerId nurseIds');
     if (!patient) {
       return res.status(404).json({ error: 'Patient not found' });
     }
@@ -186,7 +186,7 @@ exports.createHealthRecords = async (req, res) => {
     });
 
     const populatedHealthRecord = await HealthRecord.findById(healthRecord._id)
-      .populate('patient', 'fullname')
+      .populate('patient', 'firstName lastName dateOfBirth birthSex')
       .populate('nurse', 'fullname email')
       .populate('caretaker', 'fullname email')
       .lean();
@@ -208,13 +208,13 @@ exports.getPatientReport = async (req, res) => {
       return res.status(404).json({ error: 'Nurse not found' });
     }
 
-    const patient = await Patient.findById(patientId).select('assignedNurses');
+    const patient = await Patient.findById(patientId).select('nurseIds');
     if (!patient) {
       return res.status(404).json({ error: 'Patient not found' });
     }
 
-    const isPatientAssigned = (patient.assignedNurses || []).some(
-      assignedNurseId => String(assignedNurseId) === String(nurse._id)
+    const isPatientAssigned = (patient.nurseIds || []).some(
+      nurseId => String(nurseId) === String(nurse._id)
     );
     if (!isPatientAssigned) {
       return res.status(403).json({ error: 'You are not assigned to this patient' });
@@ -222,7 +222,7 @@ exports.getPatientReport = async (req, res) => {
 
     const report = await HealthRecord.find({ patient: patientId })
       .sort({ created_at: -1 })
-      .populate('patient', 'fullname')
+      .populate('patient', 'firstName lastName dateOfBirth birthSex')
       .populate('nurse', 'fullname email')
       .populate('caretaker', 'fullname email')
       .lean();

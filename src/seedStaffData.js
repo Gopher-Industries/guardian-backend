@@ -34,8 +34,8 @@ const seedStaffData = async () => {
 
     // Find the patients these staff are assigned to
     const [patient1, patient2] = await Promise.all([
-      Patient.findOne({ fullname: 'Elderly Patient One' }),
-      Patient.findOne({ fullname: 'Elderly Patient Two' }),
+      Patient.findOne({ firstName: 'Elderly', lastName: 'PatientOne' }),
+      Patient.findOne({ firstName: 'Elderly', lastName: 'PatientTwo' }),
     ]);
 
     if (!patient1 || !patient2) {

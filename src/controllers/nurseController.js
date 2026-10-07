@@ -82,8 +82,8 @@ exports.getAllNurses = async (req, res) => {
       User.find(filter)
         .select('-password_hash -__v')
         .populate('role', 'name')
-        .populate('assignedPatients', 'fullname gender dateOfBirth')
-        .sort({ fullname: 1 })
+        .populate('assignedPatients', 'firstName lastName birthSex dateOfBirth caretakerId')
+        .sort({ firstName: 1 })
         .skip((parseInt(page) - 1) * parseInt(limit))
         .limit(parseInt(limit))
         .lean(),
@@ -105,23 +105,16 @@ exports.getAllNurses = async (req, res) => {
 };
 
 
-
 exports.getAssignedPatientsForNurse = async (req, res) => {
   try {
-    const nurse = await User.findById(req.user._id)
-      .select('-password_hash -__v')
-      .populate({
-        path: 'assignedPatients',
-        select: 'fullname dateOfBirth gender caretaker assignedNurses created_at updated_at',
-        populate: [
-          { path: 'caretaker', select: 'fullname email' },
-          { path: 'assignedNurses', select: 'fullname email' }
-        ]
-      });
-
+    const nurse = await User.findById(req.user._id).select('fullname');
     if (!nurse) return res.status(404).json({ error: 'Nurse not found' });
 
-    const patients = (nurse.assignedPatients || []).map(p => p.toObject());
+    const patients = await Patient.find({ nurseIds: nurse._id })
+      .select('firstName lastName dateOfBirth birthSex caretakerId nurseIds createdAt updatedAt')
+      .populate('caretakerId', 'fullname email')
+      .populate('nurseIds', 'fullname email')
+      .lean();
 
     res.status(200).json({ nurse: { id: nurse._id, fullname: nurse.fullname }, patients });
   } catch (err) {
@@ -215,8 +208,8 @@ exports.getDashboardSummary = async (req, res) => {
       overdueTasks,
       recentLogsCount,
     ] = await Promise.all([
-      Patient.countDocuments({ assignedNurses: nurseId }),
-      Patient.countDocuments({ assignedNurses: nurseId, isDeleted: false }),
+      Patient.countDocuments({ nurseIds: nurseId }),
+      Patient.countDocuments({ nurseIds: nurseId, isDeleted: false }),
       Task.countDocuments(taskAssigneeQuery(nurseId)),
       Task.countDocuments({ ...taskAssigneeQuery(nurseId), status: 'completed' }),
       Task.countDocuments({ ...taskAssigneeQuery(nurseId), status: 'in progress' }),
