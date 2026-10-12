@@ -28,6 +28,79 @@ async function blockIndependentPatientWorkForApprovedOrgMember(userId) {
   return { blocked: false };
 }
 
+function escapeRegex(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function buildNameRegex(value, { exact = false } = {}) {
+  const normalized = String(value)
+    .trim()
+    .split(/\s+/)
+    .map(escapeRegex)
+    .join('\\s+');
+
+  return {
+    $regex: exact ? `^${normalized}$` : normalized,
+    $options: 'i'
+  };
+}
+
+async function buildVisiblePatientFilter(userId, options = {}) {
+  const { includeDeleted = false, search, gender, caretakerId, exactName } = options;
+
+  const me = await User.findById(userId).populate('role', 'name');
+  if (!me) {
+    return { error: { status: 404, message: 'User not found' } };
+  }
+
+  const roleName = me.role?.name?.toLowerCase();
+  const filter = {};
+
+  if (!includeDeleted) {
+    filter.isDeleted = { $ne: true };
+  }
+
+  if (search) {
+    filter.fullname = buildNameRegex(search);
+  }
+
+  if (exactName) {
+    filter.fullname = buildNameRegex(exactName, { exact: true });
+  }
+
+  if (gender) {
+    filter.gender = gender;
+  }
+
+  if (roleName === 'caretaker') {
+    if (me.organization && me.approvalStatus === 'approved') {
+      return {
+        error: {
+          status: 403,
+          message: 'Approved organization members cannot view patients through independent patient routes. Use organization-based routes instead.'
+        }
+      };
+    }
+
+    filter.caretaker = me._id;
+  } else if (roleName === 'nurse') {
+    if (me.organization && me.approvalStatus === 'approved') {
+      return {
+        error: {
+          status: 403,
+          message: 'Approved organization members cannot view patients through independent patient routes. Use organization-based routes instead.'
+        }
+      };
+    }
+
+    filter.assignedNurses = me._id;
+  } else if (caretakerId) {
+    filter.caretaker = caretakerId;
+  }
+
+  return { filter };
+}
+
 /**
  * @swagger
  * tags:
@@ -35,6 +108,86 @@ async function blockIndependentPatientWorkForApprovedOrgMember(userId) {
  *     description: Endpoints for independent patient management
  *   - name: EntryReport
  *     description: Endpoints for patient activity and entry reporting
+ */
+
+/**
+ * @swagger
+ * /api/v1/patients/add:
+ *   post:
+ *     summary: Add a new patient with an optional profile photo
+ *     description: Creates a new patient in the independent freelance flow for the authenticated caretaker.
+ *     tags: [Patient]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - fullname
+ *               - dateOfBirth
+ *               - gender
+ *             properties:
+ *               fullname:
+ *                 type: string
+ *                 example: John Smith
+ *               dateOfBirth:
+ *                 type: string
+ *                 format: date
+ *                 example: 1980-01-01
+ *               gender:
+ *                 type: string
+ *                 enum: [M, F, other]
+ *               profilePhoto:
+ *                 type: string
+ *                 format: binary
+ *                 description: "Patient profile photo (file upload). NOTE: Uploading a photo is currently disabled - submitting with a photo will throw an error. Leave this field empty."
+ *               emergencyContactName:
+ *                 type: string
+ *                 nullable: true
+ *                 description: Full name of the emergency contact
+ *               emergencyContactNumber:
+ *                 type: string
+ *                 nullable: true
+ *                 description: Phone number of the emergency contact
+ *               nextOfKinName:
+ *                 type: string
+ *                 nullable: true
+ *                 description: Full name of the patient's next of kin
+ *               nextOfKinRelationship:
+ *                 type: string
+ *                 nullable: true
+ *                 enum: [SPOUSE, PARENT, CHILD, SIBLING, GRANDPARENT, GUARDIAN, CARER, FRIEND, OTHER]
+ *                 description: "Relationship of the next of kin to the patient. Only accepted values: SPOUSE, PARENT, CHILD, SIBLING, GRANDPARENT, GUARDIAN, CARER, FRIEND, OTHER"
+ *               medicalSummary:
+ *                 type: string
+ *                 nullable: true
+ *                 description: Brief summary of the patient's overall medical history and status
+ *               allergies:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 nullable: true
+ *                 description: List of known allergies (e.g. penicillin, peanuts)
+ *               conditions:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 nullable: true
+ *                 description: List of diagnosed medical conditions (e.g. Type 2 Diabetes, Hypertension)
+ *               notes:
+ *                 type: string
+ *                 nullable: true
+ *                 description: Free-text clinical or care notes for the patient
+ *     responses:
+ *       201:
+ *         description: Patient added successfully
+ *       400:
+ *         description: Missing required fields or invalid request data
+ *       403:
+ *         description: Approved organization members cannot use independent patient routes
  */
 
 
@@ -155,44 +308,14 @@ exports.getAllPatients = async (req, res) => {
 
     const { search, gender, caretakerId, includeDeleted, sort = '-created_at' } = req.query;
 
-    const me = await User.findById(req.user._id).populate('role', 'name');
-    if (!me) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    const roleName = me.role?.name?.toLowerCase();
-    const filter = {};
-
-    if (!(String(includeDeleted).toLowerCase() === 'true')) {
-      filter.isDeleted = { $ne: true };
-    }
-
-    if (search) {
-      filter.fullname = { $regex: search, $options: 'i' };
-    }
-
-    if (gender) {
-      filter.gender = gender;
-    }
-
-    if (roleName === 'caretaker') {
-      if (me.organization && me.approvalStatus === 'approved') {
-        return res.status(403).json({
-          message: 'Approved organization members cannot view patients through independent patient routes. Use organization-based routes instead.'
-        });
-      }
-
-      filter.caretaker = me._id;
-    } else if (roleName === 'nurse') {
-      if (me.organization && me.approvalStatus === 'approved') {
-        return res.status(403).json({
-          message: 'Approved organization members cannot view patients through independent patient routes. Use organization-based routes instead.'
-        });
-      }
-
-      filter.assignedNurses = me._id;
-    } else if (caretakerId) {
-      filter.caretaker = caretakerId;
+    const { filter, error } = await buildVisiblePatientFilter(req.user._id, {
+      includeDeleted: String(includeDeleted).toLowerCase() === 'true',
+      search,
+      gender,
+      caretakerId
+    });
+    if (error) {
+      return res.status(error.status).json({ message: error.message });
     }
 
     const total = await Patient.countDocuments(filter);
@@ -225,6 +348,169 @@ exports.getAllPatients = async (req, res) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/v1/patients/find-by-name:
+ *   get:
+ *     summary: Find patient IDs by patient name
+ *     description: Returns lightweight patient matches for the provided patient name across all non-deleted patients. Partial matches are supported by default.
+ *     tags: [Patient]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: name
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Full or partial patient name to match, case-insensitively
+ *       - in: query
+ *         name: exact
+ *         schema:
+ *           type: boolean
+ *           example: false
+ *         description: Set to true to require an exact full-name match
+ *     responses:
+ *       200:
+ *         description: Matching patient IDs returned successfully
+ *       401:
+ *         description: Missing, invalid, or expired token
+ *       400:
+ *         description: Missing patient name
+ *       500:
+ *         description: Internal server error while searching for patients
+ */
+exports.findPatientIdsByName = async (req, res) => {
+  try {
+    const name = req.query.name?.trim();
+    if (!name) {
+      return res.status(400).json({ message: 'Missing patient name in query' });
+    }
+
+    const exact = String(req.query.exact).toLowerCase() === 'true';
+    const filter = {
+      isDeleted: { $ne: true },
+      fullname: exact ? buildNameRegex(name, { exact: true }) : buildNameRegex(name)
+    };
+
+    const matches = await Patient.find(filter)
+      .select('_id fullname uuid')
+      .sort({ fullname: 1, created_at: -1 })
+      .lean();
+
+    return res.status(200).json({
+      name,
+      exact,
+      count: matches.length,
+      patients: matches.map((patient) => ({
+        patientId: String(patient._id),
+        fullname: patient.fullname,
+        uuid: patient.uuid
+      }))
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: 'Error finding patient by name',
+      details: error.message
+    });
+  }
+};
+
+/**
+ * @swagger
+ * /api/v1/patients/{patientId}:
+ *   put:
+ *     summary: Update a patient in the independent freelance flow
+ *     description: Updates an existing patient record for an authorized caretaker or assigned nurse within the independent workflow.
+ *     tags: [Patient]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: patientId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Patient ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               fullname: { type: string }
+ *               dateOfBirth:
+ *                 type: string
+ *                 format: date
+ *                 example: '1980-01-01'
+ *               gender:
+ *                 type: string
+ *                 enum: [M, F, other]
+ *                 description: "Only accepted values: M, F, other"
+ *               profilePhoto:
+ *                 type: string
+ *                 format: binary
+ *                 description: "Patient profile photo (file upload). NOTE: Uploading a photo is currently disabled - submitting with a photo will throw an error. Leave this field empty."
+ *               emergencyContactName: { type: string, nullable: true }
+ *               emergencyContactNumber: { type: string, nullable: true }
+ *               nextOfKinName: { type: string, nullable: true, description: "Full name of the patient's next of kin" }
+ *               nextOfKinRelationship:
+ *                 type: string
+ *                 nullable: true
+ *                 enum: [SPOUSE, PARENT, CHILD, SIBLING, GRANDPARENT, GUARDIAN, CARER, FRIEND, OTHER]
+ *                 description: "Only accepted values: SPOUSE, PARENT, CHILD, SIBLING, GRANDPARENT, GUARDIAN, CARER, FRIEND, OTHER"
+ *               medicalSummary: { type: string, nullable: true }
+ *               allergies:
+ *                 type: array
+ *                 items: { type: string }
+ *                 nullable: true
+ *               conditions:
+ *                 type: array
+ *                 items: { type: string }
+ *                 nullable: true
+ *               notes: { type: string, nullable: true }
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               fullname: { type: string }
+ *               dateOfBirth:
+ *                 type: string
+ *                 format: date
+ *                 example: '1980-01-01'
+ *               gender:
+ *                 type: string
+ *                 enum: [M, F, other]
+ *                 description: "Only accepted values: M, F, other"
+ *               emergencyContactName: { type: string, nullable: true }
+ *               emergencyContactNumber: { type: string, nullable: true }
+ *               nextOfKinName: { type: string, nullable: true, description: "Full name of the patient's next of kin" }
+ *               nextOfKinRelationship:
+ *                 type: string
+ *                 nullable: true
+ *                 enum: [SPOUSE, PARENT, CHILD, SIBLING, GRANDPARENT, GUARDIAN, CARER, FRIEND, OTHER]
+ *                 description: "Only accepted values: SPOUSE, PARENT, CHILD, SIBLING, GRANDPARENT, GUARDIAN, CARER, FRIEND, OTHER"
+ *               medicalSummary: { type: string, nullable: true }
+ *               allergies:
+ *                 type: array
+ *                 items: { type: string }
+ *                 nullable: true
+ *               conditions:
+ *                 type: array
+ *                 items: { type: string }
+ *                 nullable: true
+ *               notes: { type: string, nullable: true }
+ *     responses:
+ *       200:
+ *         description: Patient updated successfully
+ *       403:
+ *         description: Approved organization members cannot use independent update routes, or the user is not authorized for this patient
+ *       404:
+ *         description: Patient not found
+ *       500:
+ *         description: Internal server error while updating the patient
+ */
 
 exports.updatePatient = async (req, res) => {
   try {

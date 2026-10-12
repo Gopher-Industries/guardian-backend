@@ -46,6 +46,12 @@ const CorrespondenceSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true
+    },
+
+    status: {
+      type: String,
+      enum: ['pending', 'confirmed', 'rejected'],
+      required: false
     }
   },
   {

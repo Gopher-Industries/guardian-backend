@@ -219,6 +219,8 @@ exports.updateRoster = async (req, res) => {
       date,
       startTime,
       endTime,
+      clockOnTime,
+      clockOffTime,  
       assignedStaffId
     } = req.body;
 
@@ -251,6 +253,8 @@ exports.updateRoster = async (req, res) => {
     if (date !== undefined) roster.date = date;
     if (startTime !== undefined) roster.startTime = startTime;
     if (endTime !== undefined) roster.endTime = endTime;
+    if (clockOnTime !== undefined) roster.clockOnTime = clockOnTime;
+    if (clockOffTime !== undefined) roster.clockOffTime = clockOffTime;
 
     await roster.save();
     await roster.populate(staffPopulation);

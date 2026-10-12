@@ -53,6 +53,14 @@ const Location = require('../models/Location');
  *               equipment:
  *                 type: string
  *                 example: Wheelchairs, ECG Machine, Oxygen Tanks
+ *               subClinics:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example:
+ *                   - Cardiology
+ *                   - Neurology
+ *                   - Orthopedics
  *               facilities:
  *                 type: string
  *                 example: Pharmacy, Physiotherapy, Emergency Room
@@ -83,6 +91,7 @@ exports.createLocation = async (req, res) => {
       patientCapacity,
       currentOccupancy,
       equipment,
+      subClinics,
       facilities,
       status
     } = req.body;
@@ -109,6 +118,7 @@ exports.createLocation = async (req, res) => {
       patientCapacity,
       currentOccupancy,
       equipment,
+      subClinics,
       facilities,
       status
     });
@@ -264,6 +274,14 @@ exports.getLocationById = async (req, res) => {
  *                 type: integer
  *               equipment:
  *                 type: string
+ *               subClinics:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example:
+ *                   - Cardiology
+ *                   - Neurology
+ *                   - Orthopedics
  *               facilities:
  *                 type: string
  *               status:

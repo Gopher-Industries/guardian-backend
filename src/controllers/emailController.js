@@ -35,6 +35,46 @@ function fail(res, error) {
   });
 }
 
+/**
+ * Supports both the original JSON body (`data: { ... }`) and Swagger's
+ * field-based form, where template data arrives as top-level fields.
+ */
+function getSendTemplateData(body = {}) {
+  const { template, provider, dryRun, data, ...formFields } = body;
+  let nestedData = data;
+
+  const templateDefinition = listTemplates().find(item => item.key === template);
+  const allowedFields = templateDefinition && new Set(
+    templateDefinition.fields.map(field => field.name)
+  );
+  const filteredFormFields = allowedFields
+    ? Object.fromEntries(
+      Object.entries(formFields).filter(([name]) => allowedFields.has(name))
+    )
+    : formFields;
+
+  if (typeof nestedData === 'string' && nestedData.trim()) {
+    try {
+      nestedData = JSON.parse(nestedData);
+    } catch (error) {
+      const invalidData = new Error('The data field must contain valid JSON.');
+      invalidData.statusCode = 400;
+      throw invalidData;
+    }
+  }
+
+  if (!nestedData || typeof nestedData !== 'object' || Array.isArray(nestedData)) {
+    nestedData = {};
+  }
+
+  return {
+    template,
+    provider,
+    dryRun,
+    data: { ...filteredFormFields, ...nestedData }
+  };
+}
+
 /** GET /api/v1/email/config */
 function getConfig(req, res) {
   res.json(describeEmailConfig(getEmailConfig()));
@@ -125,7 +165,7 @@ async function sendOption(req, res) {
  */
 async function send(req, res) {
   try {
-    const { template, data = {}, provider, dryRun } = req.body || {};
+    const { template, data, provider, dryRun } = getSendTemplateData(req.body || {});
 
     if (!template) {
       return res.status(400).json({ message: 'A template key is required.' });

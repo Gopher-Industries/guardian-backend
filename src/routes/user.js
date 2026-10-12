@@ -23,12 +23,24 @@ const { registerSchema, loginSchema, validationMiddleware } = require('../middle
  *           schema:
  *             $ref: '#/components/schemas/RegisterRequest'
  *           example:
- *             name: "John Doe"
+ *             fullname: "John Doe"
  *             email: "john.doe@guardianmonitor.com"
  *             password: "SecurePass@123"
  *             role: "nurse"
  *             phone: "+61412345678"
  *             organizationId: "664f1c2e8b1a2c3d4e5f6a7b"
+ *             title: "Mr"
+ *             surname: "Doe"
+ *             firstName: "John"
+ *             dateOfBirth: "1995-05-10"
+ *             primaryContactNumber: "+61412345678"
+ *             medicareProviderNumber: "MED12345"
+ *             taxFileNumber: "123456789"
+ *             superannuationFundName: "AustralianSuper"
+ *             superMemberNumber: "SUP123456"
+ *             bankAccountName: "John Doe"
+ *             accountNumber: "12345678"
+ *             bsb: "063000"
  *     responses:
  *       201:
  *         description: User registered successfully
@@ -461,7 +473,7 @@ router.post('/reset-password', userController.resetPassword);
 router.get('/search-user', verifyToken, userController.searchUser);
 router.get('/', verifyToken, async (req, res) => {
   try {
-    const users = await User.find().select('-password_hash');
+    const users = await User.find().select('-password_hash -taxFileNumber -superannuationFundName -superMemberNumber -bankAccountName -accountNumber -bsb');
     res.status(200).json(users);
   } catch (error) {
     res.status(400).json({ error: error.message });

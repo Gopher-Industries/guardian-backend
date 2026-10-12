@@ -9,6 +9,7 @@
 
 const express = require('express');
 const rateLimit = require('express-rate-limit');
+const multer = require('multer');
 
 const emailController = require('../controllers/emailController');
 const verifyToken = require('../middleware/verifyToken');
@@ -16,6 +17,7 @@ const verifyRole = require('../middleware/verifyRole');
 const { getEmailConfig } = require('../config/emailConfig');
 
 const router = express.Router();
+const parseEmailForm = multer().none();
 
 // Sending is more tightly limited than reading.
 const sendLimiter = rateLimit({
@@ -242,7 +244,7 @@ router.post('/send-option', sendLimiter, adminOnly, emailController.sendOption);
  *       502:
  *         description: Provider rejected the message
  */
-router.post('/send', sendLimiter, adminOnly, emailController.send);
+router.post('/send', sendLimiter, adminOnly, parseEmailForm, emailController.send);
 
 /**
  * @swagger
