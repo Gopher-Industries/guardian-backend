@@ -44,36 +44,55 @@ exports.registerUser = async (req, res) => {
     const { fullname, email, password, role } = req.body;
 
     if (!fullname || !email || !password) {
-      return res.status(400).json({ error: 'All fields (fullname, email, password) are required' });
+      return res.status(400).json({
+        error: 'All fields (fullname, email, password) are required'
+      });
     }
 
     var userRole;
+
+    var userRole;
+
     if (role) {
       userRole = await Role.findOne({ name: role.toLowerCase() });
+
       if (!userRole) {
-        return res.status(400).json({ error: role + ' is an invalid role' });
+        return res.status(400).json({
+          error: role + ' is an invalid role'
+        });
       }
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
     if (!emailRegex.test(email)) {
-      return res.status(400).json({ error: 'Invalid email format.' });
+      return res.status(400).json({
+        error: 'Invalid email format.'
+      });
     }
 
-    // Check if the password is at least 6 characters long
     if (password.length < 6) {
-      return res.status(400).json({ error: 'Password must be at least 6 characters long.' });
+      return res.status(400).json({
+        error: 'Password must be at least 6 characters long.'
+      });
     }
 
     const existingUser = await User.findOne({ email });
+
     if (existingUser) {
-      return res.status(400).json({ error: 'User already exists with this email' });
+      return res.status(400).json({
+        error: 'User already exists with this email'
+      });
     }
 
     const newUser = new User({
       fullname: fullname,
       email: email,
-      password_hash: password
+      password_hash: password,
+
+      approvalStatus: 'pending',
+      approvedBy: null,
+      approvedAt: null
     });
 
     if (userRole) {
@@ -98,11 +117,69 @@ exports.registerUser = async (req, res) => {
       userResponse.role = userRole.name;
     }
 
-    res.status(201).json({ message: 'User registered successfully', user: userResponse, token });
-  } catch (error) {
+    res.status(201).json({
+      message: 'User registered successfully',
+      user: userResponse,
+      token
+    });
+      } catch (error) {
     res.status(400).json({ error: error.message });
   }
 };
+
+exports.approveUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        error: 'User not found'
+      });
+    }
+
+    if (user.approvalStatus !== 'pending') {
+      return res.status(400).json({
+        error: 'User is already approved or is not pending'
+      });
+    }
+
+   const approver = await User.findOne({ email: req.user.email });
+
+if (!approver) {
+  return res.status(401).json({
+    error: 'Logged-in user not found'
+  });
+}
+
+user.approvalStatus = 'approved';
+user.approvedBy = approver._id;
+user.approvedAt = new Date();
+
+    await user.save();
+
+    return res.status(200).json({
+      message: 'User approved successfully',
+      user: {
+        id: user._id,
+        fullname: user.fullname,
+        email: user.email,
+        approvalStatus: user.approvalStatus,
+        approvedBy: user.approvedBy,
+        approvedAt: user.approvedAt
+      }
+    });
+
+  } catch (error) {
+    console.error('Error approving user:', error);
+
+    return res.status(500).json({
+      error: error.message
+    });
+  }
+};
+ 
 
 
 /**
