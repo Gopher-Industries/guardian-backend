@@ -8,7 +8,6 @@ const HealthRecord = require('../models/HealthRecord');
 const Task = require('../models/Task');
 const CarePlan = require('../models/CarePlan');
 const PatientLog = require('../models/PatientLog');
-const User = require('../models/User');
 const EntryReport = require('../models/EntryReport');
 
 const {
