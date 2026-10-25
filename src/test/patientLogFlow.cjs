@@ -43,7 +43,9 @@ describe('Patient logs as patient notes', function () {
     delete require.cache[require.resolve('../config/db')];
 
     app = require('../server');
-    await mongoose.connection.asPromise();
+    // Wait for db.js to finish connecting AND seeding, so teardown can't close
+    // the connection while a seeder is still writing.
+    await require('../config/db').dbReady;
 
     Role = require('../models/Role');
     User = require('../models/User');
@@ -72,6 +74,8 @@ describe('Patient logs as patient notes', function () {
       gender: 'M',
       dateOfBirth: new Date('1955-09-10'),
       caretaker: caretaker._id,
+      // GET /patient-logs/:patientId only allows nurses assigned to the patient
+      assignedNurses: [nurse._id],
     });
 
     nurseToken = jwt.sign(
@@ -111,14 +115,14 @@ describe('Patient logs as patient notes', function () {
       });
 
     expect(createResponse).to.have.status(201);
-    expect(createResponse.body.message).to.equal('Patient note created successfully');
+    expect(createResponse.body.message).to.equal('Log created successfully');
     expect(createResponse.body.log).to.include({
       title: 'Hydration follow-up',
       observations: 'Patient finished two glasses of water after medication round.',
       location: 'care_facility',
       address: '12 King Street',
     });
-    expect(createResponse.body.log.author.fullname).to.equal('Patient Note Nurse');
+    expect(createResponse.body.log.createdBy.fullname).to.equal('Patient Note Nurse');
 
     const fetchResponse = await chai
       .request(app)
@@ -126,13 +130,14 @@ describe('Patient logs as patient notes', function () {
       .set('Authorization', `Bearer ${nurseToken}`);
 
     expect(fetchResponse).to.have.status(200);
-    expect(fetchResponse.body).to.have.lengthOf(1);
-    expect(fetchResponse.body[0]).to.include({
+    expect(fetchResponse.body.total).to.equal(1);
+    expect(fetchResponse.body.data).to.have.lengthOf(1);
+    expect(fetchResponse.body.data[0]).to.include({
       title: 'Hydration follow-up',
       observations: 'Patient finished two glasses of water after medication round.',
       location: 'care_facility',
     });
-    expect(fetchResponse.body[0].author.fullname).to.equal('Patient Note Nurse');
+    expect(fetchResponse.body.data[0].createdBy.fullname).to.equal('Patient Note Nurse');
 
     const storedLogs = await PatientLog.countDocuments({ patient: patient._id });
     expect(storedLogs).to.equal(1);

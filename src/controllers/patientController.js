@@ -1,5 +1,6 @@
 const Patient = require('../models/Patient');
 const User = require('../models/User');
+const EntryReport = require('../models/EntryReport');
 const notifyRules = require('../services/notifyRules');
 const Role = require('../models/Role');
 const { parseStringArray } = require('../utils/arrayUtils');

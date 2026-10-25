@@ -40,7 +40,9 @@ describe('Daily operational PDF report', function () {
     delete require.cache[require.resolve('../server')];
     delete require.cache[require.resolve('../config/db')];
     app = require('../server');
-    await mongoose.connection.asPromise();
+    // Wait for db.js to finish connecting AND seeding, so teardown can't close
+    // the connection while a seeder is still writing.
+    await require('../config/db').dbReady;
 
     const Role = require('../models/Role');
     User = require('../models/User');
@@ -50,6 +52,10 @@ describe('Daily operational PDF report', function () {
     DailyOperationalReport = require('../models/DailyOperationalReport');
     const adminRole = await waitForRole(Role, 'admin');
     const caretakerRole = await waitForRole(Role, 'caretaker');
+
+    // urgentTasks counts every open high-priority task, so remove the tasks the
+    // boot-time seeders created and assert only against this test's data.
+    await Task.deleteMany({});
 
     admin = await User.create({
       fullname: 'Daily Report Admin', email: 'daily-report-admin@example.com',

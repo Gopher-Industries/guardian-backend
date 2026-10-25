@@ -1,0 +1,17 @@
+
+
+  Daily operational PDF report
+MongoDB connected successfully
+Role 'admin' added to the database.
+Role 'nurse' added to the database.
+Role 'caretaker' added to the database.
+Role 'doctor' added to the database.
+🌱 Seeding initial records...
+✅ Seed data inserted successfully
+🌱 Seeding staff tasks and patient logs...
+✅ Staff seed complete — tasks and logs created for jane, mike, alice, bob.
+    √ uses database metrics, generates a PDF, and signs it with the authenticated user (164ms)
+🌱 Created seed doctor user.
+Seeding doctor patients, prescriptions, tasks and logs...
+Error seeding doctor data: connection 1 to 127.0.0.1:51402 closed
+MongoDB connection error: connection 1 to 127.0.0.1:51402 closed

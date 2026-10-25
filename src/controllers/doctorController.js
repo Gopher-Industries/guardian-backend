@@ -12,6 +12,18 @@ const asInt = (v, d) => {
   return Number.isFinite(n) && n > 0 ? n : d;
 };
 
+// Age from date of birth (Patient.age is a virtual, which .lean() skips)
+const calcAge = (dob) => {
+  if (!dob) return null;
+  const d = new Date(dob);
+  if (Number.isNaN(d.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - d.getFullYear();
+  const m = today.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < d.getDate())) age--;
+  return age;
+};
+
 // Cache Role IDs for speed
 const roleCache = {};
 async function getRoleIdByName(name) {
@@ -98,6 +110,10 @@ exports.assignDoctorToPatient = async (req, res) => {
     const { patientId } = req.params;
     const { doctorId } = req.body;
 
+    if (!mongoose.Types.ObjectId.isValid(patientId)) {
+      return res.status(400).json({ error: 'Invalid patientId' });
+    }
+
     const patient = await Patient.findById(patientId);
     if (!patient) return res.status(404).json({ error: 'Patient not found' });
 
@@ -155,12 +171,17 @@ exports.getProfile = async (req, res) => {
       .select('-password_hash -__v')
       .populate('role', 'name')
       .populate('organization', 'name')
-      .populate('assignedPatients', 'fullname age gender')
+      .populate('assignedPatients', 'fullname gender dateOfBirth')
       .lean();
 
     if (!user) {
       return res.status(404).json({ error: 'Doctor not found' });
     }
+
+    user.assignedPatients = (user.assignedPatients || []).map((p) => ({
+      ...p,
+      age: calcAge(p.dateOfBirth),
+    }));
 
     const profile = await Doctor.findOne({ user: doctorId }).select('-__v -user').lean();
 
@@ -301,8 +322,15 @@ exports.updateProfile = async (req, res) => {
     }
 
     const userUpdates = {};
-    if (fullname) userUpdates.fullname = fullname.trim();
-    if (email) {
+    if (fullname !== undefined && typeof fullname !== 'string') {
+      return res.status(400).json({ error: 'fullname must be a string' });
+    }
+    if (email !== undefined && typeof email !== 'string') {
+      return res.status(400).json({ error: 'email must be a string' });
+    }
+
+    if (fullname && fullname.trim()) userUpdates.fullname = fullname.trim();
+    if (email && email.trim()) {
       const normalized = email.toLowerCase().trim();
       const conflict = await User.findOne({ email: normalized, _id: { $ne: doctorId } }).select('_id').lean();
       if (conflict) {
@@ -543,11 +571,10 @@ exports.listPatientsByDoctor = async (req, res) => {
   
       return res.status(200).json({
         doctor: { _id: doctor._id, fullname: doctor.fullname },
-        patients: items,
+        patients: items.map((p) => ({ ...p, age: calcAge(p.dateOfBirth) })),
         pagination: { page, limit, total, pages: Math.ceil(total / limit) }
       });
     } catch (err) {
       return res.status(500).json({ error: 'Error fetching doctor patients', details: err.message });
     }
   };
-  
