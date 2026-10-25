@@ -14,20 +14,21 @@ const s3 = new S3Client({
 });
 const BUCKET = process.env.R2_BUCKET;
 
-async function getSignedUploadUrl(objectKey, contentType, expiresInSeconds = 3600) {
+async function getSignedUploadUrl(objectKey, expiresInSeconds = 3600) {
   const command = new PutObjectCommand({
     Bucket: BUCKET,
     Key: objectKey,
-    ContentType: contentType,
+    ContentType: 'application/pdf'
   });
   return getSignedUrl(s3, command, { expiresIn: expiresInSeconds });
 }
 
-async function getSignedDownloadUrl(objectKey, expiresInSeconds = 3600, filename) {
+async function getSignedDownloadUrl(objectKey, expiresInSeconds = 3600) {
   const command = new GetObjectCommand({
     Bucket: BUCKET,
     Key: objectKey,
-    ResponseContentDisposition: `attachment; filename="${filename}"`, // forces real download, not inline view
+    ContentType: 'application/pdf',
+    ResponseContentDisposition: `attachment; filename="${objectKey.split('/').pop()}"`, // forces real download, not inline view
   });
   return getSignedUrl(s3, command, { expiresIn: expiresInSeconds });
 }
@@ -52,5 +53,6 @@ async function uploadGeneratedPdf(pdfBytes, objectKey) {
   }));
   return objectKey;
 }
+
 
 module.exports = { getSignedUploadUrl, getSignedDownloadUrl, getList, uploadGeneratedPdf };

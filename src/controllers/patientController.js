@@ -106,8 +106,6 @@ async function buildVisiblePatientFilter(userId, options = {}) {
  * tags:
  *   - name: Patient
  *     description: Endpoints for independent patient management
- *   - name: EntryReport
- *     description: Endpoints for patient activity and entry reporting
  */
 
 /**
