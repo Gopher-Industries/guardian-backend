@@ -6,11 +6,15 @@ const TaskSchema = new mongoose.Schema({
   dueDate: { type: Date, required: true },
   priority: { type: String, enum: ['low', 'medium', 'high'], default: 'medium' },
   status: { type: String, enum: ['pending', 'in progress', 'completed'], default: 'pending' },
-  patient: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient', required: true },
+  patient: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient', default: null },
   assignee: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  relatedStaff: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  objectives: [{ type: String, trim: true }],
+  deliverables: [{ type: String, trim: true }],
+  setBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, immutable: true },
   caretaker: { type: mongoose.Schema.Types.ObjectId, ref: 'User', select: false },
   nurse_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', select: false },
-  created_at: { type: Date, default: Date.now },
+  created_at: { type: Date, default: Date.now, immutable: true },
   report: { type: String },
   updated_at: { type: Date, default: Date.now }
 });
@@ -40,6 +44,7 @@ TaskSchema.pre('findOneAndUpdate', function (next) {
 TaskSchema.index({ assignee: 1, dueDate: 1 });
 TaskSchema.index({ assignee: 1, priority: 1 });
 TaskSchema.index({ assignee: 1, status: 1 });
+TaskSchema.index({ relatedStaff: 1, status: 1 });
 TaskSchema.index({ patient: 1 });
 TaskSchema.index({ caretaker: 1, dueDate: 1 });
 TaskSchema.index({ caretaker: 1, priority: 1 });

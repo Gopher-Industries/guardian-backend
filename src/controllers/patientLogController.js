@@ -3,7 +3,9 @@ const mongoose = require('mongoose');
 const PatientLog = require('../models/PatientLog');
 const Patient = require('../models/Patient');
 const User = require('../models/User');
+
 const getUserId = (req) => req.user?._id || req.user?.id;
+
 const getRoleName = async (req) => {
   if (req.user?.role?.name) {
     return req.user.role.name;
@@ -18,9 +20,10 @@ const getRoleName = async (req) => {
     .lean();
   return user?.role?.name || user?.role;
 };
-const isSameId = (a, b) => { return a && b && a.toString() === b.toString();};
 
-const canModifyLog = async (log, req) => { 
+const isSameId = (a, b) => a && b && a.toString() === b.toString();
+
+const canModifyLog = async (log, req) => {
   const userId = getUserId(req);
   const roleName = await getRoleName(req);
   return isSameId(log.createdBy, userId) || roleName === 'admin';
@@ -53,27 +56,106 @@ const canAccessPatientLogs = async (patientId, req) => {
   return false;
 };
 
+function normalizeActionsRequired(value) {
+  if (Array.isArray(value)) return value;
+  if (value == null || value === '') return [];
 
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [parsed];
+    } catch (_error) {
+      return [value];
+    }
+  }
+
+  return [value];
+}
+
+/**
+ * @swagger
+ * /api/v1/patient-logs:
+ *   post:
+ *     summary: Create a patient log entry
+ *     description: Allows medical staff to record a patient log entry.
+ *     tags: [Patient Logs]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - patient
+ *               - title
+ *               - observations
+ *             properties:
+ *               patient:
+ *                 type: string
+ *                 example: 688de2621911784a80507314
+ *               location:
+ *                 type: string
+ *                 enum: [home, hospital, clinic, care_facility, telehealth, other]
+ *                 example: care_facility
+ *               address:
+ *                 type: string
+ *                 example: 12 King Street, Melbourne VIC
+ *               title:
+ *                 type: string
+ *                 example: Mobility follow-up
+ *               observations:
+ *                 type: string
+ *                 example: Patient reported improved balance during morning walk.
+ *               actionsRequired:
+ *                 oneOf:
+ *                   - type: array
+ *                     items: { type: string }
+ *                   - type: object
+ *                 example: ["Review gait tomorrow", "Update physio plan"]
+ *               recordedAt:
+ *                 type: string
+ *                 format: date-time
+ *                 example: 2026-08-23T09:30:00Z
+ *     responses:
+ *       201:
+ *         description: Log created successfully
+ *       400:
+ *         description: Missing required fields
+ *       401:
+ *         description: Unauthorized or missing token
+ *       500:
+ *         description: Internal server error
+ */
 exports.createLog = async (req, res) => {
   try {
-    const { title, description, patient } = req.body;
+    const { patient, location, address, title, observations, actionsRequired, recordedAt } = req.body;
 
-    if (!title || !description || !patient) {
+    if (!title || !observations || !patient) {
       return res.status(400).json({
-        error: 'Title, description, and patient ID are required.'
+        error: 'Title, observations, and patient ID are required.'
       });
     }
 
     const newLog = await PatientLog.create({
-      title,
-      description,
       patient,
-      createdBy: req.user._id
+      location,
+      address,
+      title,
+      observations,
+      actionsRequired: normalizeActionsRequired(actionsRequired),
+      recordedAt: recordedAt || new Date(),
+      createdBy: getUserId(req)
     });
+
+    const populated = await PatientLog.findById(newLog._id)
+      .populate('createdBy', 'fullname email role')
+      .populate('patient', 'fullname');
 
     res.status(201).json({
       message: 'Log created successfully',
-      log: newLog
+      log: populated
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -151,7 +233,7 @@ exports.createLog = async (req, res) => {
  *                         type: string
  *                       title:
  *                         type: string
- *                       description:
+ *                       observations:
  *                         type: string
  *                       patient:
  *                         type: string
@@ -172,16 +254,16 @@ exports.getLogsByPatient = async (req, res) => {
 
     if (!mongoose.isValidObjectId(patientId)) {
       return res.status(400).json({
-      error: 'Invalid patient ID.'
+        error: 'Invalid patient ID.'
       });
     }
 
     const hasAccess = await canAccessPatientLogs(patientId, req);
 
     if (!hasAccess) {
-        return res.status(403).json({
+      return res.status(403).json({
         error: 'Permission denied. You do not have access to this patient logs.'
-        });
+      });
     }
 
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
@@ -195,7 +277,7 @@ exports.getLogsByPatient = async (req, res) => {
 
     const [logs, total] = await Promise.all([
       PatientLog.find({ patient: patientId })
-        .populate('createdBy', 'fullname role')
+        .populate('createdBy', 'fullname email role')
         .sort(sort)
         .skip(skip)
         .limit(limit),
@@ -241,14 +323,14 @@ exports.getLogsByPatient = async (req, res) => {
  *               title:
  *                 type: string
  *                 example: Updated patient mood update
- *               description:
+ *               observations:
  *                 type: string
  *                 example: Patient was calm and responsive after breakfast.
  *     responses:
  *       200:
  *         description: Log updated successfully
  *       400:
- *         description: At least title or description is required
+ *         description: At least title or observations is required
  *       401:
  *         description: Unauthorized or missing token
  *       403:
@@ -261,16 +343,17 @@ exports.getLogsByPatient = async (req, res) => {
 exports.updateLog = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description } = req.body;
+    const { title, observations } = req.body;
+
     if (!mongoose.isValidObjectId(id)) {
       return res.status(400).json({
-      error: 'Invalid log ID.'
+        error: 'Invalid log ID.'
       });
     }
 
-    if (!title && !description) {
+    if (!title && !observations) {
       return res.status(400).json({
-        error: 'At least title or description is required.'
+        error: 'At least title or observations is required.'
       });
     }
 
@@ -284,12 +367,12 @@ exports.updateLog = async (req, res) => {
 
     if (!(await canModifyLog(log, req))) {
       return res.status(403).json({
-      error: 'Permission denied. Only the creator or admin can update this log.'
+        error: 'Permission denied. Only the creator or admin can update this log.'
       });
     }
 
     if (title) log.title = title;
-    if (description) log.description = description;
+    if (observations) log.observations = observations;
 
     log.updatedBy = getUserId(req);
     log.updatedAt = new Date();
@@ -325,6 +408,8 @@ exports.updateLog = async (req, res) => {
  *     responses:
  *       200:
  *         description: Log deleted successfully
+ *       400:
+ *         description: Invalid log ID
  *       401:
  *         description: Unauthorized or missing token
  *       403:
@@ -337,9 +422,10 @@ exports.updateLog = async (req, res) => {
 exports.deleteLog = async (req, res) => {
   try {
     const { id } = req.params;
+
     if (!mongoose.isValidObjectId(id)) {
       return res.status(400).json({
-      error: 'Invalid log ID.'
+        error: 'Invalid log ID.'
       });
     }
 

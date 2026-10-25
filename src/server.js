@@ -1,8 +1,11 @@
 require('dotenv').config();
 
+
+const jwt = require('jsonwebtoken');
 const express = require('express');
 const path = require('path');
 const database = require('./config/db');
+const { startScheduler } = require('./scheduler');
 const multer = require('multer');
 const http = require('http');
 const socketIO = require('socket.io');
@@ -10,6 +13,7 @@ const cors = require('cors');
 
 const swaggerUi = require('swagger-ui-express');
 const { setEmit } = require('../socket');
+const { setMessageEmit } = require('../messageSocket');
 
 const app = express();
 
@@ -50,6 +54,7 @@ const storage = process.env.VERCEL
 exports.upload = multer({ storage });
 
 app.use('/uploads', express.static('uploads'));
+app.use('/swagger-assets', express.static(path.join(__dirname, 'public')));
 
 const blockScriptRequests = (req, res, next) => {
   const userAgent = req.headers['user-agent'] || '';
@@ -122,6 +127,9 @@ const rateLimit = require('express-rate-limit');
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
+
+  skip: (req) => req.originalUrl.startsWith('/api/v1/messages'),
+
   message: {
     error: 'Too many requests from this IP, please try again after 15 minutes.',
   },
@@ -161,7 +169,24 @@ const carePlanRoutes = require('./routes/carePlanRoutes');
 const resourceRoutes = require('./routes/resourceRoutes');
 const testRoutes = require('./routes/testRoutes');
 const backendBridgeRoutes = require('./routes/backendBridgeRoutes');
+const medicalRecordRoutes = require('./routes/medicalRecordRoutes');
+const vitalRoutes = require('./routes/vitalRoutes');
+const meds2Routes = require('./routes/meds2Routes');
+const managementPlanRoutes = require('./routes/managementPlanRoutes');
+const billingRoutes = require('./routes/billingRoutes');
+const appointmentReminderRoutes = require('./routes/appointmentReminderRoutes');
+const referralRoutes = require('./routes/referralRoutes');
+const rosterRoutes = require('./routes/rosterRoutes');
+const clinicRoutes = require('./routes/clinicRoutes');
+const roomRoutes = require('./routes/roomRoutes');
+const doctorLetterRoutes = require('./routes/doctorLetterRoutes');
+const locationRoutes = require('./routes/location');
+const correspondenceRoutes = require('./routes/correspondence');
 const emailRoutes = require('./routes/emailRoutes');
+
+const messageRoutes = require('./routes/messageRoutes');
+const blobStoreRoutes = require('./routes/blobStoreRoutes'); 
+const { startShiftReminderScheduler } = require('./services/shiftReminderScheduler');
 
 app.use('/api/v1/auth', userRoutes);
 app.use('/api/v1/caretaker', caretakerRoutes);
@@ -184,7 +209,28 @@ app.use('/api/v1/care-plans', carePlanRoutes);
 app.use('/api/v1/resources', resourceRoutes);
 app.use('/api/v1/test', testRoutes);
 app.use('/api/v1/backend-bridge', backendBridgeRoutes);
+app.use('/api/v1/medical-records', medicalRecordRoutes);
+app.use('/api/v1/vitals', vitalRoutes);
+
+
+ 
+app.use('/api/v1/add-medication', meds2Routes);
+app.use('/api/v1/management-plans', managementPlanRoutes);
+app.use('/api/v1/billing', billingRoutes);
+app.use('/api/v1/appointment-reminders', appointmentReminderRoutes);
+app.use('/api/v1/referral', referralRoutes);
+app.use('/api/v1/rosters', rosterRoutes);
+app.use('/api/v1/clinics', clinicRoutes);
+app.use('/api/v1/rooms', roomRoutes);
+app.use('/api/v1/doctor-letters', doctorLetterRoutes);
+app.use('/api/v1/locations', locationRoutes);
+app.use('/api/v1/correspondence', correspondenceRoutes);
 app.use('/api/v1/email', emailRoutes);
+
+
+
+app.use('/api/v1/messages', messageRoutes);
+app.use('/api/v1/blob_store', blobStoreRoutes);
 
 app.use(
   '/swaggerDocs',
@@ -195,7 +241,8 @@ app.use(
       'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.1/swagger-ui.min.css',
     customJs: [
       'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.1/swagger-ui-bundle.min.js',
-      'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.1/swagger-ui-standalone-preset.min.js'
+      'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.1/swagger-ui-standalone-preset.min.js',
+      '/swagger-assets/swaggerEmailForm.js'
     ]
   })
 );
@@ -284,6 +331,7 @@ app.get('/', (req, res) => {
 });
 
 const server = http.createServer(app);
+
 const io = socketIO(server, {
   cors: {
     origin: '*',
@@ -292,37 +340,135 @@ const io = socketIO(server, {
 });
 
 const connectedUsers = Object.create(null);
+const messagingUsers = Object.create(null);
 
 io.on('connection', socket => {
+
+  // Existing socket registration stays unchanged
   socket.on('register', userId => {
     if (!userId) return;
-    connectedUsers[String(userId)] = socket.id;
+
+    connectedUsers[String(userId)] =
+      socket.id;
   });
 
+  // Messaging registration uses JWT
+  socket.on('registerMessaging', token => {
+    if (!token) return;
+
+    try {
+      const rawToken =
+        String(token).startsWith('Bearer ')
+          ? String(token).slice(7)
+          : String(token);
+
+      const verified = jwt.verify(
+        rawToken,
+        process.env.JWT_SECRET,
+        {
+          algorithms: ['HS256']
+        }
+      );
+
+      if (!verified || !verified._id) {
+        return;
+      }
+
+      const userId =
+        String(verified._id);
+
+      messagingUsers[userId] =
+        socket.id;
+
+      socket.messagingUserId =
+        userId;
+
+    } catch (error) {
+      socket.emit(
+        'messagingAuthError',
+        {
+          message:
+            'Invalid or expired token.'
+        }
+      );
+    }
+  });
+
+
   socket.on('disconnect', () => {
-    for (const [uid, sid] of Object.entries(connectedUsers)) {
+
+    // Existing socket cleanup
+    for (
+      const [uid, sid]
+      of Object.entries(connectedUsers)
+    ) {
       if (sid === socket.id) {
         delete connectedUsers[uid];
         break;
       }
     }
+
+    // Messaging cleanup
+    if (
+      socket.messagingUserId &&
+      messagingUsers[
+        socket.messagingUserId
+      ] === socket.id
+    ) {
+      delete messagingUsers[
+        socket.messagingUserId
+      ];
+    }
   });
 });
 
-function emitToUser(userId, event, payload) {
-  const sid = connectedUsers[String(userId)];
+function emitToUser(
+  userId,
+  event,
+  payload
+) {
+  const sid =
+    connectedUsers[
+      String(userId)
+    ];
+
   if (sid) {
-    io.to(sid).emit(event, payload);
+    io.to(sid).emit(
+      event,
+      payload
+    );
+  }
+}
+
+function emitMessageToUser(
+  userId,
+  event,
+  payload
+) {
+  const sid =
+    messagingUsers[
+      String(userId)
+    ];
+
+  if (sid) {
+    io.to(sid).emit(
+      event,
+      payload
+    );
   }
 }
 
 setEmit(emitToUser);
+setMessageEmit(emitMessageToUser);
 
 const PORT = process.env.PORT || 3000;
 
 if (process.env.NODE_ENV !== 'test') {
+  startScheduler();
+
   server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+    startShiftReminderScheduler();
   });
 }
 
