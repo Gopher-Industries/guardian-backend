@@ -2,8 +2,10 @@ services:
   app:
     container_name: guardian-backend
     build: .
+    command: ["sh", "-lc", "exec node src/server.js"]
     env_file:
       - .env
+  
     environment:
       - TASK_EMAIL_QUEUE_ENABLED=true
       - REDIS_HOST=redis

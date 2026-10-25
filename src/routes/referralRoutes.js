@@ -1,154 +1,19 @@
 const express = require('express');
 const router = express.Router();
-const referralController = require('../controllers/referralController');
 
-/** 
- * @openapi
- * /api/v1/blob_store/upload-url:
- *   post:
- *     tags:
- *       - BLOB STORE
- *     summary: Get a presigned upload URL for a document.
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - patientId
- *               - fileName
- *               - documentType
- *             properties:
- *               patientId:
- *                 type: string
- *                 example: "6a3f8ea9c14556091e6e0e50"
- *               fileName:
- *                 type: string
- *                 example: "referral.pdf"
- *               documentType:
- *                 type: string
- *                 enum: [referrals, letters, specialist-reports]
- *                 example: "referrals"
- *     responses:
- *       200:
- *         description: Presigned upload URL generated.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 objectKey:
- *                   type: string
- *                 url:
- *                   type: string
- */
-router.post('/upload-url', referralController.HandleFileUploadUrl);
-
-
-/** 
- * @openapi
- * /api/v1/blob_store/download-url:
- *   get:
- *     tags:
- *       - BLOB STORE
- *     summary: Get a presigned download URL for a document.
- *     parameters:
- *       - in: query
- *         name: patientId
- *         required: true
- *         schema:
- *           type: string
- *         example: "6a3f8ea9c14556091e6e0e50"
- *       - in: query
- *         name: fileName
- *         required: true
- *         schema:
- *           type: string
- *         example: "referral.pdf"
- *       - in: query
- *         name: documentType
- *         required: true
- *         schema:
- *           type: string
- *           enum: [referrals, letters, specialist-reports]
- *         example: "referrals"
- *       - in: query
- *         name: contentType
- *         required: false
- *         schema:
- *           type: string
- *         example: "application/pdf"
- *     responses:
- *       200:
- *         description: Presigned download URL generated.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 objectKey:
- *                   type: string
- *                 url:
- *                   type: string
- *       404:
- *         description: Referral file not found.
- *       500:
- *         description: File download failed.
- */
-router.get('/download-url', referralController.HandleFileDownload);
+const {
+  generateReferralPdf
+} = require('../controllers/referralController');
 
 /**
  * @openapi
- * /api/v1/blob_store/list:
- *   get:
- *     tags:
- *       - BLOB STORE
- *     summary: List stored documents.
- *     description: >
- *       Lists documents in R2 storage. If patientId is provided, results are
- *       scoped to that patient's folder; otherwise all objects are returned.
- *     parameters:
- *       - in: query
- *         name: patientId
- *         required: false
- *         schema:
- *           type: string
- *         example: "6a3f8ea9c14556091e6e0e50"
- *     responses:
- *       200:
- *         description: List of matching objects.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 Result:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       key:
- *                         type: string
- *                       size:
- *                         type: number
- *                       lastModified:
- *                         type: string
- *                         format: date-time
- *       404:
- *         description: Not a valid patient ID.
- *       500:
- *         description: Failed to list referrals.
- */
-router.get('/list', referralController.List);
-
-/** 
- * @openapi
- * /api/v1/blob_store/no_url_upload:
+ * /api/v1/referral/pdf:
  *   post:
  *     tags:
- *       - BLOB STORE
- *     summary: Generate a referral PDF server-side and upload it directly to storage.
+ *       - REFERRAL
+ *     summary: Generate a referral PDF
+ *     description: Generates a medical referral PDF and returns it as a downloadable PDF file.
+ *
  *     requestBody:
  *       required: true
  *       content:
@@ -157,35 +22,141 @@ router.get('/list', referralController.List);
  *             type: object
  *             required:
  *               - patientId
- *               - fileName
  *               - data
  *             properties:
  *               patientId:
  *                 type: string
  *                 example: "6a3f8ea9c14556091e6e0e50"
+ *
  *               fileName:
  *                 type: string
  *                 example: "referral.pdf"
+ *
  *               data:
  *                 type: object
- *                 description: Data used to generate the referral PDF.
+ *                 required:
+ *                   - referralDate
+ *                   - specialist
+ *                   - patient
+ *                   - clinicalDetails
+ *                   - investigations
+ *                   - reasonForReferral
+ *                   - referringDoctor
+ *
+ *                 properties:
+ *                   referralDate:
+ *                     type: string
+ *                     example: "2026-09-26"
+ *
+ *                   specialist:
+ *                     type: object
+ *                     properties:
+ *                       name:
+ *                         type: string
+ *                         example: "Dr Sarah Smith"
+ *                       department:
+ *                         type: string
+ *                         example: "Cardiology"
+ *                       hospital:
+ *                         type: string
+ *                         example: "Melbourne Hospital"
+ *                       addressLine1:
+ *                         type: string
+ *                         example: "123 Example Street"
+ *                       addressLine2:
+ *                         type: string
+ *                         example: "Melbourne VIC 3000"
+ *                       salutation:
+ *                         type: string
+ *                         example: "Dr Smith"
+ *
+ *                   patient:
+ *                     type: object
+ *                     properties:
+ *                       name:
+ *                         type: string
+ *                         example: "John Smith"
+ *                       dateOfBirth:
+ *                         type: string
+ *                         example: "1950-05-15"
+ *                       phone:
+ *                         type: string
+ *                         example: "0400000000"
+ *                       email:
+ *                         type: string
+ *                         example: "john@example.com"
+ *
+ *                   clinicalDetails:
+ *                     type: object
+ *                     properties:
+ *                       presentingComplaint:
+ *                         type: string
+ *                         example: "Persistent chest discomfort"
+ *                       duration:
+ *                         type: string
+ *                         example: "Two weeks"
+ *                       relevantFindings:
+ *                         type: string
+ *                         example: "Elevated blood pressure"
+ *                       pastMedicalHistory:
+ *                         type: string
+ *                         example: "Hypertension"
+ *                       currentMedications:
+ *                         type: string
+ *                         example: "Amlodipine 5mg"
+ *
+ *                   investigations:
+ *                     type: object
+ *                     properties:
+ *                       recentTests:
+ *                         type: string
+ *                         example: "ECG and blood tests"
+ *                       results:
+ *                         type: string
+ *                         example: "Further specialist review recommended"
+ *
+ *                   reasonForReferral:
+ *                     type: string
+ *                     example: "Cardiology assessment and management"
+ *
+ *                   referringDoctor:
+ *                     type: object
+ *                     properties:
+ *                       name:
+ *                         type: string
+ *                         example: "Dr Michael Brown"
+ *                       title:
+ *                         type: string
+ *                         example: "General Practitioner"
+ *                       phone:
+ *                         type: string
+ *                         example: "0390000000"
+ *                       clinic:
+ *                         type: string
+ *                         example: "Guardian Medical Clinic"
+ *
  *     responses:
  *       200:
- *         description: Referral generated and uploaded.
+ *         description: Referral PDF generated successfully
  *         content:
- *           application/json:
+ *           application/pdf:
  *             schema:
- *               type: object
- *               properties:
- *                 objectKey:
- *                   type: string
+ *               type: string
+ *               format: binary
+ *
  *       400:
- *         description: Missing patientId, fileName, or data.
+ *         description: Missing or invalid referral information
+ *
  *       404:
- *         description: Not a valid patient ID.
+ *         description: Patient not found
+ *
  *       500:
- *         description: Failed to generate and upload referral.
+ *         description: Failed to generate referral PDF
  */
-router.post('/no_url_upload', referralController.HandleGenerateReferral);
+
+router.post(
+  '/pdf',
+  generateReferralPdf
+);
 
 module.exports = router;
