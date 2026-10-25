@@ -11,108 +11,7 @@ const User = require('../models/User');
  */
 
 /* ---------------------------------------------------------------------- */
-/**
- * @swagger
- * /api/v1/orgs:
- *   post:
- *     summary: Create a new organization
- *     description: Creates a new organization. The authenticated admin becomes the creator and is automatically added to the organization's staff list.
- *     tags: [Organization]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - name
- *             properties:
- *               name:
- *                 type: string
- *                 minLength: 1
- *                 example: Guardian Health Org
- *               description:
- *                 type: string
- *                 nullable: true
- *                 default: ""
- *                 example: Primary organization for testing
- *               active:
- *                 type: boolean
- *                 default: true
- *                 example: true
- *     responses:
- *       201:
- *         description: Organization created successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - message
- *                 - org
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Organization created
- *                 org:
- *                   type: object
- *                   required:
- *                     - _id
- *                     - name
- *                     - active
- *                     - createdBy
- *                     - staff
- *                   properties:
- *                     _id:
- *                       type: string
- *                       description: MongoDB ObjectId of the organization
- *                       example: 66ef5c2a9f3a1d0012ab34cd
- *                     name:
- *                       type: string
- *                       example: Guardian Health Org
- *                     description:
- *                       type: string
- *                       nullable: true
- *                       example: Primary organization for testing
- *                     active:
- *                       type: boolean
- *                       example: true
- *                     createdBy:
- *                       type: string
- *                       description: User ID of the admin who created the organization
- *                       example: 66ef5b7d9f3a1d0012ab34aa
- *                     staff:
- *                       type: array
- *                       description: List of user IDs currently linked as organization staff
- *                       items:
- *                         type: string
- *                       example: ["66ef5b7d9f3a1d0012ab34aa"]
- *                     created_at:
- *                       type: string
- *                       format: date-time
- *                     updated_at:
- *                       type: string
- *                       format: date-time
- *       400:
- *         description: Validation failed or the organization could not be created
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - message
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Error creating organization
- *                 details:
- *                   type: string
- *                   example: name is required
- *       401:
- *         description: Unauthorized request
- */
+
 exports.createOrg = async (req, res) => {
   try {
     const { name, description = '', active = true } = req.body || {};
@@ -148,81 +47,7 @@ exports.createOrg = async (req, res) => {
 };
 
 /* ---------------------------------------------------------------------- */
-/**
- * @swagger
- * /api/v1/orgs/mine:
- *   get:
- *     summary: List organizations linked to the authenticated user
- *     description: Returns all organizations where the authenticated user is either the creator or a member of the staff list.
- *     tags: [Organization]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Organizations fetched successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - orgs
- *               properties:
- *                 orgs:
- *                   type: array
- *                   items:
- *                     type: object
- *                     required:
- *                       - _id
- *                       - name
- *                       - active
- *                       - createdBy
- *                       - staff
- *                     properties:
- *                       _id:
- *                         type: string
- *                         example: 66ef5c2a9f3a1d0012ab34cd
- *                       name:
- *                         type: string
- *                         example: Guardian Health Org
- *                       description:
- *                         type: string
- *                         nullable: true
- *                         example: Primary organization for testing
- *                       active:
- *                         type: boolean
- *                         example: true
- *                       createdBy:
- *                         type: string
- *                         example: 66ef5b7d9f3a1d0012ab34aa
- *                       staff:
- *                         type: array
- *                         items:
- *                           type: string
- *                         example: ["66ef5b7d9f3a1d0012ab34aa", "66ef5c7e9f3a1d0012ab34ee"]
- *                       created_at:
- *                         type: string
- *                         format: date-time
- *                       updated_at:
- *                         type: string
- *                         format: date-time
- *       401:
- *         description: Unauthorized request
- *       500:
- *         description: Internal server error while fetching organizations
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - message
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Error fetching orgs
- *                 details:
- *                   type: string
- *                   example: Database connection failed
- */
+
 exports.listMyOrgs = async (req, res) => {
   try {
     if (!req.user?._id) {
@@ -298,40 +123,7 @@ exports.listActiveOrgs = async (req, res) => {
 };
 
 /* ---------------------------------------------------------------------- */
-/**
- * @swagger
- * /api/v1/orgs/join-request:
- *   post:
- *     summary: Request to join an organization
- *     description: Allows a freelance nurse or caretaker to submit a join request to an active organization.
- *     tags: [Organization]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - orgId
- *             properties:
- *               orgId:
- *                 type: string
- *                 description: Organization ID
- *                 example: 66ef5c2a9f3a1d0012ab34cd
- *     responses:
- *       200:
- *         description: Join request submitted successfully
- *       400:
- *         description: Invalid request, duplicate pending request, or user is already approved in another organization
- *       403:
- *         description: Only nurse or caretaker accounts can request to join an organization
- *       404:
- *         description: Organization or user not found
- *       500:
- *         description: Internal server error while submitting the join request
- */
+
 exports.requestToJoinOrg = async (req, res) => {
   try {
     const { orgId } = req.body;

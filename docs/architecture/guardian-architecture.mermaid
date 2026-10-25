@@ -1,0 +1,59 @@
+%% Guardian email module — component architecture
+%% Render at https://mermaid.live or with the Mermaid CLI. Author: Graeme Thomas
+flowchart TB
+  classDef ext fill:#fdecec,stroke:#b32b2b,color:#111;
+  classDef core fill:#e7f0f9,stroke:#1f3a5f,color:#111;
+  classDef prov fill:#e8f5f0,stroke:#0f6a6a,color:#111;
+  classDef infra fill:#f6f1e2,stroke:#8a5a12,color:#111;
+
+  U["Admin / API consumer"]
+  DOCS["API docs<br/>Swagger UI · Redoc · /openapi.json<br/>Postman collection"]
+
+  subgraph SRV["Express server (server.js)"]
+    MW["Middleware<br/>CORS · rate limit · JSON"]
+    AUTH["Auth<br/>verifyToken · verifyRole('admin')"]
+    RT["emailRoutes<br/>/api/v1/email/*"]
+    CT["emailController"]
+    PG["Browser pages<br/>test-console · inbox-view"]
+  end
+
+  subgraph MOD["Email module"]
+    SVC["emailService<br/>validate → allowlist → dry-run → provider"]
+    TPL["templates<br/>baseTemplate + 23 templates"]
+    CFG["emailConfig ← .env"]
+    OB["outbox (in-memory)"]
+    IN["sentInbox"]
+  end
+
+  subgraph PRV["Provider layer"]
+    DISP["dispatcher"]
+    BRV["brevoProvider"]
+    SMT["smtpProvider"]
+    ETC["resend · mailersend · dryrun"]
+  end
+
+  subgraph EXT["External services"]
+    BAPI["Brevo API"]
+    MAIL["Mailpit / SMTP relay"]
+    MDB["MongoDB<br/>SentEmail (persisted inbox)"]
+  end
+
+  LEG["userController<br/>(password reset · OTP)"] --> SHIM["utils/mailer shim"]
+
+  U --> MW --> AUTH --> RT --> CT --> SVC
+  CT --> PG
+  DOCS -. describes .-> SRV
+  SHIM --> SVC
+  SVC --> TPL
+  SVC --> CFG
+  SVC --> OB
+  SVC --> IN --> MDB
+  SVC --> DISP
+  DISP --> BRV --> BAPI
+  DISP --> SMT --> MAIL
+  DISP --> ETC
+
+  class BAPI,MAIL,MDB ext;
+  class SVC,TPL,CFG,OB,IN,SHIM,LEG core;
+  class DISP,BRV,SMT,ETC prov;
+  class MW,AUTH,RT,CT,PG,DOCS infra;

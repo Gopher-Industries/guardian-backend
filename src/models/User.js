@@ -8,7 +8,23 @@ const UserSchema = new mongoose.Schema({
   role: { type: mongoose.Schema.Types.ObjectId, ref: 'Role' },
   assignedPatients: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Patient' }], // Assigned patients
   organization: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', index: true },
+  phone: {type: String, required: false, unique: false},  
+  title: { type: String, required: false },
+  surname: { type: String, required: false },
+  firstName: { type: String, required: false },
+  dateOfBirth: { type: Date, required: false },
+  primaryContactNumber: { type: String, required: false },
   
+  medicareProviderNumber: { type: String, required: false },
+  
+  // Payroll fields
+  taxFileNumber: { type: String, required: false },
+  superannuationFundName: { type: String, required: false },
+  superMemberNumber: { type: String, required: false },
+  bankAccountName: { type: String, required: false },
+  accountNumber: { type: String, required: false },
+  bsb: { type: String, required: false },
+
   // approval flow for org-based nurse/caretaker users
   approvalStatus: {
     type: String,
@@ -62,6 +78,10 @@ UserSchema.pre('save', async function (next) {
   this.password_hash = await bcrypt.hash(this.password_hash, salt);
   next();
 });
+
+
+UserSchema.index({ role: 1 });
+UserSchema.index({ organization: 1, role: 1 });
 
 // Create the User model from the schema
 const User = mongoose.model('User', UserSchema);

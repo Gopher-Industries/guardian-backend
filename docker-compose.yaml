@@ -2,12 +2,56 @@ services:
   app:
     container_name: guardian-backend
     build: .
+    env_file:
+      - .env
+    environment:
+      - TASK_EMAIL_QUEUE_ENABLED=true
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - EMAIL_PROVIDER=smtp
+      - EMAIL_DRY_RUN=false
+      - EMAIL_ALLOWLIST_ENFORCE=false
+      - SMTP_HOST=mailpit
+      - SMTP_PORT=1025
+      - SMTP_SECURE=false
+      - SMTP_IGNORE_TLS=true
     ports:
       - "3000:3000"
     volumes:
       - .:/usr/src/app
+      # Keep the image's installed dependencies; the bind mount above would
+      # otherwise hide /usr/src/app/node_modules built during `docker build`.
+      - /usr/src/app/node_modules
     depends_on:
       - mongo
+      - mailpit
+      - redis
+
+  email-worker:
+    container_name: guardian-email-worker
+    build: .
+    command: node src/workers/taskEmailWorker.js
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - TASK_EMAIL_QUEUE_ENABLED=true
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - EMAIL_PROVIDER=smtp
+      - EMAIL_DRY_RUN=false
+      - EMAIL_ALLOWLIST_ENFORCE=false
+      - SMTP_HOST=mailpit
+      - SMTP_PORT=1025
+      - SMTP_SECURE=false
+      - SMTP_IGNORE_TLS=true
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+    depends_on:
+      - mongo
+      - mailpit
+      - redis
 
   mongo:
     image: mongo
@@ -20,7 +64,31 @@ services:
       - MONGO_INITDB_DATABASE=guardian
     volumes:
       - mongo_data:/data/db
-      - ./mongo-init:/docker-entrypoint-initdb.d  
+      - ./mongo-init:/docker-entrypoint-initdb.d
+
+  # Local mail catcher. Every email the backend sends with EMAIL_PROVIDER=smtp
+  # and SMTP_HOST=mailpit lands in the browsable inbox at http://localhost:8025.
+  # Nothing leaves the machine, so real resident or staff addresses are safe.
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: guardian-mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # Web inbox
+    environment:
+      - MP_MAX_MESSAGES=5000
+      - MP_SMTP_AUTH_ACCEPT_ANY=1
+      - MP_SMTP_AUTH_ALLOW_INSECURE=1
+
+  redis:
+    image: redis:7-alpine
+    container_name: guardian-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
 
 volumes:
   mongo_data:
+  redis_data:

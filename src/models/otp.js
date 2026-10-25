@@ -11,4 +11,7 @@ const OTP = mongoose.model('OTP', OTPSchema);
 // Helper function to generate random 6-digit OTP
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
+OTPSchema.index({ email: 1, otp: 1 });
+
+
 module.exports = { OTP, generateOTP };
