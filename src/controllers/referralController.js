@@ -1,21 +1,5 @@
-const {
-  generateReferralPdf
-} = require('../services/referralpdfService');
-
-/**
- * Generate and return a referral PDF.
- *
- * patientId is used as a reference identifier only.
- * This endpoint does NOT check MongoDB for the patient.
- */
-exports.generateReferralPdf = async (req, res) => {
-  try {
-    const {
-      patientId,
-      fileName = 'referral.pdf',
-      data
-    } = req.body;
 const { getSignedUploadUrl, getSignedDownloadUrl, getList, uploadGeneratedPdf } = require('../r2-client');
+const { generateReferralPdf } = require('../services/referralpdfService');
 const Patient = require('../models/Patient');
 const Correspondence = require('../models/Correspondence');
 
@@ -31,32 +15,10 @@ exports.HandleFileUploadUrl = async (req, res) => {
 
     console.log('Received fileName:', fileName);
 
-    // patientId is required
-    if (!patientId) {
-      return res.status(400).json({
-        error: 'patientId is required'
-      });
+    if (!patientId || !fileName || !documentType) {
+      return res.status(400).json({ error: 'patientId and fileName are required' });
     }
 
-    // Accept a string only
-    if (typeof patientId !== 'string') {
-      return res.status(400).json({
-        error: 'patientId must be a string'
-      });
-    }
-
-    // For this API we only require the normal Mongo-style ID length.
-    // We are NOT checking whether the ID exists in the database.
-    if (patientId.trim().length !== 24) {
-      return res.status(400).json({
-        error: 'patientId must be valid'
-      });
-    }
-
-    if (!data || typeof data !== 'object') {
-      return res.status(400).json({
-        error: 'Referral data is required'
-      });
     if (!fileName.toLowerCase().endsWith('.pdf')) {
       return res.status(400).json({ error: 'Only PDF files are allowed' });
     }
@@ -110,6 +72,100 @@ exports.HandleFileDownload = async (req, res) => {
 
     if (err?.name === 'NoSuchKey' || err?.name === 'NotFound') {
       return res.status(404).json({ error: 'Referral file not found' });
+    }
+
+    res.status(500).json({ error: 'File download failed' });
+  }
+};
+
+exports.List = async (req, res) => {
+  try {
+    const { patientId } = req.query;
+
+    if (!patientId) {
+      const result = await getList();
+      return res.status(200).json({ Result: result });
+    }
+
+    const exists = await Patient.exists({ _id: patientId });
+    if (!exists) {
+      return res.status(404).json({ error: 'Not a valid patient ID' });
+    }
+
+    const normalizedPatientId = patientId.endsWith('/') ? patientId : `${patientId}/`;
+    const result = await getList(normalizedPatientId);
+    res.status(200).json({ Result: result });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to list referrals' });
+  }
+};
+
+
+exports.HandleGenerateReferral = async (req, res) => {
+  try {
+    const { patientId, fileName, data } = req.body;
+
+    if (!patientId || !fileName || !data) {
+      return res.status(400).json({ error: 'patientId, fileName and data are required' });
+    }
+
+    const exists = await Patient.exists({ _id: patientId });
+    if (!exists) {
+      return res.status(404).json({ error: 'Not a valid patient ID' });
+    }
+
+    const pdfBytes = await generateReferralPdf(data); // your existing function
+    const objectKey = `${patientId}/referrals/${fileName}`;
+    await uploadGeneratedPdf(pdfBytes, objectKey);
+
+    res.status(200).json({ objectKey });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to generate and upload referral' });
+  }
+};
+
+/**
+ * Generate and return a referral PDF.
+ *
+ * patientId is used as a reference identifier only.
+ * This endpoint does NOT check MongoDB for the patient.
+ */
+exports.generateReferralPdf = async (req, res) => {
+  try {
+    const {
+      patientId,
+      fileName = 'referral.pdf',
+      data
+    } = req.body;
+
+    // patientId is required
+    if (!patientId) {
+      return res.status(400).json({
+        error: 'patientId is required'
+      });
+    }
+
+    // Accept a string only
+    if (typeof patientId !== 'string') {
+      return res.status(400).json({
+        error: 'patientId must be a string'
+      });
+    }
+
+    // For this API we only require the normal Mongo-style ID length.
+    // We are NOT checking whether the ID exists in the database.
+    if (patientId.trim().length !== 24) {
+      return res.status(400).json({
+        error: 'patientId must be valid'
+      });
+    }
+
+    if (!data || typeof data !== 'object') {
+      return res.status(400).json({
+        error: 'Referral data is required'
+      });
     }
 
     // Generate PDF using referralpdfService
