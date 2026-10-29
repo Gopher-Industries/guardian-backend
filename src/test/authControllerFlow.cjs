@@ -16,6 +16,7 @@ const userControllerPath = require.resolve('../controllers/userController');
 const originalMailer = require.cache[mailerPath];
 
 let userController;
+let sentResetToken;
 
 const { expect } = chai;
 
@@ -31,14 +32,18 @@ function makeRenderRes() {
 
 describe('auth controller flow', function () {
   this.timeout(15000);
-    before(() => {
+
+  before(() => {
     require.cache[mailerPath] = {
       id: mailerPath,
       filename: mailerPath,
       loaded: true,
       exports: {
         sendEmail: async () => true,
-        sendPasswordResetEmail: async () => true,
+        sendPasswordResetEmail: async (_email, _name, token) => {
+          sentResetToken = token;
+          return true;
+        },
         sendPinCodeVerificationEmail: async () => true,
       },
     };
@@ -168,13 +173,14 @@ describe('auth controller flow', function () {
 
     res = makeRes();
     await userController.requestPasswordReset({ body: { email: 'missing@example.com' } }, res);
-    expect(res.statusCode).to.equal(404);
+    expect(res.statusCode).to.equal(200);
 
     res = makeRes();
     await userController.requestPasswordReset({ body: { email: user.email } }, res);
     expect(res.statusCode).to.equal(200);
 
-    const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, { expiresIn: '15m' });
+    const token = sentResetToken;
+    expect(token).to.be.a('string');
 
     res = makeRenderRes();
     userController.renderPasswordResetPage({ query: { token } }, res);
@@ -198,5 +204,15 @@ describe('auth controller flow', function () {
 
     const updated = await User.findById(user._id).lean();
     expect(updated.failedLoginAttempts).to.equal(0);
+
+      res = makeRes();
+    await userController.resetPassword({
+      body: {
+        token,
+        newPassword: 'AnotherPassword123!',
+        confirmPassword: 'AnotherPassword123!',
+      },
+    }, res);
+    expect(res.statusCode).to.equal(400);
   });
 });
