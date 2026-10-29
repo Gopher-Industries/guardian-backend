@@ -3,6 +3,7 @@
 const { createAndEmit } = require('./notificationService');
 const Task = require('../models/Task'); // used only in getTaskPatientId (optional convenience)
 const Patient = require('../models/Patient');
+const SupportTicket = require('../models/SupportTicket');
 
 // --- small utilities ---
 const toId = v => (v && typeof v === 'object' && v._id ? String(v._id) : v ? String(v) : null);
@@ -44,6 +45,26 @@ async function supportTicketUpdated({ ticketId, userId, status, actorId }) {
   if (actorId && toId(actorId) !== toId(userId)) {
     await safeNotify(actorId, 'Ticket updated', `You updated ticket (${ticketId}).`);
   }
+}
+
+async function checkOldSupportTickets() {
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  const oldTickets = await SupportTicket.find({
+    status: { $in: ['open', 'in_progress'] },
+    updated_at: { $lt: sevenDaysAgo }
+  });
+
+  for (const ticket of oldTickets) {
+    await safeNotify(
+      '6a228ad244f192b7412e4fdf',
+      'Support ticket needs review',
+      `Support ticket ${ticket._id} has not been reviewed for more than 7 days.`
+    );
+  }
+
+  console.log(`Found ${oldTickets.length} old support ticket(s).`);
 }
 
 // --- TASKS ---
@@ -249,6 +270,7 @@ module.exports = {
   // Support tickets
   supportTicketCreated,
   supportTicketUpdated,
+  checkOldSupportTickets,
 
   // Tasks
   taskCreated,
@@ -267,5 +289,8 @@ module.exports = {
 
   // Prescriptions
   prescriptionCreated,
+
+  //check Old Support Tickets
+
 
 };

@@ -8,27 +8,69 @@ const SupportTicketSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+
     subject: {
       type: String,
       required: true,
       trim: true,
     },
+
     description: {
       type: String,
       required: true,
       trim: true,
     },
+
     status: {
       type: String,
       enum: ['open', 'in_progress', 'resolved', 'closed'],
       default: 'open',
       index: true,
     },
+
     adminResponse: {
       type: String,
       trim: true,
       default: '',
     },
+
+    actions: [
+      {
+        person: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+          required: true,
+        },
+
+        actionTaken: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+
+        outcome: {
+          type: String,
+          trim: true,
+          default: '',
+        },
+
+        resolved: {
+          type: Boolean,
+          default: false,
+        },
+
+        remainingWork: {
+          type: String,
+          trim: true,
+          default: '',
+        },
+
+        created_at: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
   },
   {
     timestamps: {
