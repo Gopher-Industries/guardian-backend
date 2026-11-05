@@ -40,6 +40,7 @@ function createTestApp() {
     ['/api/v1/admin', '../../routes/adminPatientRoutes'],
     ['/api/v1/orgs', '../../routes/orgRoutes'],
     ['/api/v1/resources', '../../routes/resourceRoutes'],
+    ['/api/v1/medical-records', '../../routes/medicalRecordRoutes'],
     ['/api/v1/email', '../../routes/emailRoutes'],
   ];
 
