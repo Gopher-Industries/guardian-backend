@@ -13,6 +13,12 @@ const verifyToken = (req, res, next) => {
 
   try {
     const verified = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] }); // Specify algorithm
+
+    // 2FA challenge and password-reset tokens are not access tokens.
+    if (verified && verified.purpose) {
+      return res.status(401).json({ message: 'Access denied. Invalid token.' });
+    }
+
     req.user = verified;
 
     // Optional: Add role-based access control (RBAC) here

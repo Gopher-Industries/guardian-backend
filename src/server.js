@@ -366,7 +366,8 @@ io.on('connection', socket => {
         }
       );
 
-      if (!verified || !verified._id) {
+      // ignore 2FA challenge and password-reset tokens
+      if (!verified || !verified._id || verified.purpose) {
         return;
       }
 
