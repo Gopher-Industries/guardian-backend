@@ -6,6 +6,7 @@ const normalizeName = require("../utils/normalizeName");
 const { OTP, generateOTP } = require("../models/otp");
 const { sendPasswordResetEmail, sendPinCodeVerificationEmail } = require('../utils/mailer');
 const { findAdminOrg } = require('../services/orgService');
+const { buildStaffOrgFilter } = require('../utils/staffScope');
 
 // Roles a person may pick when signing up on their own. Admin accounts are
 // never created through public registration.
@@ -671,8 +672,16 @@ exports.searchUser = async (req, res) => {
     .filter(token => token.length > 0);
       
 
-         // Fetch all users
-const users = await User.find({}, "_id fullname organization").lean();
+        // Only search people in the caller's own organization(s)
+        const orgFilter = await buildStaffOrgFilter(req.user._id);
+        if (!orgFilter) {
+            return res.status(404).json({
+                success: false,
+                message: "No users found."
+            });
+        }
+
+        const users = await User.find(orgFilter, "_id fullname organization").lean();
 // First check whether the search text matches a user ID
 const userById = users.find(
     user => String(user._id) === search.trim()
