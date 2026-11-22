@@ -10,6 +10,8 @@ const multer = require('multer');
 const http = require('http');
 const socketIO = require('socket.io');
 const cors = require('cors');
+const securityHeaders = require('./middleware/securityHeaders');
+const { buildCorsOptions, buildSocketCorsOptions } = require('./config/corsOptions');
 
 const swaggerUi = require('swagger-ui-express');
 const { setEmit } = require('../socket');
@@ -17,19 +19,14 @@ const { setMessageEmit } = require('../messageSocket');
 
 const app = express();
 
-// CORS fix
-app.use(cors({
-  origin: '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
+// Security headers (clickjacking protection etc.) on every response
+app.disable('x-powered-by');
+app.use(securityHeaders);
 
-app.options('*', (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS,PATCH');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
-  res.sendStatus(204);
-});
+// CORS: allowed websites come from CORS_ALLOWED_ORIGINS (see config/corsOptions.js)
+const corsOptions = buildCorsOptions();
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 // Create uploads directory locally only (Vercel filesystem is read-only)
 // if (!process.env.VERCEL) {
@@ -329,10 +326,7 @@ app.get('/', (req, res) => {
 const server = http.createServer(app);
 
 const io = socketIO(server, {
-  cors: {
-    origin: '*',
-    methods: ['GET', 'POST']
-  }
+  cors: buildSocketCorsOptions()
 });
 
 const connectedUsers = Object.create(null);

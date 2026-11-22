@@ -78,6 +78,11 @@ MONGODB_URI=mongodb://admin:password@mongo:27017/guardian?authSource=admin      
 # Auth — change before any real deployment
 JWT_SECRET=change-me-to-a-long-random-dev-secret
 
+# Websites allowed to call the API from a browser (comma-separated).
+# Leave empty locally; set it to the live dashboard address in production.
+# localhost:5173 / :3000 are allowed automatically outside production.
+CORS_ALLOWED_ORIGINS=
+
 # Email provider (this build is focused on Brevo)
 EMAIL_PROVIDER=brevo
 BREVO_API_KEY=            # paste your Brevo key (xkeysib-...) to send real email
