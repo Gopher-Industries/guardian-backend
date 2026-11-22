@@ -7,6 +7,8 @@ const chaiHttp = require('chai-http');
 const createTestApp = require('./helpers/testApp.cjs');
 const { connectTestDb, clearTestDb, disconnectTestDb } = require('./helpers/db.cjs');
 const { createDashboardFixture, authHeader } = require('./helpers/fixtures.cjs');
+const Organization = require('../models/Organization');
+const User = require('../models/User');
 
 chai.use(chaiHttp);
 const { expect } = chai;
@@ -124,6 +126,13 @@ describe('care team dashboard and daily report flow', function () {
 
   it('lists doctors and caretakers using authenticated directory routes', async () => {
     const fixture = await createDashboardFixture();
+    // The doctor list only shows doctors from the caller's organization.
+    const org = await Organization.create({
+      name: 'Directory Org',
+      createdBy: fixture.admin._id,
+      staff: [fixture.admin._id],
+    });
+    await User.updateOne({ _id: fixture.doctor._id }, { organization: org._id });
 
     const doctorsRes = await chai
       .request(app)

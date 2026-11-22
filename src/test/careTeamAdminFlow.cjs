@@ -9,6 +9,7 @@ const createTestApp = require('./helpers/testApp.cjs');
 const { connectTestDb, clearTestDb, disconnectTestDb } = require('./helpers/db.cjs');
 const { seedRoles, createUser, createPatient, authHeader } = require('./helpers/fixtures.cjs');
 const Task = require('../models/Task');
+const Organization = require('../models/Organization');
 const DailyReport = require('../models/DailyReport');
 
 chai.use(chaiHttp);
@@ -27,7 +28,8 @@ describe('care team and admin controller flow', function () {
     const admin = await createUser({ fullname: 'Inline Admin', email: 'inline-admin@example.com', role: roles.admin });
     const nurse = await createUser({ fullname: 'Inline Nurse', email: 'inline-nurse@example.com', role: roles.nurse });
     const caretaker = await createUser({ fullname: 'Inline Caretaker', email: 'inline-caretaker@example.com', role: roles.caretaker });
-    const patient = await createPatient({ fullname: 'Overview Patient', caretaker, assignedNurses: [nurse] });
+    const org = await Organization.create({ name: 'Inline Org', createdBy: admin._id, staff: [admin._id] });
+    const patient = await createPatient({ fullname: 'Overview Patient', caretaker, assignedNurses: [nurse], organization: org });
     await Task.create({ description: 'Overview Task', dueDate: new Date('2026-06-01'), priority: 'high', status: 'completed', patient: patient._id, caretaker: caretaker._id, nurse_id: nurse._id });
 
     const approve = await chai

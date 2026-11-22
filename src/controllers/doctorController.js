@@ -6,6 +6,7 @@ const Doctor = require('../models/Doctor');
 const Prescription = require('../models/Prescription');
 const PatientLog = require('../models/PatientLog');
 const Task = require('../models/Task');
+const { escapeRegex, buildStaffOrgFilter } = require('../utils/staffScope');
 
 const asInt = (v, d) => {
   const n = parseInt(v, 10);
@@ -77,12 +78,19 @@ exports.listDoctors = async (req, res) => {
     const limit = asInt(req.query.limit, 20);
     const skip = (page - 1) * limit;
 
-    const q = { role: doctorRoleId };
+    // only list doctors from the caller's organization(s)
+    const orgFilter = await buildStaffOrgFilter(req.user._id);
+    if (!orgFilter) {
+      return res.status(200).json({
+        doctors: [],
+        pagination: { page, limit, total: 0, pages: 0 }
+      });
+    }
+
+    const q = { role: doctorRoleId, $and: [orgFilter] };
     if (search) {
-      q.$or = [
-        { fullname: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } }
-      ];
+      const pattern = new RegExp(escapeRegex(search), 'i');
+      q.$and.push({ $or: [{ fullname: pattern }, { email: pattern }] });
     }
 
     const [items, total] = await Promise.all([

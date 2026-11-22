@@ -8,6 +8,7 @@ const mongoose = require('mongoose');
 const { connectTestDb, clearTestDb, disconnectTestDb } = require('./helpers/db.cjs');
 const { seedRoles, createUser, createPatient, authHeader } = require('./helpers/fixtures.cjs');
 const User = require('../models/User');
+const Organization = require('../models/Organization');
 
 chai.use(chaiHttp);
 const { expect } = chai;
@@ -62,8 +63,9 @@ describe('doctor controller flow', function () {
   it('covers doctor listing search and pagination branches', async () => {
     const roles = await seedRoles();
     const admin = await createUser({ fullname: 'Doctor List Admin', email: 'doctor-list-admin@example.com', role: roles.admin });
-    await createUser({ fullname: 'Alpha Doctor', email: 'alpha-doctor@example.com', role: roles.doctor });
-    await createUser({ fullname: 'Beta Doctor', email: 'beta-doctor@example.com', role: roles.doctor });
+    const org = await Organization.create({ name: 'Doctor List Org', createdBy: admin._id, staff: [admin._id] });
+    await createUser({ fullname: 'Alpha Doctor', email: 'alpha-doctor@example.com', role: roles.doctor, organization: org._id });
+    await createUser({ fullname: 'Beta Doctor', email: 'beta-doctor@example.com', role: roles.doctor, organization: org._id });
 
     const app = freshApp();
     const searched = await chai

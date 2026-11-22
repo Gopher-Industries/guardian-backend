@@ -3,6 +3,10 @@ const Role = require('../models/Role');
 const Patient = require('../models/Patient'); // only for population types
 const Task = require('../models/Task'); // only for dashboard summary
 const PatientLog = require('../models/PatientLog'); // only for population types
+const { escapeRegex, buildStaffOrgFilter } = require('../utils/staffScope');
+
+// Fields shown in the nurse list. Payroll and bank details are never included.
+const NURSE_LIST_FIELDS = '_id fullname email phone role organization assignedPatients approvalStatus created_at updated_at';
 
 function taskAssigneeQuery(userId) {
   return {
@@ -66,26 +70,37 @@ exports.getProfile = async (req, res) => {
  */
 exports.getAllNurses = async (req, res) => {
   try {
-    const { q, page = 1, limit = 10 } = req.query;
+    const { q } = req.query;
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 10));
 
     // look up the "nurse" role id
     const nurseRole = await Role.findOne({ name: 'nurse' });
     if (!nurseRole) return res.status(500).json({ error: 'Nurse role not seeded' });
 
-    const textFilter = q
-      ? { $or: [{ fullname: new RegExp(q, 'i') }, { email: new RegExp(q, 'i') }] }
-      : {};
+    // only list nurses from the caller's organization(s)
+    const orgFilter = await buildStaffOrgFilter(req.user._id);
+    if (!orgFilter) {
+      return res.status(200).json({
+        nurses: [],
+        pagination: { total: 0, page, pages: 0, limit },
+      });
+    }
 
-    const filter = { role: nurseRole._id, ...textFilter };
+    const filter = { role: nurseRole._id, $and: [orgFilter] };
+    if (q) {
+      const pattern = new RegExp(escapeRegex(q), 'i');
+      filter.$and.push({ $or: [{ fullname: pattern }, { email: pattern }] });
+    }
 
     const [nurses, total] = await Promise.all([
       User.find(filter)
-        .select('-password_hash -__v')
+        .select(NURSE_LIST_FIELDS)
         .populate('role', 'name')
-        .populate('assignedPatients', 'fullname gender dateOfBirth')
+        .populate('assignedPatients', 'fullname gender')
         .sort({ fullname: 1 })
-        .skip((parseInt(page) - 1) * parseInt(limit))
-        .limit(parseInt(limit))
+        .skip((page - 1) * limit)
+        .limit(limit)
         .lean(),
       User.countDocuments(filter),
     ]);
@@ -94,9 +109,9 @@ exports.getAllNurses = async (req, res) => {
       nurses,
       pagination: {
         total,
-        page: parseInt(page),
-        pages: Math.ceil(total / parseInt(limit)),
-        limit: parseInt(limit),
+        page,
+        pages: Math.ceil(total / limit),
+        limit,
       },
     });
   } catch (error) {
