@@ -5,6 +5,16 @@ const Role = require('../models/Role');
 const normalizeName = require("../utils/normalizeName");
 const { OTP, generateOTP } = require("../models/otp");
 const { sendPasswordResetEmail, sendPinCodeVerificationEmail } = require('../utils/mailer');
+const { findAdminOrg } = require('../services/orgService');
+
+// Roles a person may pick when signing up on their own. Admin accounts are
+// never created through public registration.
+const SELF_REGISTER_ROLES = ['doctor', 'nurse', 'caretaker'];
+const DEFAULT_SELF_REGISTER_ROLE = 'caretaker';
+
+// Accounts in these states may not sign in or use role-protected routes.
+const BLOCKED_ACCOUNT_STATUSES = ['rejected', 'deactivated'];
+exports.BLOCKED_ACCOUNT_STATUSES = BLOCKED_ACCOUNT_STATUSES;
 
 /**
  * @swagger
@@ -49,18 +59,22 @@ exports.registerUser = async (req, res) => {
       });
     }
 
-    var userRole;
+    const requestedRole = typeof role === 'string' && role.trim()
+      ? role.trim().toLowerCase()
+      : DEFAULT_SELF_REGISTER_ROLE;
 
-    var userRole;
+    if (!SELF_REGISTER_ROLES.includes(requestedRole)) {
+      return res.status(400).json({
+        error: 'Invalid role. Choose doctor, nurse or caretaker.'
+      });
+    }
 
-    if (role) {
-      userRole = await Role.findOne({ name: role.toLowerCase() });
+    const userRole = await Role.findOne({ name: requestedRole });
 
-      if (!userRole) {
-        return res.status(400).json({
-          error: role + ' is an invalid role'
-        });
-      }
+    if (!userRole) {
+      return res.status(500).json({
+        error: 'Role is not set up on the server'
+      });
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -95,9 +109,7 @@ exports.registerUser = async (req, res) => {
       approvedAt: null
     });
 
-    if (userRole) {
-      newUser.role = userRole._id;
-    }
+    newUser.role = userRole._id;
 
     await newUser.save();
 
@@ -111,11 +123,8 @@ exports.registerUser = async (req, res) => {
       id: newUser._id,
       fullname: newUser.fullname,
       email: newUser.email,
+      role: userRole.name,
     };
-
-    if (userRole) {
-      userResponse.role = userRole.name;
-    }
 
     res.status(201).json({
       message: 'User registered successfully',
@@ -139,23 +148,45 @@ exports.approveUser = async (req, res) => {
       });
     }
 
+    const approver = await User.findById(req.user._id);
+
+    if (!approver) {
+      return res.status(401).json({
+        error: 'Logged-in user not found'
+      });
+    }
+
+    if (String(approver._id) === String(user._id)) {
+      return res.status(403).json({
+        error: 'You cannot approve your own account'
+      });
+    }
+
+    // An admin may only approve people who asked to join an organisation they run.
+    let adminOrg = null;
+    if (user.organization) {
+      try {
+        adminOrg = await findAdminOrg(approver._id, user.organization);
+      } catch (err) {
+        adminOrg = null;
+      }
+    }
+
+    if (!adminOrg) {
+      return res.status(403).json({
+        error: 'User does not belong to your organization'
+      });
+    }
+
     if (user.approvalStatus !== 'pending') {
       return res.status(400).json({
         error: 'User is already approved or is not pending'
       });
     }
 
-   const approver = await User.findOne({ email: req.user.email });
-
-if (!approver) {
-  return res.status(401).json({
-    error: 'Logged-in user not found'
-  });
-}
-
-user.approvalStatus = 'approved';
-user.approvedBy = approver._id;
-user.approvedAt = new Date();
+    user.approvalStatus = 'approved';
+    user.approvedBy = approver._id;
+    user.approvedAt = new Date();
 
     await user.save();
 
@@ -223,6 +254,10 @@ exports.login = async (req, res) => {
       user.failedLoginAttempts = (user.failedLoginAttempts !== null && user.failedLoginAttempts !== undefined) ? user.failedLoginAttempts + 1 : 1;
       await user.save();
       return res.status(400).json({ error: 'Incorrect email and password combination' });
+    }
+
+    if (BLOCKED_ACCOUNT_STATUSES.includes(user.approvalStatus)) {
+      return res.status(403).json({ error: 'This account is not active. Please contact your organization admin.' });
     }
 
     user.failedLoginAttempts = 0;

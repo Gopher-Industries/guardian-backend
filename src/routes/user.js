@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
 const verifyToken = require('../middleware/verifyToken');
+const verifyRole = require('../middleware/verifyRole');
 const checkPasswordExpiry = require('../middleware/checkPasswordExpiry');
 const { registerSchema, loginSchema, validationMiddleware } = require('../middleware/validationMiddleware');
 
@@ -110,6 +111,7 @@ router.post('/register', validationMiddleware(registerSchema), userController.re
 router.patch(
   '/approve/:userId',
   verifyToken,
+  verifyRole(['admin']),
   userController.approveUser
 );
 /**
