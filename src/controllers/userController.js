@@ -3,8 +3,53 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Role = require('../models/Role');
 const normalizeName = require("../utils/normalizeName");
-const { OTP, generateOTP } = require("../models/otp");
+const { OTP, generateOTP, hashOTP, otpMatches, MAX_OTP_ATTEMPTS } = require("../models/otp");
 const { sendPasswordResetEmail, sendPinCodeVerificationEmail } = require('../utils/mailer');
+const { findAdminOrg } = require('../services/orgService');
+const { buildStaffOrgFilter } = require('../utils/staffScope');
+
+// Roles a person may pick when signing up on their own. Admin accounts are
+// never created through public registration.
+const SELF_REGISTER_ROLES = ['doctor', 'nurse', 'caretaker'];
+const DEFAULT_SELF_REGISTER_ROLE = 'caretaker';
+
+// Accounts in these states may not sign in or use role-protected routes.
+const BLOCKED_ACCOUNT_STATUSES = ['rejected', 'deactivated'];
+exports.BLOCKED_ACCOUNT_STATUSES = BLOCKED_ACCOUNT_STATUSES;
+
+// Same reply for an unknown email and a wrong password, so login can't be
+// used to find out which emails have accounts.
+const LOGIN_FAILED_MESSAGE = 'Incorrect email and password combination';
+
+// Tokens with a "purpose" are single-use helpers (2FA step, password reset)
+// and are rejected by verifyToken as normal access tokens.
+const TWO_FACTOR_PURPOSE = '2fa';
+const PASSWORD_RESET_PURPOSE = 'password-reset';
+
+// When TWO_FACTOR_ENFORCED=true, roles that need 2FA get a PIN by email at
+// login and only receive an access token after /verify-pin. Off by default
+// until the web and Android apps have a PIN screen.
+const isTwoFactorEnforced = () => String(process.env.TWO_FACTOR_ENFORCED).toLowerCase() === 'true';
+const roleNeedsTwoFactor = (roleName) => String(roleName || '').toLowerCase() !== 'nurse';
+
+// Used to spend the same time on unknown emails as on real ones.
+const DUMMY_PASSWORD_HASH = bcrypt.hashSync('not-a-real-password', 10);
+
+async function issueOTP(user) {
+  const otp = generateOTP();
+  await OTP.deleteMany({ email: user.email });
+  await OTP.create({ email: user.email, otpHash: hashOTP(otp) });
+  const firstName = String(user.fullname || '').split(' ')[0];
+  await sendPinCodeVerificationEmail(user.email, firstName, otp);
+}
+
+function signAccessToken(user) {
+  return jwt.sign(
+    { _id: user._id, email: user.email },
+    process.env.JWT_SECRET,
+    { expiresIn: '24h' }
+  );
+}
 
 /**
  * @swagger
@@ -49,18 +94,22 @@ exports.registerUser = async (req, res) => {
       });
     }
 
-    var userRole;
+    const requestedRole = typeof role === 'string' && role.trim()
+      ? role.trim().toLowerCase()
+      : DEFAULT_SELF_REGISTER_ROLE;
 
-    var userRole;
+    if (!SELF_REGISTER_ROLES.includes(requestedRole)) {
+      return res.status(400).json({
+        error: 'Invalid role. Choose doctor, nurse or caretaker.'
+      });
+    }
 
-    if (role) {
-      userRole = await Role.findOne({ name: role.toLowerCase() });
+    const userRole = await Role.findOne({ name: requestedRole });
 
-      if (!userRole) {
-        return res.status(400).json({
-          error: role + ' is an invalid role'
-        });
-      }
+    if (!userRole) {
+      return res.status(500).json({
+        error: 'Role is not set up on the server'
+      });
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -95,9 +144,7 @@ exports.registerUser = async (req, res) => {
       approvedAt: null
     });
 
-    if (userRole) {
-      newUser.role = userRole._id;
-    }
+    newUser.role = userRole._id;
 
     await newUser.save();
 
@@ -111,11 +158,8 @@ exports.registerUser = async (req, res) => {
       id: newUser._id,
       fullname: newUser.fullname,
       email: newUser.email,
+      role: userRole.name,
     };
-
-    if (userRole) {
-      userResponse.role = userRole.name;
-    }
 
     res.status(201).json({
       message: 'User registered successfully',
@@ -139,23 +183,45 @@ exports.approveUser = async (req, res) => {
       });
     }
 
+    const approver = await User.findById(req.user._id);
+
+    if (!approver) {
+      return res.status(401).json({
+        error: 'Logged-in user not found'
+      });
+    }
+
+    if (String(approver._id) === String(user._id)) {
+      return res.status(403).json({
+        error: 'You cannot approve your own account'
+      });
+    }
+
+    // An admin may only approve people who asked to join an organisation they run.
+    let adminOrg = null;
+    if (user.organization) {
+      try {
+        adminOrg = await findAdminOrg(approver._id, user.organization);
+      } catch (err) {
+        adminOrg = null;
+      }
+    }
+
+    if (!adminOrg) {
+      return res.status(403).json({
+        error: 'User does not belong to your organization'
+      });
+    }
+
     if (user.approvalStatus !== 'pending') {
       return res.status(400).json({
         error: 'User is already approved or is not pending'
       });
     }
 
-   const approver = await User.findOne({ email: req.user.email });
-
-if (!approver) {
-  return res.status(401).json({
-    error: 'Logged-in user not found'
-  });
-}
-
-user.approvalStatus = 'approved';
-user.approvedBy = approver._id;
-user.approvedAt = new Date();
+    user.approvalStatus = 'approved';
+    user.approvedBy = approver._id;
+    user.approvedAt = new Date();
 
     await user.save();
 
@@ -212,7 +278,10 @@ user.approvedAt = new Date();
 exports.login = async (req, res) => {
   try {
     const user = await User.findOne({ email: req.body.email });
-    if (!user) return res.status(400).json({ error: 'User not found' });
+    if (!user) {
+      await bcrypt.compare(String(req.body.password || ''), DUMMY_PASSWORD_HASH);
+      return res.status(400).json({ error: LOGIN_FAILED_MESSAGE });
+    }
 
     if (user.failedLoginAttempts !== null && user.failedLoginAttempts !== undefined && user.failedLoginAttempts > 4) {
       return res.status(400).json({ error: 'Your account has been flagged and locked. Please reset your password' });
@@ -222,17 +291,35 @@ exports.login = async (req, res) => {
     if (!isValidPassword) {
       user.failedLoginAttempts = (user.failedLoginAttempts !== null && user.failedLoginAttempts !== undefined) ? user.failedLoginAttempts + 1 : 1;
       await user.save();
-      return res.status(400).json({ error: 'Incorrect email and password combination' });
+      return res.status(400).json({ error: LOGIN_FAILED_MESSAGE });
+    }
+
+    if (BLOCKED_ACCOUNT_STATUSES.includes(user.approvalStatus)) {
+      return res.status(403).json({ error: 'This account is not active. Please contact your organization admin.' });
     }
 
     user.failedLoginAttempts = 0;
     await user.save();
 
-    const token = jwt.sign(
-      { _id: user._id, email: user.email },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
-    );
+    const loginRole = await Role.findOne({ _id: user.role });
+
+    // Second step: email a PIN and hand back a short-lived challenge token
+    // instead of an access token.
+    if (isTwoFactorEnforced() && roleNeedsTwoFactor(loginRole?.name)) {
+      await issueOTP(user);
+      const challengeToken = jwt.sign(
+        { _id: user._id, purpose: TWO_FACTOR_PURPOSE },
+        process.env.JWT_SECRET,
+        { expiresIn: '5m' }
+      );
+      return res.status(200).json({
+        twoFactorRequired: true,
+        challengeToken,
+        message: 'A PIN has been sent to your email address'
+      });
+    }
+
+    const token = signAccessToken(user);
 
     const currentDate = new Date();
     const lastChangeDate = new Date(user.lastPasswordChange);
@@ -294,42 +381,24 @@ exports.login = async (req, res) => {
  *         description: Internal server error. Error processing the request.
  */
 exports.sendOTP = async (req, res) => {
-    // Temporary bypass for OTP
-    return res.status(200).json({ message: 'OTP functionality is temporarily disabled for testing.' });
-
-    // Original OTP logic (inactive due to the testing )
   const { email } = req.body;
 
   if (!email) {
     return res.status(400).json({ error: 'Email is required' });
   }
 
-  const user = await User.findOne({ email: email });
-  if (!user) return res.status(400).json({ error: 'User not found' });
-
-  // Generate OTP
-  const otp = generateOTP();
+  // Same reply whether or not the email has an account.
+  const genericReply = { message: 'If that email has an account, a PIN has been sent to it' };
 
   try {
-    // Remove any existing OTPs for this email (useful to avoid duplicates)
-    await OTP.deleteMany({ email });
-
-    // Create new OTP entry
-    const otpEntry = new OTP({ email, otp });
-    await otpEntry.save();
-
-    console.log("user full name is: " + user.fullname);
-    console.log("user first name is: " + user.fullname.split(" ")[0]);
-    console.log("user first[0] name is: " + user.fullname.split(" "));
-
-    const firstName = user.fullname.split(" ")[0];
-
-    // Send OTP email
-    await sendPinCodeVerificationEmail(email, firstName, otp);
-    res.status(200).json({ message: 'OTP sent to your email address' });
+    const user = await User.findOne({ email });
+    if (user && !BLOCKED_ACCOUNT_STATUSES.includes(user.approvalStatus)) {
+      await issueOTP(user);
+    }
+    return res.status(200).json(genericReply);
   } catch (error) {
-    console.error('Error saving OTP or sending email:', error);
-    res.status(500).json({ error: 'Error processing your request' });
+    console.error('Error saving OTP or sending email:', error.message);
+    return res.status(500).json({ error: 'Error processing your request' });
   }
 };
 
@@ -364,32 +433,68 @@ exports.sendOTP = async (req, res) => {
  *         description: Internal server error. Error processing the request.
  */
 exports.verifyOTP = async (req, res) => {
-    // Temporary bypass for OTP verification
-    return res.status(200).json({ message: 'OTP verification bypassed for testing.' });
-
-    // Original OTP verification logic (inactive due to testing)
-  const { email, otp } = req.body;
+  const { email, otp, challengeToken } = req.body;
 
   if (!email || !otp) {
     return res.status(400).json({ error: 'Email and OTP are required' });
   }
 
-  try {
-    // Find the OTP record in the database
-    const otpRecord = await OTP.findOne({ email, otp });
+  const invalid = () => res.status(400).json({ error: 'Invalid or expired OTP' });
+  const expired = () => res.status(401).json({ error: 'Login session expired. Please log in again.' });
 
-    // If no record is found, OTP is invalid or expired
-    if (!otpRecord) {
-      return res.status(400).json({ error: 'Invalid or expired OTP' });
+  try {
+    const otpRecord = await OTP.findOne({ email });
+    if (!otpRecord) return invalid();
+
+    if (!otpMatches(otp, otpRecord.otpHash)) {
+      otpRecord.attempts = (otpRecord.attempts || 0) + 1;
+      if (otpRecord.attempts >= MAX_OTP_ATTEMPTS) {
+        await OTP.deleteOne({ _id: otpRecord._id });
+      } else {
+        await otpRecord.save();
+      }
+      return invalid();
     }
 
-    // Remove the OTP entry after successful verification
+    // Each code works once.
     await OTP.deleteOne({ _id: otpRecord._id });
 
-    res.status(200).json({ message: 'OTP verified successfully' });
+    // Without a challenge token this only confirms the email address.
+    if (!challengeToken) {
+      return res.status(200).json({ message: 'OTP verified successfully' });
+    }
+
+    // With a challenge token from /login, finish signing in.
+    let challenge;
+    try {
+      challenge = jwt.verify(challengeToken, process.env.JWT_SECRET, { algorithms: ['HS256'] });
+    } catch (err) {
+      return expired();
+    }
+
+    const user = await User.findById(challenge._id);
+    if (challenge.purpose !== TWO_FACTOR_PURPOSE || !user || user.email !== email
+      || BLOCKED_ACCOUNT_STATUSES.includes(user.approvalStatus)) {
+      return expired();
+    }
+
+    const userRole = await Role.findOne({ _id: user.role });
+    return res.status(200).json({
+      message: 'OTP verified successfully',
+      token: signAccessToken(user),
+      user: {
+        id: user._id,
+        fullname: user.fullname,
+        email: user.email,
+        lastPasswordChange: user.lastPasswordChange,
+        created_at: user.created_at,
+        updated_at: user.updated_at,
+        role: userRole?.name,
+      }
+    });
   } catch (error) {
-    console.error('Error verifying OTP:', error);
-    res.status(500).json({ error: 'Error processing your request' });
+    console.error('Error verifying OTP:', error.message);
+    return res.status(500).json({ error: 'Error processing your request' });
   }
 };
 
@@ -496,18 +601,21 @@ exports.requestPasswordReset = async (req, res) => {
 
     const user = await User.findOne({ email });
 
-    if (!user) {
-      // TODO? Maybe we should consider returning a success message so attackers can't brute force to find valid email addresses
-      return res.status(404).send({ error: 'User not found' });
+    // Same reply whether or not the email has an account.
+    if (user) {
+      const token = jwt.sign(
+        { _id: user._id, purpose: PASSWORD_RESET_PURPOSE },
+        process.env.JWT_SECRET,
+        { expiresIn: '15m' }
+      );
+
+      const firstName = user.fullname.split(" ")[0];
+
+      // Send the token to the user's email
+      await sendPasswordResetEmail(email, firstName, token);
     }
 
-    const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, { expiresIn: '15m' });
-
-    const firstName = user.fullname.split(" ")[0];
-
-    // Send the token to the user's email
-    await sendPasswordResetEmail(email, firstName, token);
-    res.status(200).json({ message: 'Password reset link sent' });
+    res.status(200).json({ message: 'If that email has an account, a password reset link has been sent' });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -539,9 +647,10 @@ exports.renderPasswordResetPage = (req, res) => {
   const { token } = req.query;
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
 
-    if (!decoded) {
+    // Only password-reset tokens may open this page, not login tokens.
+    if (!decoded || decoded.purpose !== PASSWORD_RESET_PURPOSE) {
       return res.status(400).send('Invalid or expired token');
     }
 
@@ -595,8 +704,11 @@ exports.resetPassword = async (req, res) => {
       return res.status(400).json({ error: 'New password and confirmation do not match' });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded._id);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
+    // Only password-reset tokens can set a new password, not login tokens.
+    const user = decoded && decoded.purpose === PASSWORD_RESET_PURPOSE
+      ? await User.findById(decoded._id)
+      : null;
 
     if (!user) {
       return res.status(400).send({ error: 'Invalid token or user not found.' });
@@ -636,8 +748,16 @@ exports.searchUser = async (req, res) => {
     .filter(token => token.length > 0);
       
 
-         // Fetch all users
-const users = await User.find({}, "_id fullname organization").lean();
+        // Only search people in the caller's own organization(s)
+        const orgFilter = await buildStaffOrgFilter(req.user._id);
+        if (!orgFilter) {
+            return res.status(404).json({
+                success: false,
+                message: "No users found."
+            });
+        }
+
+        const users = await User.find(orgFilter, "_id fullname organization").lean();
 // First check whether the search text matches a user ID
 const userById = users.find(
     user => String(user._id) === search.trim()

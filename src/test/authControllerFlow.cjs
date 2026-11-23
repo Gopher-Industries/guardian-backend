@@ -108,14 +108,14 @@ describe('auth controller flow', function () {
     expect(res.body.user.twoFactorRequired).to.equal(true);
   });
 
-  it('covers temporary OTP bypass endpoints', async () => {
+  it('no longer lets any PIN through on the OTP endpoints', async () => {
     let res = makeRes();
     await userController.sendOTP({ body: { email: 'anyone@example.com' } }, res);
     expect(res.statusCode).to.equal(200);
 
     res = makeRes();
     await userController.verifyOTP({ body: { email: 'anyone@example.com', otp: '123456' } }, res);
-    expect(res.statusCode).to.equal(200);
+    expect(res.statusCode).to.equal(400);
   });
 
   it('covers change-password validation, wrong old password and success branches', async () => {
@@ -168,13 +168,13 @@ describe('auth controller flow', function () {
 
     res = makeRes();
     await userController.requestPasswordReset({ body: { email: 'missing@example.com' } }, res);
-    expect(res.statusCode).to.equal(404);
+    expect(res.statusCode).to.equal(200);
 
     res = makeRes();
     await userController.requestPasswordReset({ body: { email: user.email } }, res);
     expect(res.statusCode).to.equal(200);
 
-    const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, { expiresIn: '15m' });
+    const token = jwt.sign({ _id: user._id, purpose: 'password-reset' }, process.env.JWT_SECRET, { expiresIn: '15m' });
 
     res = makeRenderRes();
     userController.renderPasswordResetPage({ query: { token } }, res);

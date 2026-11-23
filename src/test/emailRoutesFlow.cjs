@@ -421,7 +421,8 @@ describe('email routes and side effects', function () {
         .post('/api/v1/auth/reset-password-request')
         .send({ email: 'nobody@guardian.test' });
 
-      expect(res).to.have.status(404);
+      // Same reply as for a real account, so emails can't be probed.
+      expect(res).to.have.status(200);
       expect(outbox.size()).to.equal(0);
     });
   });

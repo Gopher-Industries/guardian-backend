@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
 const verifyToken = require('../middleware/verifyToken');
+const User = require('../models/User');
+const verifyRole = require('../middleware/verifyRole');
+const { buildStaffOrgFilter } = require('../utils/staffScope');
 const checkPasswordExpiry = require('../middleware/checkPasswordExpiry');
 const { registerSchema, loginSchema, validationMiddleware } = require('../middleware/validationMiddleware');
 
@@ -110,6 +113,7 @@ router.post('/register', validationMiddleware(registerSchema), userController.re
 router.patch(
   '/approve/:userId',
   verifyToken,
+  verifyRole(['admin']),
   userController.approveUser
 );
 /**
@@ -508,12 +512,19 @@ router.post('/reset-password', userController.resetPassword);
  *         description: Internal server error.
  */
 router.get('/search-user', verifyToken, userController.searchUser);
-router.get('/', verifyToken, async (req, res) => {
+// Admins only, and only users in the admin's own organization(s).
+router.get('/', verifyToken, verifyRole(['admin']), async (req, res) => {
   try {
-    const users = await User.find().select('-password_hash -taxFileNumber -superannuationFundName -superMemberNumber -bankAccountName -accountNumber -bsb');
+    const orgFilter = await buildStaffOrgFilter(req.user._id);
+    if (!orgFilter) return res.status(200).json([]);
+
+    const users = await User.find(orgFilter)
+      .select('_id fullname email phone role organization approvalStatus created_at updated_at')
+      .populate('role', 'name')
+      .lean();
     res.status(200).json(users);
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    res.status(500).json({ error: 'Error fetching users' });
   }
 });
 
