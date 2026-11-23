@@ -128,36 +128,48 @@ exports.registerUser = async (req, res) => {
 };
 
 exports.approveUser = async (req, res) => {
-  try {
-    const { userId } = req.params;
+  const scope = req.approvalScope;
+  if (!scope) {
+    return res.status(403).json({ error: 'Approval scope is required' });
+  }
 
-    const user = await User.findById(userId);
+  try {
+    const now = new Date();
+    const user = await User.findOneAndUpdate(
+      {
+        _id: scope.targetId,
+        organization: scope.organizationId,
+        approvalStatus: 'pending'
+      },
+      {
+        $set: {
+          approvalStatus: 'approved',
+          approvedBy: scope.approverId,
+          approvedAt: now,
+          updated_at: now
+        }
+      },
+      {
+        new: true, // Return the updated document
+        runValidators: true // Ensure that the update adheres to the schema validation rules
+      }
+    ).select('fullname email approvalStatus approvedBy approvedAt');
 
     if (!user) {
-      return res.status(404).json({
-        error: 'User not found'
-      });
-    }
+      const targetInScope = await User.exists({
+        _id: scope.targetId,
+        organization: scope.organizationId
+      })
+      if (!targetInScope) {
+        return res.status(404).json({
+          error: "'User not found in approval scope'"
+        });
+      }
 
-    if (user.approvalStatus !== 'pending') {
       return res.status(400).json({
         error: 'User is already approved or is not pending'
       });
     }
-
-   const approver = await User.findOne({ email: req.user.email });
-
-if (!approver) {
-  return res.status(401).json({
-    error: 'Logged-in user not found'
-  });
-}
-
-user.approvalStatus = 'approved';
-user.approvedBy = approver._id;
-user.approvedAt = new Date();
-
-    await user.save();
 
     return res.status(200).json({
       message: 'User approved successfully',
