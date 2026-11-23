@@ -60,6 +60,36 @@ function userBelongsToOrganization(user, organization) {
   return assertSameOrg(organization, user) || isUserInOrg(user, organization);
 }
 
+// Look up the admin's organization without throwing; null means "none found".
+async function resolveAdminOrgOrNull(req) {
+  try {
+    return await findAdminOrg(req.user._id, req.query?.orgId);
+  } catch (err) {
+    return null;
+  }
+}
+
+// A task belongs to the admin's organization when its patient or its
+// assignee is part of that organization.
+async function taskBelongsToOrganization(task, organization) {
+  if (!task || !organization) return false;
+
+  if (task.patient) {
+    const patient = await Patient.findById(task.patient).select('organization').lean();
+    if (patient && patient.organization && assertSameOrg(organization, patient)) return true;
+  }
+
+  if (task.assignee) {
+    const assignee = await User.findById(task.assignee).select('_id organization').lean();
+    if (assignee && userBelongsToOrganization(assignee, organization)) return true;
+  }
+
+  return false;
+}
+
+// Staff fields that are safe to send back inside a patient overview.
+const STAFF_PUBLIC_FIELDS = '_id fullname email phone role organization';
+
 async function validateAdminRelatedStaff(relatedStaffIds, assigneeId, organization = null) {
   if (relatedStaffIds.some(staffId => String(staffId) === String(assigneeId))) {
     return {
@@ -219,13 +249,25 @@ exports.getPatientOverview = async (req, res) => {
   try {
     const { patientId } = req.params;
 
+    if (!mongoose.isValidObjectId(patientId)) {
+      return res.status(400).json({ message: 'Invalid patientId format' });
+    }
+
     const patientDetails = await Patient.findById(patientId)
-      .populate('caretaker')
-      .populate('assignedNurses')
+      .populate('caretaker', STAFF_PUBLIC_FIELDS)
+      .populate('assignedNurses', STAFF_PUBLIC_FIELDS)
       .lean();
 
     if (!patientDetails) {
       return res.status(404).json({ message: 'Patient not found' });
+    }
+
+    const adminOrganization = await resolveAdminOrgOrNull(req);
+    if (!adminOrganization || !patientDetails.organization
+      || !assertSameOrg(adminOrganization, patientDetails)) {
+      return res.status(403).json({
+        message: 'Patient does not belong to the admin organization'
+      });
     }
 
     const healthRecords = await HealthRecord.find({ patient: patientId });
@@ -796,10 +838,21 @@ exports.updateTask = async (req, res) => {
     } = req.body;
     const nextAssignee = assigneeId || nurseId || caretakerId;
     const hasPatientUpdate = Object.prototype.hasOwnProperty.call(req.body, 'patientId');
-    const existingTask = await Task.findById(taskId).select('assignee relatedStaff').lean();
+    if (!mongoose.isValidObjectId(taskId)) {
+      return res.status(400).json({ message: 'Invalid taskId format' });
+    }
+
+    const existingTask = await Task.findById(taskId).select('assignee relatedStaff patient').lean();
 
     if (!existingTask) {
       return res.status(404).json({ message: 'Task not found' });
+    }
+
+    const adminOrganization = await resolveAdminOrgOrNull(req);
+    if (!(await taskBelongsToOrganization(existingTask, adminOrganization))) {
+      return res.status(403).json({
+        message: 'Task does not belong to the admin organization'
+      });
     }
 
     const normalizedRelatedStaff = normalizeRelatedStaffIds(relatedStaffIds);
@@ -818,13 +871,33 @@ exports.updateTask = async (req, res) => {
     }
 
     if (hasPatientUpdate && patientId) {
-      const patient = await Patient.findById(patientId).select('_id').lean();
+      const patient = await Patient.findById(patientId).select('_id organization').lean();
       if (!patient) return res.status(404).json({ message: 'Patient not found' });
+      if (!patient.organization || !assertSameOrg(adminOrganization, patient)) {
+        return res.status(403).json({
+          message: 'Patient does not belong to the admin organization'
+        });
+      }
     }
 
     if (nextAssignee) {
-      const assignedUser = await User.findById(nextAssignee).select('_id').lean();
+      const assignedUser = await User.findById(nextAssignee)
+        .select('_id role organization')
+        .populate('role', 'name')
+        .lean();
       if (!assignedUser) return res.status(404).json({ message: 'Assignee not found' });
+
+      const assignedRole = assignedUser.role?.name
+        ? String(assignedUser.role.name).toLowerCase()
+        : null;
+      if (!TASK_STAFF_ROLES.includes(assignedRole)) {
+        return res.status(400).json({ message: 'Assignee must be a staff member' });
+      }
+      if (!userBelongsToOrganization(assignedUser, adminOrganization)) {
+        return res.status(403).json({
+          message: 'Admins can only assign tasks to users in their organization'
+        });
+      }
     }
 
     const targetAssignee = nextAssignee || existingTask.assignee;
@@ -834,7 +907,8 @@ exports.updateTask = async (req, res) => {
     if (normalizedRelatedStaff.value !== undefined || nextAssignee) {
       const relatedStaffAccess = await validateAdminRelatedStaff(
         targetRelatedStaff,
-        targetAssignee
+        targetAssignee,
+        adminOrganization
       );
       if (!relatedStaffAccess.ok) {
         return res.status(relatedStaffAccess.status).json({ message: relatedStaffAccess.message });
@@ -905,6 +979,22 @@ exports.updateTask = async (req, res) => {
 exports.deleteTask = async (req, res) => {
   try {
     const { taskId } = req.params;
+
+    if (!mongoose.isValidObjectId(taskId)) {
+      return res.status(400).json({ message: 'Invalid taskId format' });
+    }
+
+    const existingTask = await Task.findById(taskId).select('assignee patient').lean();
+    if (!existingTask) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    const adminOrganization = await resolveAdminOrgOrNull(req);
+    if (!(await taskBelongsToOrganization(existingTask, adminOrganization))) {
+      return res.status(403).json({
+        message: 'Task does not belong to the admin organization'
+      });
+    }
 
     const deletedTask = await Task.findByIdAndDelete(taskId);
 
