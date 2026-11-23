@@ -13,6 +13,12 @@ const verifyRole = (roles) => {
         return res.status(403).json({ message: 'Access denied. Insufficient permissions.' });
       }
 
+      // Rejected or deactivated accounts lose access straight away, even if
+      // they still hold a token issued before the change.
+      if (['rejected', 'deactivated'].includes(user.approvalStatus)) {
+        return res.status(403).json({ message: 'Access denied. Account is not active.' });
+      }
+
       const userRole = String(user.role.name).toLowerCase();
       const normalizedAllowedRoles = allowedRoles.map(role => String(role).toLowerCase());
 
