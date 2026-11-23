@@ -80,7 +80,88 @@ describe('auth flow', function () {
       });
 
     expect(res).to.have.status(400);
-    expect(res.body.error).to.equal('manager is an invalid role');
+    expect(res.body.error).to.equal('Invalid role. Choose doctor, nurse or caretaker.');
+  });
+
+  it('does not let anyone sign up as an admin', async () => {
+    await seedRoles();
+
+    for (const role of ['admin', 'Admin', ' ADMIN ']) {
+      const res = await chai
+        .request(app)
+        .post('/api/v1/auth/register')
+        .send({
+          fullname: 'Sneaky Admin',
+          email: `sneaky-${role.trim().toLowerCase()}-${Math.random()}@example.com`,
+          password: DEFAULT_PASSWORD,
+          role,
+        });
+
+      expect(res).to.have.status(400);
+    }
+
+    const roles = await seedRoles();
+    expect(await User.countDocuments({ role: roles.admin })).to.equal(0);
+  });
+
+  it('gives a caretaker role when no role is sent', async () => {
+    const roles = await seedRoles();
+
+    const res = await chai
+      .request(app)
+      .post('/api/v1/auth/register')
+      .send({
+        fullname: 'No Role User',
+        email: 'no-role@example.com',
+        password: DEFAULT_PASSWORD,
+      });
+
+    expect(res).to.have.status(201);
+    expect(res.body.user.role).to.equal('caretaker');
+
+    const saved = await User.findOne({ email: 'no-role@example.com' }).lean();
+    expect(String(saved.role)).to.equal(String(roles.caretaker));
+    expect(saved.approvalStatus).to.equal('pending');
+  });
+
+  it('blocks login for deactivated and rejected accounts', async () => {
+    const roles = await seedRoles();
+
+    for (const status of ['deactivated', 'rejected']) {
+      const user = await createUser({
+        fullname: `Blocked ${status}`,
+        email: `blocked-${status}@example.com`,
+        role: roles.nurse,
+        password: DEFAULT_PASSWORD,
+        approvalStatus: status,
+      });
+
+      const res = await chai
+        .request(app)
+        .post('/api/v1/auth/login')
+        .send({ email: user.email, password: DEFAULT_PASSWORD });
+
+      expect(res).to.have.status(403);
+      expect(res.body.token).to.equal(undefined);
+    }
+  });
+
+  it('still lets pending users log in so they can request to join an organization', async () => {
+    const roles = await seedRoles();
+    const user = await createUser({
+      fullname: 'Pending Nurse',
+      email: 'pending-nurse@example.com',
+      role: roles.nurse,
+      password: DEFAULT_PASSWORD,
+      approvalStatus: 'pending',
+    });
+
+    const res = await chai
+      .request(app)
+      .post('/api/v1/auth/login')
+      .send({ email: user.email, password: DEFAULT_PASSWORD });
+
+    expect(res).to.have.status(200);
   });
 
   it('logs in an existing user and resets failed login attempts', async () => {
