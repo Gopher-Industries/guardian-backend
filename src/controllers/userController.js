@@ -212,7 +212,7 @@ user.approvedAt = new Date();
 exports.login = async (req, res) => {
   try {
     const user = await User.findOne({ email: req.body.email });
-    if (!user) return res.status(400).json({ error: 'User not found' });
+    if (!user) return res.status(400).json({ error: 'Invalid Email or Password' });
 
     if (user.failedLoginAttempts !== null && user.failedLoginAttempts !== undefined && user.failedLoginAttempts > 4) {
       return res.status(400).json({ error: 'Your account has been flagged and locked. Please reset your password' });
@@ -222,7 +222,7 @@ exports.login = async (req, res) => {
     if (!isValidPassword) {
       user.failedLoginAttempts = (user.failedLoginAttempts !== null && user.failedLoginAttempts !== undefined) ? user.failedLoginAttempts + 1 : 1;
       await user.save();
-      return res.status(400).json({ error: 'Incorrect email and password combination' });
+      return res.status(400).json({ error: 'Invalid Email or Password' });
     }
 
     user.failedLoginAttempts = 0;
@@ -498,7 +498,7 @@ exports.requestPasswordReset = async (req, res) => {
 
     if (!user) {
       // TODO? Maybe we should consider returning a success message so attackers can't brute force to find valid email addresses
-      return res.status(404).send({ error: 'User not found' });
+      return res.status(200).send({ message: 'If an account matches that email address, we have sent a password reset link.' });
     }
 
     const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, { expiresIn: '15m' });
@@ -507,9 +507,9 @@ exports.requestPasswordReset = async (req, res) => {
 
     // Send the token to the user's email
     await sendPasswordResetEmail(email, firstName, token);
-    res.status(200).json({ message: 'Password reset link sent' });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
+    res.status(200).json({ message: 'If an account matches that email address, we have sent a password reset link.' });
+  } catch (message) {
+    res.status(200).json({ message: message.message });
   }
 };
 
