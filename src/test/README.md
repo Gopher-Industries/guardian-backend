@@ -9,7 +9,8 @@ The suite uses Mocha/Chai/Supertest, mounts the real route modules through `help
 Latest local run result from this test suite:
 
 ```text
-65 passing
+165 passing
+0 failing
 Lines:      ~79.24%
 Statements: ~77.66%
 Functions:  ~81.67%
