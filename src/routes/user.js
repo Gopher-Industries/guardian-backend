@@ -4,6 +4,8 @@ const userController = require('../controllers/userController');
 const verifyToken = require('../middleware/verifyToken');
 const checkPasswordExpiry = require('../middleware/checkPasswordExpiry');
 const { registerSchema, loginSchema, validationMiddleware } = require('../middleware/validationMiddleware');
+const verifyRole = require('../middleware/verifyRole');
+const verifyApprovalScope = require('../middleware/verifyApprovalScope');
 
 
 /**
@@ -102,6 +104,8 @@ router.post('/register', validationMiddleware(registerSchema), userController.re
  *         description: User is already approved or is not pending
  *       401:
  *         description: Unauthorized
+ *       403:
+ *         description: The caller lacks the required role or organisation permissions.
  *       404:
  *         description: User not found
  *       500:
@@ -110,8 +114,11 @@ router.post('/register', validationMiddleware(registerSchema), userController.re
 router.patch(
   '/approve/:userId',
   verifyToken,
+  verifyRole(['admin']),
+  verifyApprovalScope,
   userController.approveUser
 );
+
 /**
  * @openapi
  * /api/v1/auth/login:
