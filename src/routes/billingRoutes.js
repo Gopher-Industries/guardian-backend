@@ -1,11 +1,14 @@
 const express = require('express');
 const router = express.Router();
+const verifyToken = require('../middleware/verifyToken');
+const verifyRole = require('../middleware/verifyRole');
 const {
   createBilling,
   getBillingById,
   getAllBillings,
   updateBilling,
-  deleteBilling
+  deleteBilling, 
+  recordPayment
 } = require('../controllers/billingController');
 
 /**
@@ -140,5 +143,7 @@ router.put('/:id', updateBilling);
  *         description: Billing record not found
  */
 router.delete('/:id', deleteBilling);
+
+router.post('/:id/payment', verifyToken,verifyRole(['admin']),recordPayment);
 
 module.exports = router;

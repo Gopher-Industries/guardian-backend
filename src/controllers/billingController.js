@@ -1,5 +1,8 @@
 const Billing = require('../models/billing');
 const MedicalRecord = require('../models/MedicalRecord');
+const Payment = require('../models/payment');
+const mongoose = require('mongoose');
+
 
 async function getVisitDuration(medicalRecordId) {
   if (!medicalRecordId) return undefined;
@@ -127,5 +130,55 @@ exports.deleteBilling = async (req, res) => {
     res.status(200).json({ message: 'Billing record deleted successfully' });
   } catch (error) {
     res.status(400).json({ message: error.message });
+  }
+};
+
+exports.recordPayment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { amount } = req.body || {};
+
+    // Validate billing ID
+    if (!mongoose.isObjectIdOrHexString(id)) {return res.status(400).json({message: 'Invalid billing ID'});}
+
+    // Validate payment amount
+    if (
+      typeof amount !== 'number' ||
+      !Number.isFinite(amount) ||
+      amount <= 0 ||
+      Math.abs(amount - Math.round(amount * 100) / 100) >= 1e-9
+    ) {return res.status(400).json({message: 'Payment amount must be a positive number with at most two decimal places'});}
+
+    // Find the billing record
+    const billing = await Billing.findById(id);
+    if (!billing) {return res.status(404).json({message: 'Billing record not found'});}
+
+    // Prevent payment of an already paid invoice
+    if (billing.payment_status === 'paid') {return res.status(409).json({message: 'This invoice has already been paid'});}
+
+    // Convert values to cents for comparison
+    const paymentCents = Math.round(amount * 100);
+    const totalCents = Math.round(billing.total * 100);
+
+    // Only allow full payments
+    if (paymentCents !== totalCents) {return res.status(400).json({message: 'Payment amount must equal the full invoice total'});}
+
+    // TODO: Check the user's permission to record a payment.
+
+    // Create payment record.
+    // user ID should be extracted from the verified token in the request header.
+    const payment = await Payment.create({billing: billing._id,amount: amount,recorded_by: userId});
+    // Update billing payment status.
+    billing.payment_status = 'paid';
+    billing.payment_pending = false;
+    billing.updated_at = Date.now();
+    await billing.save();
+
+    return res.status(201).json({message: 'Payment recorded successfully', payment, billing});
+
+  } catch (error) {
+    console.error('Error recording payment:', error);
+
+    return res.status(500).json({message: 'Internal server error'});
   }
 };
